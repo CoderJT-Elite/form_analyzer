@@ -1,7 +1,21 @@
+import 'dart:math' as math;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+
+enum RepPhase { down, up }
+
+double calculateJointAngle(Offset a, Offset b, Offset c) {
+  final ba = Offset(a.dx - b.dx, a.dy - b.dy);
+  final bc = Offset(c.dx - b.dx, c.dy - b.dy);
+  final dotProduct = (ba.dx * bc.dx) + (ba.dy * bc.dy);
+  final magnitude = (ba.distance * bc.distance).clamp(1e-6, double.infinity);
+  final cosine = (dotProduct / magnitude).clamp(-1.0, 1.0);
+  final angle = math.acos(cosine) * 180 / math.pi;
+  return angle;
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,130 +40,435 @@ class PoseDetectionScreen extends StatefulWidget {
   State<PoseDetectionScreen> createState() => _PoseDetectionScreenState();
 }
 
-class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
+class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsBindingObserver {
   CameraController? _cameraController;
-  PoseDetector? _poseDetector;
+  late final PoseDetector _poseDetector;
   bool _isCameraInitialized = false;
+  bool _isProcessingFrame = false;
+  List<Pose> _poses = <Pose>[];
+  Size? _imageSize;
+  int _repCount = 0;
+  String _statusMessage = 'Align yourself in the frame';
+  RepPhase _repPhase = RepPhase.down;
+  String? _errorMessage;
+  InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
+  CameraDescription? _cameraDescription;
+  bool _initializingCamera = false;
 
   @override
   void initState() {
     super.initState();
-    _initialize();
-  }
-
-  Future<void> _initialize() async {
-    // Initialize the pose detector
+    WidgetsBinding.instance.addObserver(this);
     _poseDetector = PoseDetector(
       options: PoseDetectorOptions(
         model: PoseDetectionModel.base,
         mode: PoseDetectionMode.stream,
       ),
     );
+    _initialize();
+  }
 
-    // Get available cameras
-    final cameras = await availableCameras();
-    final firstCamera = cameras.first;
-
-    // Initialize the camera controller
-    _cameraController = CameraController(
-      firstCamera,
-      ResolutionPreset.high,
-      enableAudio: false,
-    );
-
-    await _cameraController!.initialize();
-    if (!mounted) {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) {
       return;
     }
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      _stopImageStream();
+      controller.dispose();
+      _cameraController = null;
+      setState(() {
+        _isCameraInitialized = false;
+      });
+    } else if (state == AppLifecycleState.resumed) {
+      _initialize();
+    }
+  }
 
-    // Start streaming images from the camera
-    _cameraController!.startImageStream((CameraImage image) {
-      // This is where the image frames from the camera are sent to the AI engine.
-      // We convert the CameraImage to an InputImage, which the ML Kit library understands.
+  Future<void> _initialize() async {
+    if (_initializingCamera) return;
+    _initializingCamera = true;
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        setState(() {
+          _errorMessage = 'No cameras available on this device.';
+          _isCameraInitialized = false;
+        });
+        return;
+      }
+      final description = cameras.first;
+      _cameraDescription = description;
+      await _stopImageStream();
+      await _cameraController?.dispose();
+      final controller = CameraController(
+        description,
+        ResolutionPreset.high,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.yuv420,
+      );
+      _cameraController = controller;
+      await controller.initialize();
+      await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
+      _imageRotation = InputImageRotationValue.fromRawValue(description.sensorOrientation) ??
+          InputImageRotation.rotation0deg;
+      _imageSize = controller.value.previewSize == null
+          ? null
+          : Size(
+              controller.value.previewSize!.height,
+              controller.value.previewSize!.width,
+            );
+      await controller.startImageStream(_processCameraImage);
+      if (!mounted) return;
+      setState(() {
+        _isCameraInitialized = true;
+        _errorMessage = null;
+      });
+    } on CameraException catch (e) {
+      setState(() {
+        _errorMessage = e.code == 'CameraAccessDenied'
+            ? 'Camera permission denied. Please enable it in settings.'
+            : 'Camera error: ${e.description ?? e.code}';
+        _isCameraInitialized = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to initialize camera: $e';
+        _isCameraInitialized = false;
+      });
+    } finally {
+      _initializingCamera = false;
+    }
+  }
 
-      // 1. Combine all image planes into a single byte array
+  Future<void> _stopImageStream() async {
+    try {
+      if (_cameraController?.value.isStreamingImages ?? false) {
+        await _cameraController?.stopImageStream();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _processCameraImage(CameraImage image) async {
+    if (_isProcessingFrame || _cameraDescription == null) return;
+    _isProcessingFrame = true;
+    try {
       final WriteBuffer allBytes = WriteBuffer();
       for (final Plane plane in image.planes) {
         allBytes.putUint8List(plane.bytes);
       }
       final bytes = allBytes.done().buffer.asUint8List();
-
-      // Calculate rotation based on the camera sensor orientation
-      // (ensure 'firstCamera' from the enclosing scope is used)
-      final int rotationDegrees = firstCamera.sensorOrientation;
-      final InputImageRotation rotation;
-      switch (rotationDegrees) {
-        case 0:
-          rotation = InputImageRotation.rotation0deg;
-          break;
-        case 90:
-          rotation = InputImageRotation.rotation90deg;
-          break;
-        case 180:
-          rotation = InputImageRotation.rotation180deg;
-          break;
-        case 270:
-          rotation = InputImageRotation.rotation270deg;
-          break;
-        default:
-          rotation = InputImageRotation.rotation0deg;
-      }
-
-      // 2. Build the metadata (This replaces the old 'PlaneMetadata' and 'planes' errors)
+      final rotation = InputImageRotationValue.fromRawValue(_cameraDescription!.sensorOrientation) ??
+          InputImageRotation.rotation0deg;
       final metadata = InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation, // Use the rotation computed above
+        rotation: rotation,
         format: InputImageFormatValue.fromRawValue(image.format.raw) ?? InputImageFormat.nv21,
-        bytesPerRow: image.planes.isNotEmpty ? image.planes[0].bytesPerRow : 0,
+        bytesPerRow: image.planes.isNotEmpty ? image.planes.first.bytesPerRow : 0,
       );
-
-      // 3. Create the final image for the AI to process
-      final inputImage = InputImage.fromBytes(
-        bytes: bytes,
-        metadata: metadata,
-      );
-
-      // Process the image for poses
-      _poseDetector?.processImage(inputImage).then((poses) {
-        // This is the placeholder function for your exercise analysis.
-        // The 'poses' variable contains the detected poses.
-        _analyzeExercise(poses);
-      }).catchError((e) {
-        // Handle any errors
+      final inputImage = InputImage.fromBytes(bytes: bytes, metadata: metadata);
+      final poses = await _poseDetector.processImage(inputImage);
+      final adjustedSize = (rotation == InputImageRotation.rotation90deg ||
+              rotation == InputImageRotation.rotation270deg)
+          ? Size(metadata.size.height, metadata.size.width)
+          : metadata.size;
+      if (!mounted) return;
+      setState(() {
+        _poses = poses;
+        _imageSize = adjustedSize;
+        _imageRotation = rotation;
       });
-    });
+      _evaluateExercise(poses);
+    } catch (_) {
+      // Swallow frame errors to keep stream alive.
+    } finally {
+      _isProcessingFrame = false;
+    }
+  }
+
+  void _evaluateExercise(List<Pose> poses) {
+    if (!mounted) return;
+    if (poses.isEmpty) {
+      setState(() {
+        _statusMessage = 'Move fully into the frame';
+      });
+      return;
+    }
+    final Pose pose = poses.first;
+    final shoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
+    final elbow = pose.landmarks[PoseLandmarkType.leftElbow];
+    final wrist = pose.landmarks[PoseLandmarkType.leftWrist];
+    if (shoulder == null || elbow == null || wrist == null) {
+      setState(() {
+        _statusMessage = 'Keep your left arm visible';
+      });
+      return;
+    }
+    final angle = _calculateAngle(shoulder, elbow, wrist);
+    int reps = _repCount;
+    RepPhase phase = _repPhase;
+    String status = _statusMessage;
+
+    if (angle <= 45 && phase == RepPhase.down) {
+      status = 'Squeeze at the top';
+      phase = RepPhase.up;
+    } else if (angle >= 150 && phase == RepPhase.up) {
+      reps += 1;
+      status = 'Great form!';
+      phase = RepPhase.down;
+    } else if (angle > 100) {
+      status = 'Curl up';
+    } else {
+      status = 'Control the descent';
+    }
 
     setState(() {
-      _isCameraInitialized = true;
+      _repCount = reps;
+      _statusMessage = status;
+      _repPhase = phase;
     });
   }
 
-  void _analyzeExercise(List<Pose> poses) {
-    // TODO: Add your math for bicep curls and squats here.
-    // You can access the landmarks of each pose, for example:
-    // for (final pose in poses) {
-    //   final landmark = pose.landmarks[PoseLandmarkType.leftShoulder];
-    //   if (landmark != null) {
-    //     print('Left shoulder position: (${landmark.x}, ${landmark.y})');
-    //   }
-    // }
+  double _calculateAngle(
+    PoseLandmark a,
+    PoseLandmark b,
+    PoseLandmark c,
+  ) {
+    return calculateJointAngle(
+      Offset(a.x, a.y),
+      Offset(b.x, b.y),
+      Offset(c.x, c.y),
+    );
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopImageStream();
     _cameraController?.dispose();
-    _poseDetector?.close();
+    _poseDetector.close();
     super.dispose();
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage ?? 'An unexpected error occurred',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _initialize,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoBar() {
+    return Row(
+      children: [
+        _InfoChip(
+          title: 'Reps',
+          value: '$_repCount',
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _InfoChip(
+            title: 'Status',
+            value: _statusMessage,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isCameraInitialized) {
-      return const Center(child: CircularProgressIndicator());
-    }
     return Scaffold(
       appBar: AppBar(title: const Text('Pose Detection')),
-      body: CameraPreview(_cameraController!),
+      backgroundColor: Colors.black,
+      body: _errorMessage != null
+          ? _buildError()
+          : !_isCameraInitialized
+              ? const Center(child: CircularProgressIndicator())
+              : Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (_cameraController != null) CameraPreview(_cameraController!),
+                    if (_imageSize != null)
+                      CustomPaint(
+                        painter: PosePainter(
+                          poses: _poses,
+                          imageSize: _imageSize!,
+                          rotation: _imageRotation,
+                          lensDirection: _cameraDescription?.lensDirection ?? CameraLensDirection.back,
+                        ),
+                      ),
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      child: _buildInfoBar(),
+                    ),
+                    Positioned(
+                      bottom: 24,
+                      left: 16,
+                      right: 16,
+                      child: _InfoChip(title: 'Tip', value: _statusMessage),
+                    ),
+                  ],
+                ),
+    );
+  }
+}
+
+class PosePainter extends CustomPainter {
+  PosePainter({
+    required this.poses,
+    required this.imageSize,
+    required this.rotation,
+    required this.lensDirection,
+  });
+
+  final List<Pose> poses;
+  final Size imageSize;
+  final InputImageRotation rotation;
+  final CameraLensDirection lensDirection;
+
+  static const List<List<PoseLandmarkType>> _connections = [
+    [PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder],
+    [PoseLandmarkType.leftHip, PoseLandmarkType.rightHip],
+    [PoseLandmarkType.leftShoulder, PoseLandmarkType.leftElbow],
+    [PoseLandmarkType.leftElbow, PoseLandmarkType.leftWrist],
+    [PoseLandmarkType.rightShoulder, PoseLandmarkType.rightElbow],
+    [PoseLandmarkType.rightElbow, PoseLandmarkType.rightWrist],
+    [PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip],
+    [PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip],
+    [PoseLandmarkType.leftHip, PoseLandmarkType.leftKnee],
+    [PoseLandmarkType.leftKnee, PoseLandmarkType.leftAnkle],
+    [PoseLandmarkType.rightHip, PoseLandmarkType.rightKnee],
+    [PoseLandmarkType.rightKnee, PoseLandmarkType.rightAnkle],
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final landmarkPaint = Paint()
+      ..color = Colors.greenAccent
+      ..strokeWidth = 4
+      ..style = PaintingStyle.fill;
+
+    final linePaint = Paint()
+      ..color = Colors.yellowAccent
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+
+    for (final pose in poses) {
+      for (final connection in _connections) {
+        final first = pose.landmarks[connection[0]];
+        final second = pose.landmarks[connection[1]];
+        if (first == null || second == null) continue;
+        final p1 = _transform(first, size);
+        final p2 = _transform(second, size);
+        canvas.drawLine(p1, p2, linePaint);
+      }
+      for (final landmark in pose.landmarks.values) {
+        final point = _transform(landmark, size);
+        canvas.drawCircle(point, 5, landmarkPaint);
+      }
+    }
+  }
+
+  Offset _transform(PoseLandmark landmark, Size canvasSize) {
+    double x = landmark.x;
+    double y = landmark.y;
+    switch (rotation) {
+      case InputImageRotation.rotation90deg:
+        final temp = x;
+        x = y;
+        y = imageSize.width - temp;
+        break;
+      case InputImageRotation.rotation270deg:
+        final temp = x;
+        x = imageSize.height - y;
+        y = temp;
+        break;
+      case InputImageRotation.rotation180deg:
+        x = imageSize.width - x;
+        y = imageSize.height - y;
+        break;
+      case InputImageRotation.rotation0deg:
+        break;
+    }
+    final scaleX = canvasSize.width / imageSize.width;
+    final scaleY = canvasSize.height / imageSize.height;
+    var transformed = Offset(x * scaleX, y * scaleY);
+    if (lensDirection == CameraLensDirection.front) {
+      transformed = Offset(canvasSize.width - transformed.dx, transformed.dy);
+    }
+    return transformed;
+  }
+
+  @override
+  bool shouldRepaint(covariant PosePainter oldDelegate) {
+    return oldDelegate.poses != poses ||
+        oldDelegate.imageSize != imageSize ||
+        oldDelegate.rotation != rotation ||
+        oldDelegate.lensDirection != lensDirection;
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.title, required this.value});
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 18,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
