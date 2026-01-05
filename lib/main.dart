@@ -1,4 +1,3 @@
-
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -68,29 +67,43 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
       // This is where the image frames from the camera are sent to the AI engine.
       // We convert the CameraImage to an InputImage, which the ML Kit library understands.
 
+      // 1. Combine all image planes into a single byte array
       final WriteBuffer allBytes = WriteBuffer();
       for (final Plane plane in image.planes) {
         allBytes.putUint8List(plane.bytes);
       }
       final bytes = allBytes.done().buffer.asUint8List();
 
-      final InputImageMetadata metadata = InputImageMetadata(
+      // Calculate rotation based on the camera sensor orientation
+      // (ensure 'firstCamera' from the enclosing scope is used)
+      final int rotationDegrees = firstCamera.sensorOrientation;
+      final InputImageRotation rotation;
+      switch (rotationDegrees) {
+        case 0:
+          rotation = InputImageRotation.rotation0deg;
+          break;
+        case 90:
+          rotation = InputImageRotation.rotation90deg;
+          break;
+        case 180:
+          rotation = InputImageRotation.rotation180deg;
+          break;
+        case 270:
+          rotation = InputImageRotation.rotation270deg;
+          break;
+        default:
+          rotation = InputImageRotation.rotation0deg;
+      }
+
+      // 2. Build the metadata (This replaces the old 'PlaneMetadata' and 'planes' errors)
+      final metadata = InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: InputImageRotation.rotation90deg,
-        format:
-            InputImageFormatValue.fromRawValue(image.format.raw) ??
-                InputImageFormat.nv21,
-        planes: image.planes.map(
-          (Plane plane) {
-            return InputImagePlaneMetadata(
-              bytesPerRow: plane.bytesPerRow,
-              height: plane.height,
-              width: plane.width,
-            );
-          },
-        ).toList(),
+        rotation: rotation, // Use the rotation computed above
+        format: InputImageFormatValue.fromRawValue(image.format.raw) ?? InputImageFormat.nv21,
+        bytesPerRow: image.planes.isNotEmpty ? image.planes[0].bytesPerRow : 0,
       );
 
+      // 3. Create the final image for the AI to process
       final inputImage = InputImage.fromBytes(
         bytes: bytes,
         metadata: metadata,
