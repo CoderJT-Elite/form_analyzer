@@ -7,11 +7,20 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
 enum RepPhase { down, up }
 
+const double kCurlTopThreshold = 45;
+const double kCurlBottomThreshold = 150;
+const double kCurlMidThreshold = 100;
+const double kMinMagnitude = 1e-6;
+
+/// Calculates the angle (in degrees) at the middle point [b] formed by the
+/// three offsets [a]-[b]-[c]. The result is clamped to avoid division by zero.
 double calculateJointAngle(Offset a, Offset b, Offset c) {
   final ba = Offset(a.dx - b.dx, a.dy - b.dy);
   final bc = Offset(c.dx - b.dx, c.dy - b.dy);
   final dotProduct = (ba.dx * bc.dx) + (ba.dy * bc.dy);
-  final magnitude = (ba.distance * bc.distance).clamp(1e-6, double.infinity);
+  final baDistanceSquared = (ba.dx * ba.dx) + (ba.dy * ba.dy);
+  final bcDistanceSquared = (bc.dx * bc.dx) + (bc.dy * bc.dy);
+  final magnitude = math.max(math.sqrt(baDistanceSquared * bcDistanceSquared), kMinMagnitude);
   final cosine = (dotProduct / magnitude).clamp(-1.0, 1.0);
   final angle = math.acos(cosine) * 180 / math.pi;
   return angle;
@@ -40,6 +49,7 @@ class PoseDetectionScreen extends StatefulWidget {
   State<PoseDetectionScreen> createState() => _PoseDetectionScreenState();
 }
 
+/// Manages camera streaming, pose detection, rep counting, and overlay UI.
 class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsBindingObserver {
   CameraController? _cameraController;
   late final PoseDetector _poseDetector;
@@ -53,7 +63,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   String? _errorMessage;
   InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
   CameraDescription? _cameraDescription;
-  bool _initializingCamera = false;
+  Future<void>? _initializeFuture;
 
   @override
   void initState() {
@@ -87,8 +97,18 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   }
 
   Future<void> _initialize() async {
-    if (_initializingCamera) return;
-    _initializingCamera = true;
+    _initializeFuture ??= _initializeCamera();
+    final pending = _initializeFuture!;
+    try {
+      await pending;
+    } finally {
+      if (identical(_initializeFuture, pending)) {
+        _initializeFuture = null;
+      }
+    }
+  }
+
+  Future<void> _initializeCamera() async {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
@@ -111,8 +131,8 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
       _cameraController = controller;
       await controller.initialize();
       await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
-      _imageRotation = InputImageRotationValue.fromRawValue(description.sensorOrientation) ??
-          InputImageRotation.rotation0deg;
+      _imageRotation = _getImageRotation();
+      // previewSize reports landscape values; swap to match portrait canvas.
       _imageSize = controller.value.previewSize == null
           ? null
           : Size(
@@ -137,8 +157,6 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
         _errorMessage = 'Failed to initialize camera: $e';
         _isCameraInitialized = false;
       });
-    } finally {
-      _initializingCamera = false;
     }
   }
 
@@ -147,25 +165,38 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
       if (_cameraController?.value.isStreamingImages ?? false) {
         await _cameraController?.stopImageStream();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Failed to stop image stream: $e');
+    }
+  }
+
+  InputImageRotation _getImageRotation() {
+    return InputImageRotationValue.fromRawValue(_cameraDescription?.sensorOrientation ?? 0) ??
+        InputImageRotation.rotation0deg;
   }
 
   Future<void> _processCameraImage(CameraImage image) async {
+    // Frames arrive serially from the camera stream; this flag prevents
+    // overlapping work when processing falls behind.
     if (_isProcessingFrame || _cameraDescription == null) return;
     _isProcessingFrame = true;
     try {
+      final planes = image.planes;
+      if (planes.isEmpty) {
+        debugPrint('CameraImage contained no planes; skipping frame.');
+        return;
+      }
       final WriteBuffer allBytes = WriteBuffer();
-      for (final Plane plane in image.planes) {
+      for (final Plane plane in planes) {
         allBytes.putUint8List(plane.bytes);
       }
       final bytes = allBytes.done().buffer.asUint8List();
-      final rotation = InputImageRotationValue.fromRawValue(_cameraDescription!.sensorOrientation) ??
-          InputImageRotation.rotation0deg;
+      final rotation = _getImageRotation();
       final metadata = InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
         rotation: rotation,
         format: InputImageFormatValue.fromRawValue(image.format.raw) ?? InputImageFormat.nv21,
-        bytesPerRow: image.planes.isNotEmpty ? image.planes.first.bytesPerRow : 0,
+        bytesPerRow: planes.first.bytesPerRow,
       );
       final inputImage = InputImage.fromBytes(bytes: bytes, metadata: metadata);
       final poses = await _poseDetector.processImage(inputImage);
@@ -180,11 +211,32 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
         _imageRotation = rotation;
       });
       _evaluateExercise(poses);
-    } catch (_) {
-      // Swallow frame errors to keep stream alive.
+    } catch (e, stack) {
+      debugPrint('Pose processing error: $e\n$stack');
     } finally {
       _isProcessingFrame = false;
     }
+  }
+
+  Pose _selectPrimaryPose(List<Pose> poses) {
+    if (poses.length == 1) return poses.first;
+    Pose? bestPose;
+    double bestScore = -1;
+    for (final pose in poses) {
+      final score = _poseLikelihood(pose);
+      if (score > bestScore) {
+        bestScore = score;
+        bestPose = pose;
+        if (score >= 0.9) break;
+      }
+    }
+    return bestPose ?? poses.first;
+  }
+
+  double _poseLikelihood(Pose pose) {
+    if (pose.landmarks.isEmpty) return 0;
+    final total = pose.landmarks.values.fold<double>(0, (sum, lm) => sum + lm.likelihood);
+    return total / pose.landmarks.length;
   }
 
   void _evaluateExercise(List<Pose> poses) {
@@ -195,13 +247,19 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
       });
       return;
     }
-    final Pose pose = poses.first;
-    final shoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
-    final elbow = pose.landmarks[PoseLandmarkType.leftElbow];
-    final wrist = pose.landmarks[PoseLandmarkType.leftWrist];
+    // Focus on the pose with highest confidence to keep rep counting fast for a single-user flow.
+    final Pose pose = _selectPrimaryPose(poses);
+    var shoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
+    var elbow = pose.landmarks[PoseLandmarkType.leftElbow];
+    var wrist = pose.landmarks[PoseLandmarkType.leftWrist];
+    if (shoulder == null || elbow == null || wrist == null) {
+      shoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
+      elbow = pose.landmarks[PoseLandmarkType.rightElbow];
+      wrist = pose.landmarks[PoseLandmarkType.rightWrist];
+    }
     if (shoulder == null || elbow == null || wrist == null) {
       setState(() {
-        _statusMessage = 'Keep your left arm visible';
+        _statusMessage = 'Keep at least one arm visible';
       });
       return;
     }
@@ -210,14 +268,14 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     RepPhase phase = _repPhase;
     String status = _statusMessage;
 
-    if (angle <= 45 && phase == RepPhase.down) {
+    if (angle <= kCurlTopThreshold && phase == RepPhase.down) {
       status = 'Squeeze at the top';
       phase = RepPhase.up;
-    } else if (angle >= 150 && phase == RepPhase.up) {
+    } else if (angle >= kCurlBottomThreshold && phase == RepPhase.up) {
       reps += 1;
       status = 'Great form!';
       phase = RepPhase.down;
-    } else if (angle > 100) {
+    } else if (angle > kCurlMidThreshold) {
       status = 'Curl up';
     } else {
       status = 'Control the descent';
@@ -335,6 +393,8 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   }
 }
 
+/// Custom painter that maps pose landmarks to the preview canvas and renders a
+/// skeletal overlay.
 class PosePainter extends CustomPainter {
   PosePainter({
     required this.poses,
@@ -348,6 +408,7 @@ class PosePainter extends CustomPainter {
   final InputImageRotation rotation;
   final CameraLensDirection lensDirection;
 
+  /// Landmark pairs that define the skeletal connections to render.
   static const List<List<PoseLandmarkType>> _connections = [
     [PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder],
     [PoseLandmarkType.leftHip, PoseLandmarkType.rightHip],
