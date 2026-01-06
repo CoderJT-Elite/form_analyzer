@@ -24,7 +24,7 @@ android {
         applicationId = "com.example.form_analyzer"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 21  // Required for ML Kit and Camera
         targetSdk = 33
         versionCode = flutter.versionCode
         versionName = flutter.versionName
