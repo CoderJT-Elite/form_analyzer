@@ -30,6 +30,8 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
   CameraController? _cameraController;
   PoseDetector? _poseDetector;
   bool _isCameraInitialized = false;
+  bool _isProcessing = false;
+  late CameraDescription _camera;
 
   @override
   void initState() {
@@ -48,11 +50,11 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
 
     // Get available cameras
     final cameras = await availableCameras();
-    final firstCamera = cameras.first;
+    _camera = cameras.first;
 
     // Initialize the camera controller
     _cameraController = CameraController(
-      firstCamera,
+      _camera,
       ResolutionPreset.high,
       enableAudio: false,
     );
@@ -64,64 +66,58 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
 
     // Start streaming images from the camera
     _cameraController!.startImageStream((CameraImage image) {
-      // This is where the image frames from the camera are sent to the AI engine.
-      // We convert the CameraImage to an InputImage, which the ML Kit library understands.
+      // Add a simple 'isProcessing' lock to prevent overloading the AI
+      if (_isProcessing) return;
+      _isProcessing = true;
 
-      // 1. Combine all image planes into a single byte array
-      final WriteBuffer allBytes = WriteBuffer();
-      for (final Plane plane in image.planes) {
-        allBytes.putUint8List(plane.bytes);
+      try {
+        final WriteBuffer allBytes = WriteBuffer();
+        for (final Plane plane in image.planes) {
+          allBytes.putUint8List(plane.bytes);
+        }
+        final bytes = allBytes.done().buffer.asUint8List();
+
+        final imageRotation = InputImageRotationValue.fromRawValue(
+          _camera.sensorOrientation,
+        ) ?? InputImageRotation.rotation0deg;
+
+        final imageFormat = InputImageFormatValue.fromRawValue(image.format.raw)
+          ?? InputImageFormat.nv21; // Default to nv21 if unknown
+
+        final inputImageMetadata = InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: imageRotation,
+          format: imageFormat,
+          bytesPerRow: image.planes[0].bytesPerRow,
+        );
+
+        final inputImage = InputImage.fromBytes(
+          bytes: bytes,
+          metadata: inputImageMetadata,
+        );
+
+        _processImage(inputImage);
+      } catch (e) {
+        print("AI Processing Error: $e");
+      } finally {
+        _isProcessing = false;
       }
-      final bytes = allBytes.done().buffer.asUint8List();
-
-      // Calculate rotation based on the camera sensor orientation
-      // (ensure 'firstCamera' from the enclosing scope is used)
-      final int rotationDegrees = firstCamera.sensorOrientation;
-      final InputImageRotation rotation;
-      switch (rotationDegrees) {
-        case 0:
-          rotation = InputImageRotation.rotation0deg;
-          break;
-        case 90:
-          rotation = InputImageRotation.rotation90deg;
-          break;
-        case 180:
-          rotation = InputImageRotation.rotation180deg;
-          break;
-        case 270:
-          rotation = InputImageRotation.rotation270deg;
-          break;
-        default:
-          rotation = InputImageRotation.rotation0deg;
-      }
-
-      // 2. Build the metadata (This replaces the old 'PlaneMetadata' and 'planes' errors)
-      final metadata = InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation, // Use the rotation computed above
-        format: InputImageFormatValue.fromRawValue(image.format.raw) ?? InputImageFormat.nv21,
-        bytesPerRow: image.planes.isNotEmpty ? image.planes[0].bytesPerRow : 0,
-      );
-
-      // 3. Create the final image for the AI to process
-      final inputImage = InputImage.fromBytes(
-        bytes: bytes,
-        metadata: metadata,
-      );
-
-      // Process the image for poses
-      _poseDetector?.processImage(inputImage).then((poses) {
-        // This is the placeholder function for your exercise analysis.
-        // The 'poses' variable contains the detected poses.
-        _analyzeExercise(poses);
-      }).catchError((e) {
-        // Handle any errors
-      });
     });
 
     setState(() {
       _isCameraInitialized = true;
     });
+  }
+
+  Future<void> _processImage(InputImage inputImage) async {
+    try {
+      final poses = await _poseDetector?.processImage(inputImage);
+      if (poses != null) {
+        _analyzeExercise(poses);
+      }
+    } catch (e) {
+      print("Pose detection error: $e");
+    }
   }
 
   void _analyzeExercise(List<Pose> poses) {
