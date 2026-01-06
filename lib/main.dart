@@ -54,10 +54,6 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   CameraController? _cameraController;
   late final PoseDetector _poseDetector;
   bool _isCameraInitialized = false;
-<<<<<<< HEAD
-  bool _isProcessing = false;
-  late CameraDescription _camera;
-=======
   bool _isProcessingFrame = false;
   List<Pose> _poses = <Pose>[];
   Size? _imageSize;
@@ -68,7 +64,6 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
   CameraDescription? _cameraDescription;
   Future<void>? _initializeFuture;
->>>>>>> faf37e6969aabc91c6ff2ddd3b116e6393d0807b
 
   @override
   void initState() {
@@ -83,26 +78,10 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     _initialize();
   }
 
-<<<<<<< HEAD
-    // Get available cameras
-    final cameras = await availableCameras();
-    _camera = cameras.first;
-
-    // Initialize the camera controller
-    _cameraController = CameraController(
-      _camera,
-      ResolutionPreset.high,
-      enableAudio: false,
-    );
-
-    await _cameraController!.initialize();
-    if (!mounted) {
-=======
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) {
->>>>>>> faf37e6969aabc91c6ff2ddd3b116e6393d0807b
       return;
     }
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
@@ -117,47 +96,6 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     }
   }
 
-<<<<<<< HEAD
-    // Start streaming images from the camera
-    _cameraController!.startImageStream((CameraImage image) {
-      // Add a simple 'isProcessing' lock to prevent overloading the AI
-      if (_isProcessing) return;
-      _isProcessing = true;
-
-      try {
-        final WriteBuffer allBytes = WriteBuffer();
-        for (final Plane plane in image.planes) {
-          allBytes.putUint8List(plane.bytes);
-        }
-        final bytes = allBytes.done().buffer.asUint8List();
-
-        final imageRotation = InputImageRotationValue.fromRawValue(
-          _camera.sensorOrientation,
-        ) ?? InputImageRotation.rotation0deg;
-
-        final imageFormat = InputImageFormatValue.fromRawValue(image.format.raw)
-          ?? InputImageFormat.nv21; // Default to nv21 if unknown
-
-        final inputImageMetadata = InputImageMetadata(
-          size: Size(image.width.toDouble(), image.height.toDouble()),
-          rotation: imageRotation,
-          format: imageFormat,
-          bytesPerRow: image.planes[0].bytesPerRow,
-        );
-
-        final inputImage = InputImage.fromBytes(
-          bytes: bytes,
-          metadata: inputImageMetadata,
-        );
-
-        _processImage(inputImage);
-      } catch (e) {
-        print("AI Processing Error: $e");
-      } finally {
-        _isProcessing = false;
-      }
-    });
-=======
   Future<void> _initialize() async {
     _initializeFuture ??= _initializeCamera();
     final pending = _initializeFuture!;
@@ -342,7 +280,6 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     } else {
       status = 'Control the descent';
     }
->>>>>>> faf37e6969aabc91c6ff2ddd3b116e6393d0807b
 
     setState(() {
       _repCount = reps;
@@ -351,28 +288,6 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     });
   }
 
-<<<<<<< HEAD
-  Future<void> _processImage(InputImage inputImage) async {
-    try {
-      final poses = await _poseDetector?.processImage(inputImage);
-      if (poses != null) {
-        _analyzeExercise(poses);
-      }
-    } catch (e) {
-      print("Pose detection error: $e");
-    }
-  }
-
-  void _analyzeExercise(List<Pose> poses) {
-    // TODO: Add your math for bicep curls and squats here.
-    // You can access the landmarks of each pose, for example:
-    // for (final pose in poses) {
-    //   final landmark = pose.landmarks[PoseLandmarkType.leftShoulder];
-    //   if (landmark != null) {
-    //     print('Left shoulder position: (${landmark.x}, ${landmark.y})');
-    //   }
-    // }
-=======
   double _calculateAngle(
     PoseLandmark a,
     PoseLandmark b,
@@ -383,7 +298,6 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
       Offset(b.x, b.y),
       Offset(c.x, c.y),
     );
->>>>>>> faf37e6969aabc91c6ff2ddd3b116e6393d0807b
   }
 
   @override
