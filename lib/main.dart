@@ -7,9 +7,10 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
 enum RepPhase { down, up }
 
-const double kCurlTopThreshold = 45;
-const double kCurlBottomThreshold = 150;
-const double kCurlMidThreshold = 100;
+// Squat depth thresholds
+const double kSquatDepthMin = 70;  // Minimum angle for valid squat depth
+const double kSquatDepthMax = 90;  // Maximum angle for valid squat depth
+const double kSquatStandingAngle = 160;  // Standing position threshold
 const double kMinMagnitude = 1e-6;
 
 /// Calculates the angle (in degrees) at the middle point [b] formed by the
@@ -24,6 +25,43 @@ double calculateJointAngle(Offset a, Offset b, Offset c) {
   final cosine = (dotProduct / magnitude).clamp(-1.0, 1.0);
   final angle = math.acos(cosine) * 180 / math.pi;
   return angle;
+}
+
+/// Calculates the interior angle (in degrees) at the joint [second] formed by 
+/// three PoseLandmarks using the dot product formula.
+/// Returns the angle between the vectors [first]-[second] and [second]-[third].
+/// Formula: cos(θ) = (a·b) / (|a||b|), where a and b are vectors from the joint.
+double calculateAngle(PoseLandmark first, PoseLandmark second, PoseLandmark third) {
+  // Calculate vector from second to first
+  final dx1 = first.x - second.x;
+  final dy1 = first.y - second.y;
+  final dz1 = first.z - second.z;
+  
+  // Calculate vector from second to third
+  final dx2 = third.x - second.x;
+  final dy2 = third.y - second.y;
+  final dz2 = third.z - second.z;
+  
+  // Calculate magnitudes (distances)
+  final mag1 = math.sqrt(dx1 * dx1 + dy1 * dy1 + dz1 * dz1);
+  final mag2 = math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
+  
+  // Prevent division by zero
+  if (mag1 < kMinMagnitude || mag2 < kMinMagnitude) {
+    return 0.0;
+  }
+  
+  // Calculate dot product
+  final dotProduct = dx1 * dx2 + dy1 * dy2 + dz1 * dz2;
+  
+  // Apply dot product formula: cos(θ) = (a·b) / (|a||b|)
+  final cosine = (dotProduct / (mag1 * mag2)).clamp(-1.0, 1.0);
+  
+  // Convert to degrees
+  final angleRadians = math.acos(cosine);
+  final angleDegrees = angleRadians * 180 / math.pi;
+  
+  return angleDegrees;
 }
 
 Future<void> main() async {
@@ -249,36 +287,55 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     }
     // Focus on the pose with highest confidence to keep rep counting fast for a single-user flow.
     final Pose pose = _selectPrimaryPose(poses);
-    var shoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
-    var elbow = pose.landmarks[PoseLandmarkType.leftElbow];
-    var wrist = pose.landmarks[PoseLandmarkType.leftWrist];
-    if (shoulder == null || elbow == null || wrist == null) {
-      shoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
-      elbow = pose.landmarks[PoseLandmarkType.rightElbow];
-      wrist = pose.landmarks[PoseLandmarkType.rightWrist];
+    
+    // Get Hip-Knee-Ankle landmarks for squat tracking
+    var hip = pose.landmarks[PoseLandmarkType.leftHip];
+    var knee = pose.landmarks[PoseLandmarkType.leftKnee];
+    var ankle = pose.landmarks[PoseLandmarkType.leftAnkle];
+    
+    // Fallback to right side if left side not visible
+    if (hip == null || knee == null || ankle == null) {
+      hip = pose.landmarks[PoseLandmarkType.rightHip];
+      knee = pose.landmarks[PoseLandmarkType.rightKnee];
+      ankle = pose.landmarks[PoseLandmarkType.rightAnkle];
     }
-    if (shoulder == null || elbow == null || wrist == null) {
+    
+    if (hip == null || knee == null || ankle == null) {
       setState(() {
-        _statusMessage = 'Keep at least one arm visible';
+        _statusMessage = 'Keep your full body visible';
       });
       return;
     }
-    final angle = _calculateAngle(shoulder, elbow, wrist);
+    
+    // Calculate the knee angle (Hip-Knee-Ankle)
+    final angle = calculateAngle(hip, knee, ankle);
+    
     int reps = _repCount;
     RepPhase phase = _repPhase;
     String status = _statusMessage;
 
-    if (angle <= kCurlTopThreshold && phase == RepPhase.down) {
-      status = 'Squeeze at the top';
-      phase = RepPhase.up;
-    } else if (angle >= kCurlBottomThreshold && phase == RepPhase.up) {
+    // Squat tracking logic
+    if (angle >= kSquatStandingAngle && phase == RepPhase.down) {
+      // Standing up from squat - rep completed
       reps += 1;
-      status = 'Great form!';
+      status = 'Great squat!';
+      phase = RepPhase.up;
+    } else if (angle >= kSquatDepthMin && angle <= kSquatDepthMax && phase == RepPhase.up) {
+      // Reached proper squat depth
+      status = 'Good depth! Now stand up';
       phase = RepPhase.down;
-    } else if (angle > kCurlMidThreshold) {
-      status = 'Curl up';
+    } else if (angle > kSquatDepthMax && angle < kSquatStandingAngle) {
+      // In between standing and proper depth
+      if (phase == RepPhase.up) {
+        status = 'Go lower';
+      } else {
+        status = 'Stand up';
+      }
+    } else if (angle < kSquatDepthMin) {
+      // Too deep
+      status = 'Too deep - maintain control';
     } else {
-      status = 'Control the descent';
+      status = 'Ready to squat';
     }
 
     setState(() {
@@ -286,18 +343,6 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
       _statusMessage = status;
       _repPhase = phase;
     });
-  }
-
-  double _calculateAngle(
-    PoseLandmark a,
-    PoseLandmark b,
-    PoseLandmark c,
-  ) {
-    return calculateJointAngle(
-      Offset(a.x, a.y),
-      Offset(b.x, b.y),
-      Offset(c.x, c.y),
-    );
   }
 
   @override
@@ -356,7 +401,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pose Detection')),
+      appBar: AppBar(title: const Text('Squat Form Analyzer')),
       backgroundColor: Colors.black,
       body: _errorMessage != null
           ? _buildError()
