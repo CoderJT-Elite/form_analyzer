@@ -28,8 +28,9 @@ double calculateJointAngle(Offset a, Offset b, Offset c) {
 }
 
 /// Calculates the interior angle (in degrees) at the joint [second] formed by 
-/// three PoseLandmarks using the Law of Cosines.
+/// three PoseLandmarks using the dot product formula.
 /// Returns the angle between the vectors [first]-[second] and [second]-[third].
+/// Formula: cos(θ) = (a·b) / (|a||b|), where a and b are vectors from the joint.
 double calculateAngle(PoseLandmark first, PoseLandmark second, PoseLandmark third) {
   // Calculate vector from second to first
   final dx1 = first.x - second.x;
@@ -53,7 +54,7 @@ double calculateAngle(PoseLandmark first, PoseLandmark second, PoseLandmark thir
   // Calculate dot product
   final dotProduct = dx1 * dx2 + dy1 * dy2 + dz1 * dz2;
   
-  // Apply Law of Cosines: cos(θ) = (a·b) / (|a||b|)
+  // Apply dot product formula: cos(θ) = (a·b) / (|a||b|)
   final cosine = (dotProduct / (mag1 * mag2)).clamp(-1.0, 1.0);
   
   // Convert to degrees

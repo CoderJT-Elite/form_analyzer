@@ -115,7 +115,8 @@ void main() {
     });
 
     test('returns valid angle for squat depth range', () {
-      // Simulating a squat at ~70 degree knee angle
+      // Simulating a bent knee configuration
+      // The actual angle depends on the specific coordinate geometry
       final hip = PoseLandmark(
         type: PoseLandmarkType.leftHip,
         x: 0,
@@ -139,8 +140,9 @@ void main() {
       );
       
       final angle = calculateAngle(hip, knee, ankle);
-      expect(angle, greaterThan(0));
-      expect(angle, lessThan(180));
+      // Verify we get a valid acute to obtuse angle (not straight or zero)
+      expect(angle, greaterThan(30));
+      expect(angle, lessThan(150));
     });
 
     test('handles zero magnitude vectors gracefully', () {
