@@ -4,8 +4,8 @@ import 'package:form_analyzer/main.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
 void main() {
-  test('calculateJointAngle returns 180 degrees for a straight line', () {
-    final angle = calculateJointAngle(
+  test('calculateJointAngleFromOffsets returns 180 degrees for a straight line', () {
+    final angle = calculateJointAngleFromOffsets(
       const Offset(-1, 0),
       const Offset(0, 0),
       const Offset(1, 0),
@@ -13,8 +13,8 @@ void main() {
     expect(angle, closeTo(180, 0.001));
   });
 
-  test('calculateJointAngle returns 90 degrees for right angle', () {
-    final angle = calculateJointAngle(
+  test('calculateJointAngleFromOffsets returns 90 degrees for right angle', () {
+    final angle = calculateJointAngleFromOffsets(
       const Offset(0, 1),
       const Offset(0, 0),
       const Offset(1, 0),
@@ -22,8 +22,8 @@ void main() {
     expect(angle, closeTo(90, 0.001));
   });
 
-  test('calculateJointAngle handles acute angles', () {
-    final angle = calculateJointAngle(
+  test('calculateJointAngleFromOffsets handles acute angles', () {
+    final angle = calculateJointAngleFromOffsets(
       const Offset(0, 1),
       const Offset(0, 0),
       const Offset(1, 1),
@@ -32,7 +32,7 @@ void main() {
     expect(angle, lessThan(135));
   });
 
-  group('calculateAngle with PoseLandmarks', () {
+  group('calculateJointAngle with PoseLandmarks', () {
     test('returns 180 degrees for straight line configuration', () {
       final first = PoseLandmark(
         type: PoseLandmarkType.leftHip,
@@ -56,7 +56,7 @@ void main() {
         likelihood: 1.0,
       );
       
-      final angle = calculateAngle(first, second, third);
+      final angle = calculateJointAngle(first, second, third);
       expect(angle, closeTo(180, 0.1));
     });
 
@@ -83,7 +83,7 @@ void main() {
         likelihood: 1.0,
       );
       
-      final angle = calculateAngle(first, second, third);
+      final angle = calculateJointAngle(first, second, third);
       expect(angle, closeTo(90, 0.1));
     });
 
@@ -110,7 +110,7 @@ void main() {
         likelihood: 1.0,
       );
       
-      final angle = calculateAngle(first, second, third);
+      final angle = calculateJointAngle(first, second, third);
       expect(angle, closeTo(90, 0.1));
     });
 
@@ -139,7 +139,7 @@ void main() {
         likelihood: 1.0,
       );
       
-      final angle = calculateAngle(hip, knee, ankle);
+      final angle = calculateJointAngle(hip, knee, ankle);
       // Verify we get a valid acute to obtuse angle (not straight or zero)
       expect(angle, greaterThan(30));
       expect(angle, lessThan(150));
@@ -168,8 +168,21 @@ void main() {
         likelihood: 1.0,
       );
       
-      final angle = calculateAngle(first, second, third);
+      final angle = calculateJointAngle(first, second, third);
       expect(angle, equals(0.0));
+    });
+
+    test('returns 0.0 when any landmark is null', () {
+      final landmark = PoseLandmark(
+        type: PoseLandmarkType.leftKnee,
+        x: 0,
+        y: 0,
+        z: 0,
+        likelihood: 1.0,
+      );
+      expect(calculateJointAngle(null, landmark, landmark), equals(0.0));
+      expect(calculateJointAngle(landmark, null, landmark), equals(0.0));
+      expect(calculateJointAngle(landmark, landmark, null), equals(0.0));
     });
   });
 }
