@@ -11,11 +11,12 @@ enum RepPhase { down, up }
 const double kSquatDepthMin = 70;  // Minimum angle for valid squat depth
 const double kSquatDepthMax = 90;  // Maximum angle for valid squat depth
 const double kSquatStandingAngle = 160;  // Standing position threshold
+const double kInsufficientDepthAngle = 100; // Knee angle above which depth is considered insufficient
 const double kMinMagnitude = 1e-6;
 
 /// Calculates the angle (in degrees) at the middle point [b] formed by the
 /// three offsets [a]-[b]-[c]. The result is clamped to avoid division by zero.
-double calculateJointAngle(Offset a, Offset b, Offset c) {
+double calculateJointAngleFromOffsets(Offset a, Offset b, Offset c) {
   final ba = Offset(a.dx - b.dx, a.dy - b.dy);
   final bc = Offset(c.dx - b.dx, c.dy - b.dy);
   final dotProduct = (ba.dx * bc.dx) + (ba.dy * bc.dy);
@@ -27,41 +28,59 @@ double calculateJointAngle(Offset a, Offset b, Offset c) {
   return angle;
 }
 
-/// Calculates the interior angle (in degrees) at the joint [second] formed by 
-/// three PoseLandmarks using the dot product formula.
-/// Returns the angle between the vectors [first]-[second] and [second]-[third].
-/// Formula: cos(θ) = (a·b) / (|a||b|), where a and b are vectors from the joint.
-double calculateAngle(PoseLandmark first, PoseLandmark second, PoseLandmark third) {
-  // Calculate vector from second to first
-  final dx1 = first.x - second.x;
-  final dy1 = first.y - second.y;
-  final dz1 = first.z - second.z;
-  
-  // Calculate vector from second to third
-  final dx2 = third.x - second.x;
-  final dy2 = third.y - second.y;
-  final dz2 = third.z - second.z;
-  
-  // Calculate magnitudes (distances)
+/// Calculates the interior angle in degrees at joint [b] formed by the
+/// three PoseLandmarks [a]-[b]-[c] using the Law of Cosines (dot-product form).
+/// Returns 0.0 safely when any landmark is null or when points are coincident.
+double calculateJointAngle(PoseLandmark? a, PoseLandmark? b, PoseLandmark? c) {
+  if (a == null || b == null || c == null) return 0.0;
+
+  // Vectors from the joint b to each neighbouring landmark
+  final dx1 = a.x - b.x;
+  final dy1 = a.y - b.y;
+  final dz1 = a.z - b.z;
+
+  final dx2 = c.x - b.x;
+  final dy2 = c.y - b.y;
+  final dz2 = c.z - b.z;
+
   final mag1 = math.sqrt(dx1 * dx1 + dy1 * dy1 + dz1 * dz1);
   final mag2 = math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
-  
-  // Prevent division by zero
-  if (mag1 < kMinMagnitude || mag2 < kMinMagnitude) {
-    return 0.0;
-  }
-  
-  // Calculate dot product
+
+  if (mag1 < kMinMagnitude || mag2 < kMinMagnitude) return 0.0;
+
   final dotProduct = dx1 * dx2 + dy1 * dy2 + dz1 * dz2;
-  
-  // Apply dot product formula: cos(θ) = (a·b) / (|a||b|)
   final cosine = (dotProduct / (mag1 * mag2)).clamp(-1.0, 1.0);
-  
-  // Convert to degrees
-  final angleRadians = math.acos(cosine);
-  final angleDegrees = angleRadians * 180 / math.pi;
-  
-  return angleDegrees;
+  return math.acos(cosine) * 180 / math.pi;
+}
+
+/// Monitors the Hip–Knee–Ankle triad and counts squat repetitions.
+///
+/// A rep is triggered when the knee angle first crosses below [kSquatDepthMax]
+/// (90°) and then returns above [kSquatStandingAngle] (160°).
+class SquatHeuristic {
+  int repCount = 0;
+  // Start in RepPhase.up (standing): the user must squat down before a rep
+  // can be counted, preventing a phantom count on the first frame.
+  RepPhase _phase = RepPhase.up;
+  String statusMessage = 'Align yourself in the frame';
+
+  /// Call once per frame with the current [kneeAngle] in degrees.
+  void update(double kneeAngle) {
+    if (kneeAngle >= kSquatStandingAngle && _phase == RepPhase.down) {
+      repCount++;
+      statusMessage = 'Great squat!';
+      _phase = RepPhase.up;
+    } else if (kneeAngle < kSquatDepthMax && _phase == RepPhase.up) {
+      statusMessage = 'Good depth! Now stand up';
+      _phase = RepPhase.down;
+    } else if (kneeAngle > kSquatDepthMax && kneeAngle < kSquatStandingAngle) {
+      statusMessage = _phase == RepPhase.up ? 'Go lower' : 'Stand up';
+    } else if (kneeAngle < kSquatDepthMin) {
+      statusMessage = 'Too deep - maintain control';
+    } else {
+      statusMessage = 'Ready to squat';
+    }
+  }
 }
 
 Future<void> main() async {
@@ -95,9 +114,8 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   bool _isProcessingFrame = false;
   List<Pose> _poses = <Pose>[];
   Size? _imageSize;
-  int _repCount = 0;
-  String _statusMessage = 'Align yourself in the frame';
-  RepPhase _repPhase = RepPhase.down;
+  final SquatHeuristic _squat = SquatHeuristic();
+  double? _kneeAngle;
   String? _errorMessage;
   InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
   CameraDescription? _cameraDescription;
@@ -281,67 +299,40 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     if (!mounted) return;
     if (poses.isEmpty) {
       setState(() {
-        _statusMessage = 'Move fully into the frame';
+        _squat.statusMessage = 'Move fully into the frame';
+        _kneeAngle = null;
       });
       return;
     }
     // Focus on the pose with highest confidence to keep rep counting fast for a single-user flow.
     final Pose pose = _selectPrimaryPose(poses);
-    
+
     // Get Hip-Knee-Ankle landmarks for squat tracking
     var hip = pose.landmarks[PoseLandmarkType.leftHip];
     var knee = pose.landmarks[PoseLandmarkType.leftKnee];
     var ankle = pose.landmarks[PoseLandmarkType.leftAnkle];
-    
+
     // Fallback to right side if left side not visible
     if (hip == null || knee == null || ankle == null) {
       hip = pose.landmarks[PoseLandmarkType.rightHip];
       knee = pose.landmarks[PoseLandmarkType.rightKnee];
       ankle = pose.landmarks[PoseLandmarkType.rightAnkle];
     }
-    
+
     if (hip == null || knee == null || ankle == null) {
       setState(() {
-        _statusMessage = 'Keep your full body visible';
+        _squat.statusMessage = 'Keep your full body visible';
+        _kneeAngle = null;
       });
       return;
     }
-    
-    // Calculate the knee angle (Hip-Knee-Ankle)
-    final angle = calculateAngle(hip, knee, ankle);
-    
-    int reps = _repCount;
-    RepPhase phase = _repPhase;
-    String status = _statusMessage;
 
-    // Squat tracking logic
-    if (angle >= kSquatStandingAngle && phase == RepPhase.down) {
-      // Standing up from squat - rep completed
-      reps += 1;
-      status = 'Great squat!';
-      phase = RepPhase.up;
-    } else if (angle >= kSquatDepthMin && angle <= kSquatDepthMax && phase == RepPhase.up) {
-      // Reached proper squat depth
-      status = 'Good depth! Now stand up';
-      phase = RepPhase.down;
-    } else if (angle > kSquatDepthMax && angle < kSquatStandingAngle) {
-      // In between standing and proper depth
-      if (phase == RepPhase.up) {
-        status = 'Go lower';
-      } else {
-        status = 'Stand up';
-      }
-    } else if (angle < kSquatDepthMin) {
-      // Too deep
-      status = 'Too deep - maintain control';
-    } else {
-      status = 'Ready to squat';
-    }
+    // calculateJointAngle handles null landmarks safely
+    final angle = calculateJointAngle(hip, knee, ankle);
+    _squat.update(angle);
 
     setState(() {
-      _repCount = reps;
-      _statusMessage = status;
-      _repPhase = phase;
+      _kneeAngle = angle;
     });
   }
 
@@ -385,13 +376,13 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
       children: [
         _InfoChip(
           title: 'Reps',
-          value: '$_repCount',
+          value: '${_squat.repCount}',
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _InfoChip(
             title: 'Status',
-            value: _statusMessage,
+            value: _squat.statusMessage,
           ),
         ),
       ],
@@ -418,6 +409,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
                           imageSize: _imageSize!,
                           rotation: _imageRotation,
                           lensDirection: _cameraDescription?.lensDirection ?? CameraLensDirection.back,
+                          kneeAngle: _kneeAngle,
                         ),
                       ),
                     Positioned(
@@ -430,7 +422,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
                       bottom: 24,
                       left: 16,
                       right: 16,
-                      child: _InfoChip(title: 'Tip', value: _statusMessage),
+                      child: _InfoChip(title: 'Tip', value: _squat.statusMessage),
                     ),
                   ],
                 ),
@@ -440,18 +432,36 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
 
 /// Custom painter that maps pose landmarks to the preview canvas and renders a
 /// skeletal overlay.
+///
+/// Lines are drawn **green** when form is correct and **red** when the knee
+/// angle exceeds 100° while the subject is squatting (insufficient depth).
 class PosePainter extends CustomPainter {
   PosePainter({
     required this.poses,
     required this.imageSize,
     required this.rotation,
     required this.lensDirection,
+    this.kneeAngle,
   });
 
   final List<Pose> poses;
   final Size imageSize;
   final InputImageRotation rotation;
   final CameraLensDirection lensDirection;
+
+  /// The current Hip–Knee–Ankle angle in degrees, or null when unavailable.
+  final double? kneeAngle;
+
+  /// Returns true when the skeleton should be drawn in green (good form).
+  ///
+  /// Lines turn red only while the subject is actively squatting
+  /// (kneeAngle < [kSquatStandingAngle]) and the depth is insufficient
+  /// (kneeAngle > [kInsufficientDepthAngle]).
+  bool get _isFormGood {
+    final a = kneeAngle;
+    if (a == null || a >= kSquatStandingAngle) return true;
+    return a <= kInsufficientDepthAngle;
+  }
 
   /// Landmark pairs that define the skeletal connections to render.
   static const List<List<PoseLandmarkType>> _connections = [
@@ -471,13 +481,15 @@ class PosePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final lineColor = _isFormGood ? Colors.green : Colors.red;
+
     final landmarkPaint = Paint()
       ..color = Colors.greenAccent
       ..strokeWidth = 4
       ..style = PaintingStyle.fill;
 
     final linePaint = Paint()
-      ..color = Colors.yellowAccent
+      ..color = lineColor
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
 
@@ -532,7 +544,8 @@ class PosePainter extends CustomPainter {
     return oldDelegate.poses != poses ||
         oldDelegate.imageSize != imageSize ||
         oldDelegate.rotation != rotation ||
-        oldDelegate.lensDirection != lensDirection;
+        oldDelegate.lensDirection != lensDirection ||
+        oldDelegate.kneeAngle != kneeAngle;
   }
 }
 
