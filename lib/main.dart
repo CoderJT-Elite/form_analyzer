@@ -14,6 +14,40 @@ const double kSquatStandingAngle = 160;  // Standing position threshold
 const double kInsufficientDepthAngle = 100; // Knee angle above which depth is considered insufficient
 const double kMinMagnitude = 1e-6;
 
+// Angle label padding in the canvas overlay
+const double _kAngleLabelPadding = 6.0;
+
+// Rep counter animation scale (elastic pop when count increments)
+const double _kRepCounterScaleBegin = 1.4;
+const double _kRepCounterScaleEnd   = 1.0;
+
+// UI colour palette  (k-prefix follows Flutter framework convention)
+const Color kAccentCyan    = Color(0xFF00E5FF);
+const Color kGoodGreen     = Color(0xFF00E676);
+const Color kBadRed        = Color(0xFFFF1744);
+const Color kWarnOrange    = Color(0xFFFFAB40);
+const Color kSurface       = Color(0xFF0D1117);
+
+/// Returns a [_StatusStyle] (colour + icon) that matches the current status message.
+_StatusStyle _styleForMessage(String message) {
+  if (message.contains('Great squat') || message.contains('Good depth')) {
+    return _StatusStyle(kGoodGreen, Icons.check_circle_rounded);
+  } else if (message.contains('lower') || message.contains('Stand up')) {
+    return _StatusStyle(kWarnOrange, Icons.swap_vert_rounded);
+  } else if (message.contains('Too deep')) {
+    return _StatusStyle(kBadRed, Icons.warning_rounded);
+  } else if (message.contains('frame') || message.contains('visible')) {
+    return _StatusStyle(kWarnOrange, Icons.person_search_rounded);
+  }
+  return _StatusStyle(kAccentCyan, Icons.fitness_center_rounded);
+}
+
+class _StatusStyle {
+  const _StatusStyle(this.color, this.icon);
+  final Color color;
+  final IconData icon;
+}
+
 /// Calculates the angle (in degrees) at the middle point [b] formed by the
 /// three offsets [a]-[b]-[c]. The result is clamped to avoid division by zero.
 double calculateJointAngleFromOffsets(Offset a, Offset b, Offset c) {
@@ -81,6 +115,13 @@ class SquatHeuristic {
       statusMessage = 'Ready to squat';
     }
   }
+
+  /// Resets the rep counter and phase back to initial state.
+  void reset() {
+    repCount = 0;
+    _phase = RepPhase.up;
+    statusMessage = 'Align yourself in the frame';
+  }
 }
 
 Future<void> main() async {
@@ -93,8 +134,32 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: PoseDetectionScreen(),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.dark(
+          primary: kAccentCyan,
+          secondary: kGoodGreen,
+          surface: kSurface,
+          onSurface: Colors.white,
+          error: kBadRed,
+        ),
+        scaffoldBackgroundColor: Colors.black,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+      ),
+      home: const PoseDetectionScreen(),
     );
   }
 }
@@ -346,24 +411,76 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   }
 
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [kSurface, Colors.black],
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: kBadRed.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: kBadRed.withOpacity(0.4), width: 2),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: kBadRed, size: 48),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                _errorMessage ?? 'An unexpected error occurred',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white70,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 28),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: kAccentCyan,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+                onPressed: _initialize,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoading() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [kSurface, Colors.black],
+        ),
+      ),
+      child: const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 48),
-            const SizedBox(height: 12),
+            CircularProgressIndicator(color: kAccentCyan, strokeWidth: 3),
+            SizedBox(height: 20),
             Text(
-              _errorMessage ?? 'An unexpected error occurred',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _initialize,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              'Starting camera...',
+              style: TextStyle(color: Colors.white54, fontSize: 15),
             ),
           ],
         ),
@@ -371,33 +488,127 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     );
   }
 
-  Widget _buildInfoBar() {
-    return Row(
-      children: [
-        _InfoChip(
-          title: 'Reps',
-          value: '${_squat.repCount}',
+  void _resetCount() {
+    setState(() {
+      _squat.reset();
+    });
+  }
+
+  Widget _buildTopOverlay() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Row(
+          children: [
+            // App title badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.55),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: kAccentCyan.withOpacity(0.4)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.fitness_center_rounded, color: kAccentCyan, size: 18),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Squat Analyzer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            // Rep counter
+            _RepCounter(count: _squat.repCount),
+            const SizedBox(width: 10),
+            // Reset button
+            GestureDetector(
+              onTap: _resetCount,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.55),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Icon(Icons.refresh_rounded, color: Colors.white70, size: 20),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _InfoChip(
-            title: 'Status',
-            value: _squat.statusMessage,
+      ),
+    );
+  }
+
+  Widget _buildBottomStatus() {
+    final style = _styleForMessage(_squat.statusMessage);
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.72),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: style.color.withOpacity(0.55), width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Icon(style.icon, color: style.color, size: 26),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  _squat.statusMessage,
+                  style: TextStyle(
+                    color: style.color,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (_kneeAngle != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: style.color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${_kneeAngle!.toStringAsFixed(0)}°',
+                    style: TextStyle(
+                      color: style.color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Squat Form Analyzer')),
+      extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
       body: _errorMessage != null
           ? _buildError()
           : !_isCameraInitialized
-              ? const Center(child: CircularProgressIndicator())
+              ? _buildLoading()
               : Stack(
                   fit: StackFit.expand,
                   children: [
@@ -413,16 +624,16 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
                         ),
                       ),
                     Positioned(
-                      top: 16,
-                      left: 16,
-                      right: 16,
-                      child: _buildInfoBar(),
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildTopOverlay(),
                     ),
                     Positioned(
-                      bottom: 24,
-                      left: 16,
-                      right: 16,
-                      child: _InfoChip(title: 'Tip', value: _squat.statusMessage),
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildBottomStatus(),
                     ),
                   ],
                 ),
@@ -481,16 +692,22 @@ class PosePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final lineColor = _isFormGood ? Colors.green : Colors.red;
+    final lineColor = _isFormGood ? kGoodGreen : kBadRed;
 
     final landmarkPaint = Paint()
-      ..color = Colors.greenAccent
+      ..color = kAccentCyan
       ..strokeWidth = 4
       ..style = PaintingStyle.fill;
 
+    final landmarkOuterPaint = Paint()
+      ..color = Colors.white.withOpacity(0.4)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
     final linePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 3
+      ..color = lineColor.withOpacity(0.9)
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
     for (final pose in poses) {
@@ -504,9 +721,54 @@ class PosePainter extends CustomPainter {
       }
       for (final landmark in pose.landmarks.values) {
         final point = _transform(landmark, size);
-        canvas.drawCircle(point, 5, landmarkPaint);
+        canvas.drawCircle(point, 7, landmarkPaint);
+        canvas.drawCircle(point, 7, landmarkOuterPaint);
+      }
+
+      // Annotate the knee angle near the knee landmark
+      if (kneeAngle != null) {
+        final kneeLm = pose.landmarks[PoseLandmarkType.leftKnee] ??
+            pose.landmarks[PoseLandmarkType.rightKnee];
+        if (kneeLm != null) {
+          final kneePoint = _transform(kneeLm, size);
+          _drawAngleLabel(canvas, kneePoint, '${kneeAngle!.toStringAsFixed(0)}°', lineColor);
+        }
       }
     }
+  }
+
+  void _drawAngleLabel(Canvas canvas, Offset position, String label, Color color) {
+    const padding = _kAngleLabelPadding;
+    final textStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 13,
+      fontWeight: FontWeight.bold,
+    );
+    final textSpan = TextSpan(text: label, style: textStyle);
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final bgRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        position.dx + 10,
+        position.dy - textPainter.height / 2 - padding,
+        textPainter.width + padding * 2,
+        textPainter.height + padding * 2,
+      ),
+      const Radius.circular(6),
+    );
+
+    canvas.drawRRect(
+      bgRect,
+      Paint()..color = color.withOpacity(0.75),
+    );
+
+    textPainter.paint(
+      canvas,
+      Offset(position.dx + 10 + padding, position.dy - textPainter.height / 2),
+    );
   }
 
   Offset _transform(PoseLandmark landmark, Size canvasSize) {
@@ -549,44 +811,52 @@ class PosePainter extends CustomPainter {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.title, required this.value});
-  final String title;
-  final String value;
+/// Animated rep counter badge shown in the top overlay.
+class _RepCounter extends StatelessWidget {
+  const _RepCounter({required this.count});
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, animation) => ScaleTransition(
+        scale: Tween<double>(begin: _kRepCounterScaleBegin, end: _kRepCounterScaleEnd).animate(
+          CurvedAnimation(parent: animation, curve: Curves.elasticOut),
+        ),
+        child: child,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-              fontWeight: FontWeight.w500,
+      child: Container(
+        key: ValueKey<int>(count),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: kAccentCyan.withOpacity(0.6), width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$count',
+              style: const TextStyle(
+                color: kAccentCyan,
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                height: 1,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 18,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+            const SizedBox(width: 6),
+            const Text(
+              'reps',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
