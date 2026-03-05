@@ -185,4 +185,41 @@ void main() {
       expect(calculateJointAngle(landmark, landmark, null), equals(0.0));
     });
   });
+
+  group('SquatHeuristic', () {
+    test('starts in aligned state without phantom reps', () {
+      final squat = SquatHeuristic();
+      expect(squat.repCount, 0);
+      expect(squat.statusMessage, 'Align yourself in the frame');
+
+      squat.update(kSquatStandingAngle + 5);
+      expect(squat.repCount, 0);
+      expect(squat.statusMessage, 'Ready to squat');
+    });
+
+    test('counts one rep on down then up sequence', () {
+      final squat = SquatHeuristic();
+
+      squat.update(85);
+      expect(squat.statusMessage, 'Good depth! Now stand up');
+      expect(squat.repCount, 0);
+
+      squat.update(165);
+      expect(squat.repCount, 1);
+      expect(squat.statusMessage, 'Great squat!');
+    });
+
+    test('reset restores initial state', () {
+      final squat = SquatHeuristic();
+      squat.update(85);
+      squat.update(165);
+      expect(squat.repCount, 1);
+
+      squat.reset();
+
+      expect(squat.repCount, 0);
+      expect(squat.statusMessage, 'Align yourself in the frame');
+    });
+  });
+
 }
