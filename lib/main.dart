@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
@@ -206,12 +207,12 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
       return;
     }
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
-      _stopImageStream();
-      controller.dispose();
-      _cameraController = null;
-      setState(() {
-        _isCameraInitialized = false;
-      });
+      unawaited(_disposeCameraController());
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = false;
+        });
+      }
     } else if (state == AppLifecycleState.resumed) {
       _initialize();
     }
@@ -233,6 +234,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'No cameras available on this device.';
           _isCameraInitialized = false;
@@ -241,8 +243,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
       }
       final description = cameras.first;
       _cameraDescription = description;
-      await _stopImageStream();
-      await _cameraController?.dispose();
+      await _disposeCameraController();
       final controller = CameraController(
         description,
         ResolutionPreset.high,
@@ -267,6 +268,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
         _errorMessage = null;
       });
     } on CameraException catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.code == 'CameraAccessDenied'
             ? 'Camera permission denied. Please enable it in settings.'
@@ -274,6 +276,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
         _isCameraInitialized = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Failed to initialize camera: $e';
         _isCameraInitialized = false;
@@ -281,14 +284,23 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
     }
   }
 
-  Future<void> _stopImageStream() async {
+  Future<void> _stopImageStream([CameraController? controller]) async {
+    final activeController = controller ?? _cameraController;
     try {
-      if (_cameraController?.value.isStreamingImages ?? false) {
-        await _cameraController?.stopImageStream();
+      if (activeController?.value.isStreamingImages ?? false) {
+        await activeController?.stopImageStream();
       }
     } catch (e) {
       debugPrint('Failed to stop image stream: $e');
     }
+  }
+
+  Future<void> _disposeCameraController() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    if (controller == null) return;
+    await _stopImageStream(controller);
+    await controller.dispose();
   }
 
   InputImageRotation _getImageRotation() {
@@ -404,8 +416,7 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> with WidgetsB
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _stopImageStream();
-    _cameraController?.dispose();
+    unawaited(_disposeCameraController());
     _poseDetector.close();
     super.dispose();
   }
