@@ -6,6 +6,7 @@ import '../../logic/exercise_analyzer.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 import 'exercise_screen.dart';
+import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -62,15 +63,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: const Icon(Icons.history_rounded, color: Colors.white),
               onPressed: () => _scaffoldKey.currentState?.openDrawer(),
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.person_rounded, color: Colors.white),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                ),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               centerTitle: false,
-              titlePadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              title: Text(
-                'WORKOUT',
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                ),
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: 72,
+                end: 72,
+                bottom: 16,
+              ),
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.self_improvement_rounded,
+                      color: AppColors.accentCyan, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    'FORM ANALYZER',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
               ),
               background: Container(
                 decoration: BoxDecoration(
@@ -81,6 +103,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       AppColors.accentCyan.withAlpha(51),
                       Colors.transparent,
                     ],
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 50),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentCyan.withAlpha(30),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.accentCyan.withAlpha(80),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.self_improvement_rounded,
+                            color: AppColors.accentCyan,
+                            size: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'FORM ANALYZER PRO',
+                          style: GoogleFonts.outfit(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 2.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

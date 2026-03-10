@@ -205,6 +205,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
                 _GlassContainer(
                    padding: const EdgeInsets.all(4),
                    child: Row(
+                     mainAxisSize: MainAxisSize.min,
                      children: [
                        Hero(
                          tag: 'exercise_${widget.exercise.type.name}',

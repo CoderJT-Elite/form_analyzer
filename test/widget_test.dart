@@ -7,7 +7,7 @@ void main() {
     await tester.pumpWidget(const FormAnalyzerApp());
 
     // Verify that we are on the Dashboard
-    expect(find.text('WORKOUT'), findsOneWidget);
+    expect(find.text('FORM ANALYZER'), findsOneWidget);
     expect(find.text('SQUATS'), findsOneWidget);
   });
 }
