@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires camera access to analyze your exercise form in real-time.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is not used but may be requested by the camera plugin.</string>
 </dict>
 </plist>

@@ -92,12 +92,28 @@ The `_isProcessingFrame` flag prevents frame overlap:
 - Always set `false` in `finally` block
 - Maintains stable 15-20 FPS
 
+## Recent Fixes (v1.0.0)
+
+### ✅ Fixed Issues
+- **iOS Camera Permission**: Added required camera usage descriptions
+- **Deprecated APIs**: Replaced all `withOpacity()` with `withValues(alpha: ...)`
+- **Missing Imports**: Added `flutter/services.dart` for DeviceOrientation
+- **Android SDK**: Updated targetSdk to 34 for latest Android
+
+### ✅ Production Enhancements
+- **ProGuard Rules**: Added for ML Kit and TensorFlow Lite (release builds)
+- **Code Minification**: Enabled for smaller APK size
+- **Error Handling**: Enhanced camera and permission error messages
+- **Documentation**: Comprehensive guides for deployment and testing
+
 ## Testing
 
 Run unit tests:
 ```bash
 flutter test
 ```
+
+For comprehensive testing procedures, see [TESTING_GUIDE.md](TESTING_GUIDE.md).
 
 Tests cover:
 - Angle calculation accuracy (90°, 180°, etc.)
