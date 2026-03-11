@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
 import '../../models/exercise_model.dart';
 import '../../services/pose_detector_service.dart';
 import '../../services/tts_service.dart';
-import '../widgets/control_icon.dart';
+import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/pose_painter.dart';
+import '../widgets/workout_summary_dialog.dart';
 
 class ExerciseScreen extends StatefulWidget {
   final Exercise exercise;
@@ -39,11 +39,11 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   Timer? _calibrationTimer;
   List<Pose> _poses = [];
   Size? _imageSize;
-  InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
-  CameraLensDirection _lensDirection = CameraLensDirection.back;
+  final InputImageRotation _imageRotation = InputImageRotation.rotation90deg;
+  CameraLensDirection _lensDirection = CameraLensDirection.front;
   String? _errorMessage;
 
-  // New Workout State
+  // Workout State
   final List<ExerciseSet> _completedSets = [];
   int _currentRepCount = 0;
   bool _isResting = false;
@@ -103,63 +103,16 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   void _startCalibration() {
-    _calibrationCountdown = 3;
-    _isCalibrated = false;
-    _calibrationTimer?.cancel();
     _calibrationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
-          if (_calibrationCountdown > 1) {
+          if (_calibrationCountdown > 0) {
             _calibrationCountdown--;
+            _tts.speak("$_calibrationCountdown");
           } else {
             _isCalibrated = true;
             _calibrationTimer?.cancel();
-            _tts.speak("Start ${widget.exercise.name} now!");
-          }
-        });
-      }
-    });
-  }
-
-  void _finishSet() {
-    if (_currentRepCount == 0 && widget.exercise.type != ExerciseType.plank) {
-      return;
-    }
-
-    final set = ExerciseSet(
-      reps: widget.exercise.type == ExerciseType.plank ? 0 : _currentRepCount,
-      duration: widget.exercise.type == ExerciseType.plank
-          ? Duration(seconds: widget.exercise.analyzer.repCount)
-          : null,
-      timestamp: DateTime.now(),
-    );
-
-    setState(() {
-      _completedSets.add(set);
-      _currentRepCount = 0;
-      widget.exercise.analyzer.reset();
-      _startRestTimer();
-    });
-
-    _tts.speak("Set complete. Resting for 30 seconds.");
-  }
-
-  void _startRestTimer() {
-    setState(() {
-      _isResting = true;
-      _restTimeRemaining = 30;
-    });
-
-    _restTimer?.cancel();
-    _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          if (_restTimeRemaining > 1) {
-            _restTimeRemaining--;
-          } else {
-            _isResting = false;
-            _restTimer?.cancel();
-            _tts.speak("Rest over. Get ready for the next set.");
+            _tts.speak("Go!");
           }
         });
       }
@@ -167,49 +120,109 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Future<void> _processImage(CameraImage image) async {
-    if (_isProcessingFrame || !mounted || !_isCalibrated || _isResting) return;
+    if (_isProcessingFrame || !_isCameraInitialized) return;
     _isProcessingFrame = true;
 
     try {
-      final rotation = _getImageRotation();
-      final WriteBuffer allBytes = WriteBuffer();
-      for (final plane in image.planes) {
-        allBytes.putUint8List(plane.bytes);
-      }
-      final bytes = allBytes.done().buffer.asUint8List();
-
-      final metadata = InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation,
-        format: InputImageFormat.nv21,
-        bytesPerRow: image.planes[0].bytesPerRow,
+      final inputImage = InputImage.fromBytes(
+        bytes: image.planes[0].bytes,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: _imageRotation,
+          format: InputImageFormat.bgra8888,
+          bytesPerRow: image.planes[0].bytesPerRow,
+        ),
       );
 
-      final inputImage = InputImage.fromBytes(bytes: bytes, metadata: metadata);
       final poses = await _poseDetector.processImage(inputImage);
+
+      if (mounted && _isCalibrated && !_isResting) {
+        for (final pose in poses) {
+          widget.exercise.analyzer.processPose(pose);
+        }
+      }
 
       if (mounted) {
         setState(() {
           _poses = poses;
-          _imageRotation = rotation;
         });
-
-        if (poses.isNotEmpty) {
-          final oldMsg = widget.exercise.analyzer.statusMessage;
-          widget.exercise.analyzer.processPose(poses.first);
-          if (widget.exercise.analyzer.statusMessage != oldMsg) {
-            _tts.speak(widget.exercise.analyzer.statusMessage);
-          }
-        }
       }
+    } catch (e) {
+      debugPrint('Error processing image: $e');
     } finally {
       _isProcessingFrame = false;
     }
   }
 
-  InputImageRotation _getImageRotation() {
-    return InputImageRotation
-        .rotation90deg; // Simplified for now, can add back dynamic sensors
+  void _onFinishWorkout() async {
+    // Collect all sets into a session
+    final performance = widget.exercise.analyzer.getPerformanceMetrics();
+
+    final session = WorkoutSession(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      date: DateTime.now(),
+      exerciseType: widget.exercise.type,
+      sets: _completedSets,
+      overallRating: performance.averageFormScore,
+      overallFeedback: performance.commonIssues,
+    );
+
+    // Save standalone session if not in routine mode
+    if (!widget.isRoutineMode) {
+      await StorageService().saveSession(session);
+    }
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => WorkoutSummaryDialog(
+          session: session,
+          onConfirm: () {
+            Navigator.pop(context); // Close dialog
+            Navigator.pop(context, session); // Return to dashboard/routine
+          },
+        ),
+      );
+    }
+  }
+
+  void _finishSet() {
+    if (_currentRepCount > 0) {
+      final performance = widget.exercise.analyzer.getPerformanceMetrics();
+      setState(() {
+        _completedSets.add(
+          ExerciseSet(
+            reps: _currentRepCount,
+            timestamp: DateTime.now(),
+            rating: performance.averageFormScore,
+            feedback: performance.commonIssues,
+          ),
+        );
+        _currentRepCount = 0;
+        widget.exercise.analyzer.reset();
+        _startRest();
+      });
+    }
+  }
+
+  void _startRest() {
+    setState(() {
+      _isResting = true;
+      _restTimeRemaining = 30;
+    });
+    _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_restTimeRemaining > 0) {
+            _restTimeRemaining--;
+          } else {
+            _isResting = false;
+            _restTimer?.cancel();
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -219,24 +232,41 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     _poseDetector.dispose();
     _calibrationTimer?.cancel();
     _restTimer?.cancel();
-
-    // The workout saving/returning logic is now handled by _finishWorkout
-    // which is called when the user explicitly stops the workout or when the screen is popped.
-    // No need to call _finishWorkout here as dispose might be called for other reasons
-    // (e.g., screen rotation) before the workout is truly finished by user action.
-
+    widget.exercise.analyzer.reset();
     super.dispose();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = _cameraController;
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+    if (state == AppLifecycleState.inactive) {
+      cameraController.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initialize();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_errorMessage != null) {
+      return _buildError();
+    }
+    if (!_isCameraInitialized) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (_isCameraInitialized && _cameraController != null)
-            CameraPreview(_cameraController!),
+          // Camera Preview
+          CameraPreview(_cameraController!),
+
+          // Pose Landmarks Overlay
           if (_poses.isNotEmpty && _imageSize != null)
             CustomPaint(
               painter: PosePainter(
@@ -244,191 +274,113 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                 imageSize: _imageSize!,
                 rotation: _imageRotation,
                 lensDirection: _lensDirection,
-                lastAngle: widget.exercise.analyzer.lastProcessedAngle,
               ),
             ),
-          _buildUI(),
-          if (_isResting) _buildRestOverlay(),
-          if (_errorMessage != null) _buildError(),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildUI() {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _GlassContainer(
-                  padding: const EdgeInsets.all(12),
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                _GlassContainer(
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                   padding: const EdgeInsets.all(4),
-                   child: Row(
-                     mainAxisSize: MainAxisSize.min,
-                     children: [
-                       Hero(
-                         tag: 'exercise_${widget.exercise.type.name}',
-                         child: Icon(widget.exercise.icon, color: AppColors.accentCyan, size: 24),
-                       ),
-                       const SizedBox(width: 8),
-                       ControlIcon(
-                         icon: _tts.isEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-                         onTap: () => setState(() => _tts.toggle()),
-                       ),
-                       ControlIcon(
-                         icon: Icons.flip_camera_ios_rounded,
-                         onTap: () {
-                           _lensDirection = _lensDirection == CameraLensDirection.back 
-                               ? CameraLensDirection.front 
-                               : CameraLensDirection.back;
-                           _initialize();
-                         },
-                       ),
-                     ],
-                   ),
-=======
-=======
->>>>>>> Stashed changes
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
+          // Header Stats
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Hero(
-                        tag: 'exercise_${widget.exercise.type.name}',
-                        child: Icon(
-                          widget.exercise.icon,
-                          color: AppColors.accentCyan,
-                          size: 24,
-                        ),
+                      _StatBadge(
+                        label: 'REPS',
+                        value: '$_currentRepCount',
+                        isMain: true,
                       ),
                       const SizedBox(width: 8),
-                      ControlIcon(
-                        icon: _tts.isEnabled
-                            ? Icons.volume_up_rounded
-                            : Icons.volume_off_rounded,
-                        onTap: () => setState(() => _tts.toggle()),
-                      ),
-                      ControlIcon(
-                        icon: Icons.flip_camera_ios_rounded,
-                        onTap: () {
-                          _lensDirection =
-                              _lensDirection == CameraLensDirection.back
-                              ? CameraLensDirection.front
-                              : CameraLensDirection.back;
-                          _initialize();
-                        },
+                      _StatBadge(
+                        label: 'SETS',
+                        value: '${_completedSets.length}',
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _StatBadge(label: 'SET', value: '${_completedSets.length + 1}'),
-                const SizedBox(width: 12),
-                _StatBadge(
-                  label: widget.exercise.type == ExerciseType.plank
-                      ? 'TIME'
-                      : 'REPS',
-                  value: widget.exercise.type == ExerciseType.plank
-                      ? '${widget.exercise.analyzer.repCount}s'
-                      : '$_currentRepCount',
-                  isMain: true,
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-                ),
-              ],
-            ),
-            const Spacer(),
-            if (!_isCalibrated)
-              Center(
-                child: GlassContainer(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 30,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'GET READY',
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        _calibrationCountdown.toString(),
-                        style: GoogleFonts.outfit(
-                          color: AppColors.accentCyan,
-                          fontSize: 80,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            if (!_isCalibrated) const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Row(
-                children: [
-                  Expanded(flex: 3, child: _buildStatusFeedback()),
-                  const SizedBox(width: 8),
-                  if (_isCalibrated && !_isResting)
-                    _GlassContainer(
-                      padding: const EdgeInsets.all(12),
-                      child: IconButton(
-                        onPressed: _finishSet,
-                        icon: const Icon(
-                          Icons.add_task_rounded,
-                          color: AppColors.accentCyan,
-                          size: 26,
-                        ),
-                      ),
-                    ),
-                  if (_isCalibrated) ...[
-                    const SizedBox(width: 8),
-                    _GlassContainer(
-                      padding: const EdgeInsets.all(12),
-                      child: IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.stop_rounded,
-                          color: Colors.redAccent,
-                          size: 26,
-                        ),
-                      ),
-                    ),
-                  ],
+                  const SizedBox(height: 12),
+                  _buildStatusFeedback(),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Calibration Overlay
+          if (!_isCalibrated)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: Text(
+                  '$_calibrationCountdown',
+                  style: GoogleFonts.outfit(
+                    color: AppColors.accentCyan,
+                    fontSize: 80,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+
+          // Rest Overlay
+          if (_isResting) _buildRestOverlay(),
+
+          // Footer Controls
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 40,
+            child: Row(
+              children: [
+                _GlassContainer(
+                  padding: const EdgeInsets.all(12),
+                  child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _lensDirection =
+                            _lensDirection == CameraLensDirection.back
+                            ? CameraLensDirection.front
+                            : CameraLensDirection.back;
+                        _initialize();
+                      });
+                    },
+                    icon: const Icon(
+                      Icons.flip_camera_ios_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                if (_isCalibrated && !_isResting)
+                  _GlassContainer(
+                    padding: const EdgeInsets.all(12),
+                    child: IconButton(
+                      onPressed: _finishSet,
+                      icon: const Icon(
+                        Icons.add_task_rounded,
+                        color: AppColors.accentCyan,
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                if (_isCalibrated) ...[
+                  const SizedBox(width: 8),
+                  _GlassContainer(
+                    padding: const EdgeInsets.all(12),
+                    child: IconButton(
+                      onPressed: _onFinishWorkout,
+                      icon: const Icon(
+                        Icons.stop_rounded,
+                        color: Colors.redAccent,
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -500,19 +452,24 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
   Widget _buildStatusFeedback() {
     final msg = widget.exercise.analyzer.statusMessage;
-    return GlassContainer(
+    return _GlassContainer(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          const Icon(Icons.fitness_center_rounded, color: AppColors.accentCyan),
+          const Icon(Icons.info_outline_rounded, color: AppColors.accentCyan),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              msg,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 100),
+              child: SingleChildScrollView(
+                child: Text(
+                  msg,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ),
@@ -541,7 +498,7 @@ class _StatBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
+    return _GlassContainer(
       padding: EdgeInsets.symmetric(horizontal: isMain ? 24 : 16, vertical: 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,

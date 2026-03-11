@@ -38,7 +38,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
           color: Colors.black,
           border: Border(
             top: BorderSide(
-              color: AppColors.accentCyan.withOpacity(0.2),
+              color: AppColors.accentCyan.withValues(alpha: 0.2),
               width: 0.5,
             ),
           ),

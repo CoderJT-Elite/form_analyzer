@@ -157,12 +157,90 @@ class _WorkoutSessionCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                _StatCircle(label: 'REPS', value: '${session.totalReps}'),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (session.overallRating != null) ...[
+                      Column(
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                session.overallRating!.toStringAsFixed(1),
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.star_rounded,
+                                color: Colors.amber,
+                                size: 18,
+                              ),
+                            ],
+                          ),
+                          Text(
+                            'FORM',
+                            style: GoogleFonts.inter(
+                              color: Colors.white38,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                    ],
+                    _StatCircle(label: 'REPS', value: '${session.totalReps}'),
+                  ],
+                ),
               ],
             ),
+            if (session.overallFeedback.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: session.overallFeedback.map((issue) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.redAccent.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Text(
+                      issue.toUpperCase(),
+                      style: GoogleFonts.inter(
+                        color: Colors.redAccent,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
             const Divider(color: Colors.white12, height: 24),
+            Text(
+              'SETS',
+              style: GoogleFonts.inter(
+                color: Colors.white24,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 12,
+              spacing: 8,
               runSpacing: 8,
               children: session.sets.asMap().entries.map((entry) {
                 final setIndex = entry.key + 1;
@@ -174,12 +252,12 @@ class _WorkoutSessionCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: set.isPR
-                        ? Colors.amber.withOpacity(0.1)
+                        ? Colors.amber.withValues(alpha: 0.1)
                         : Colors.white.withAlpha(5),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: set.isPR
-                          ? Colors.amber.withOpacity(0.3)
+                          ? Colors.amber.withValues(alpha: 0.3)
                           : Colors.white12,
                     ),
                   ),
@@ -191,7 +269,14 @@ class _WorkoutSessionCard extends StatelessWidget {
                         style: GoogleFonts.inter(
                           color: set.isPR ? Colors.amber : Colors.white70,
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '• ${set.rating.toStringAsFixed(1)}',
+                        style: GoogleFonts.inter(
+                          color: Colors.white38,
+                          fontSize: 10,
                         ),
                       ),
                       if (set.isPR) ...[

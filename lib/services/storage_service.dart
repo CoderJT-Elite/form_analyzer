@@ -23,6 +23,8 @@ class StorageService {
           targetReps: set.targetReps,
           isPR: isPR,
           timestamp: set.timestamp,
+          rating: set.rating,
+          feedback: set.feedback,
         ),
       );
     }
@@ -32,6 +34,8 @@ class StorageService {
       date: session.date,
       exerciseType: session.exerciseType,
       sets: updatedSets,
+      overallRating: session.overallRating,
+      overallFeedback: session.overallFeedback,
     );
 
     sessions.insert(0, updatedSession);

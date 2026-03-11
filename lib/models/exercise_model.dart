@@ -31,6 +31,8 @@ class ExerciseSet {
   final int? targetReps;
   final bool isPR;
   final DateTime timestamp;
+  final double rating; // 0.0 to 1.0 or 1 to 5
+  final List<String> feedback;
 
   ExerciseSet({
     required this.reps,
@@ -38,6 +40,8 @@ class ExerciseSet {
     this.targetReps,
     this.isPR = false,
     required this.timestamp,
+    this.rating = 1.0,
+    this.feedback = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -46,6 +50,8 @@ class ExerciseSet {
     'targetReps': targetReps,
     'isPR': isPR,
     'timestamp': timestamp.toIso8601String(),
+    'rating': rating,
+    'feedback': feedback,
   };
 
   factory ExerciseSet.fromJson(Map<String, dynamic> json) => ExerciseSet(
@@ -56,6 +62,8 @@ class ExerciseSet {
     targetReps: json['targetReps'],
     isPR: json['isPR'] ?? false,
     timestamp: DateTime.parse(json['timestamp']),
+    rating: (json['rating'] ?? 1.0).toDouble(),
+    feedback: List<String>.from(json['feedback'] ?? []),
   );
 }
 
@@ -64,12 +72,16 @@ class WorkoutSession {
   final DateTime date;
   final ExerciseType exerciseType;
   final List<ExerciseSet> sets;
+  final double? overallRating;
+  final List<String> overallFeedback;
 
   WorkoutSession({
     required this.id,
     required this.date,
     required this.exerciseType,
     required this.sets,
+    this.overallRating,
+    this.overallFeedback = const [],
   });
 
   int get totalReps => sets.fold(0, (sum, set) => sum + set.reps);
@@ -79,6 +91,8 @@ class WorkoutSession {
     'date': date.toIso8601String(),
     'exerciseType': exerciseType.name,
     'sets': sets.map((s) => s.toJson()).toList(),
+    'overallRating': overallRating,
+    'overallFeedback': overallFeedback,
   };
 
   factory WorkoutSession.fromJson(Map<String, dynamic> json) => WorkoutSession(
@@ -88,6 +102,8 @@ class WorkoutSession {
       (e) => e.name == json['exerciseType'],
     ),
     sets: (json['sets'] as List).map((s) => ExerciseSet.fromJson(s)).toList(),
+    overallRating: (json['overallRating'] as num?)?.toDouble(),
+    overallFeedback: List<String>.from(json['overallFeedback'] ?? []),
   );
 }
 

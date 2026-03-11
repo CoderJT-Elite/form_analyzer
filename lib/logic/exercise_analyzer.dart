@@ -3,6 +3,35 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../core/app_constants.dart';
 import '../utils/math_utils.dart';
 
+class PerformanceMetrics {
+  final double averageFormScore;
+  final List<String> commonIssues;
+  final int perfectReps;
+  final int totalReps;
+
+  PerformanceMetrics({
+    required this.averageFormScore,
+    required this.commonIssues,
+    required this.perfectReps,
+    required this.totalReps,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'averageFormScore': averageFormScore,
+    'commonIssues': commonIssues,
+    'perfectReps': perfectReps,
+    'totalReps': totalReps,
+  };
+
+  factory PerformanceMetrics.fromJson(Map<String, dynamic> json) =>
+      PerformanceMetrics(
+        averageFormScore: (json['averageFormScore'] as num).toDouble(),
+        commonIssues: List<String>.from(json['commonIssues']),
+        perfectReps: json['perfectReps'],
+        totalReps: json['totalReps'],
+      );
+}
+
 abstract class ExerciseAnalyzer {
   int repCount = 0;
   RepPhase phase = RepPhase.up;
@@ -10,14 +39,52 @@ abstract class ExerciseAnalyzer {
   double? lastProcessedAngle;
   Function(int)? onRep;
 
+  // Performance Tracking
+  final List<String> currentRepIssues = [];
+  final List<List<String>> allRepIssues = [];
+  final List<double> repScores = []; // 0.0 to 1.0
+
   void reset() {
     repCount = 0;
     phase = RepPhase.up;
     statusMessage = "Get ready!";
     lastProcessedAngle = null;
+    currentRepIssues.clear();
+    allRepIssues.clear();
+    repScores.clear();
   }
 
   void processPose(Pose pose);
+
+  PerformanceMetrics getPerformanceMetrics() {
+    final Map<String, int> issueCounts = {};
+    for (var issues in allRepIssues) {
+      for (var issue in issues) {
+        issueCounts[issue] = (issueCounts[issue] ?? 0) + 1;
+      }
+    }
+
+    final sortedIssues = issueCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final commonIssues = sortedIssues.take(3).map((e) => e.key).toList();
+    final avgScore = repScores.isEmpty
+        ? 0.0
+        : (repScores.reduce((a, b) => a + b) / repScores.length) * 5.0;
+
+    return PerformanceMetrics(
+      averageFormScore: avgScore,
+      commonIssues: commonIssues,
+      perfectReps: repScores.where((s) => s > 0.9).length,
+      totalReps: repCount,
+    );
+  }
+
+  void addIssue(String issue) {
+    if (!currentRepIssues.contains(issue)) {
+      currentRepIssues.add(issue);
+    }
+  }
 }
 
 class SquatAnalyzer extends ExerciseAnalyzer {
@@ -79,18 +146,31 @@ class SquatAnalyzer extends ExerciseAnalyzer {
         statusMessage = "Squat down slowly";
       }
     } else {
+      // Logic for issues during descent or hold
+      if (backAngle < 45) {
+        addIssue("Rounded Back");
+      }
+
       if (currentAngle > AppConstants.squatStandingAngle) {
         repCount++;
         phase = RepPhase.up;
         statusMessage = "Good rep! Stand tall.";
-        if (onRep != null) onRep!(repCount);
 
-        if (backAngle < 45) {
-          statusMessage = "Keep your chest up! Back is too rounded.";
-        }
+        // Calculate rep score based on depth and back angle
+        double score = 1.0;
+        if (currentRepIssues.contains("Rounded Back")) score -= 0.3;
+        // If depth was barely enough
+        if (currentAngle > AppConstants.squatDepthMin + 10) score -= 0.1;
+
+        repScores.add(score.clamp(0.0, 1.0));
+        allRepIssues.add(List.from(currentRepIssues));
+        currentRepIssues.clear();
+
+        if (onRep != null) onRep!(repCount);
       } else {
         if (backAngle < 40) {
           statusMessage = "Back straight! Look forward.";
+          addIssue("Rounded Back");
         } else {
           statusMessage = "Drive up! Push through your heels.";
         }

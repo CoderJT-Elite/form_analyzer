@@ -18,7 +18,7 @@ class RoutineExecutionScreen extends StatefulWidget {
 
 class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
   int _currentIndex = 0;
-  List<WorkoutSession> _completedSessions = [];
+  final List<WorkoutSession> _completedSessions = [];
   final StorageService _storage = StorageService();
 
   void _nextExercise() async {
@@ -196,7 +196,7 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Colors.white.withOpacity(0.05),
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
                       valueColor: const AlwaysStoppedAnimation(
                         AppColors.accentCyan,
                       ),
@@ -283,7 +283,7 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     elevation: 10,
-                    shadowColor: AppColors.accentCyan.withOpacity(0.3),
+                    shadowColor: AppColors.accentCyan.withValues(alpha: 0.3),
                   ),
                   child: Text(
                     _currentIndex == 0

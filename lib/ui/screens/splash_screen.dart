@@ -66,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen>
               Text(
                 'AI POWERED FITNESS',
                 style: TextStyle(
-                  color: AppColors.accentCyan.withOpacity(0.7),
+                  color: AppColors.accentCyan.withValues(alpha: 0.7),
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 2,

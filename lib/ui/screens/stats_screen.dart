@@ -47,12 +47,31 @@ class _StatsScreenState extends State<StatsScreen> {
     final totalReps = _sessions.fold(0, (sum, s) => sum + s.totalReps);
     final totalSessions = _sessions.length;
 
-    // Group by exercise type
+    // Group by exercise type and calculate average ratings
     Map<ExerciseType, int> exerciseDistribution = {};
+    Map<ExerciseType, List<double>> exerciseRatings = {};
+    List<double> allRatings = [];
+
     for (var session in _sessions) {
       exerciseDistribution[session.exerciseType] =
           (exerciseDistribution[session.exerciseType] ?? 0) + 1;
+
+      if (session.overallRating != null) {
+        allRatings.add(session.overallRating!);
+        exerciseRatings
+            .putIfAbsent(
+              session.overallRating != null
+                  ? session.exerciseType
+                  : session.exerciseType,
+              () => [],
+            )
+            .add(session.overallRating!);
+      }
     }
+
+    final avgRating = allRatings.isEmpty
+        ? 0.0
+        : allRatings.reduce((a, b) => a + b) / allRatings.length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -105,18 +124,33 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  _buildStatCard(
+                    'Average Form Rating',
+                    '${avgRating.toStringAsFixed(1)} / 5.0',
+                    Icons.star_rounded,
+                    fullWidth: true,
+                  ),
                   const SizedBox(height: 32),
                   _buildStatHeader('EXERCISE DISTRIBUTION'),
                   const SizedBox(height: 16),
                   ...exerciseDistribution.entries.map((e) {
                     final percentage = (e.value / totalSessions * 100)
                         .toStringAsFixed(0);
+                    final ratings = exerciseRatings[e.key] ?? [];
+                    final avgExRating = ratings.isEmpty
+                        ? 0.0
+                        : ratings.reduce((a, b) => a + b) / ratings.length;
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _buildProgressRow(
                         e.key.name.toUpperCase(),
                         e.value / totalSessions,
                         "$percentage%",
+                        subtitle: ratings.isNotEmpty
+                            ? "Avg. Form: ${avgExRating.toStringAsFixed(1)}"
+                            : null,
                       ),
                     );
                   }),
@@ -148,9 +182,15 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon, {
+    bool fullWidth = false,
+  }) {
     return GlassContainer(
       padding: const EdgeInsets.all(20),
+      width: fullWidth ? double.infinity : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -173,20 +213,38 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildProgressRow(String label, double value, String trailing) {
+  Widget _buildProgressRow(
+    String label,
+    double value,
+    String trailing, {
+    String? subtitle,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      color: Colors.white38,
+                      fontSize: 10,
+                    ),
+                  ),
+              ],
             ),
             Text(
               trailing,
@@ -203,7 +261,7 @@ class _StatsScreenState extends State<StatsScreen> {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: value,
-            backgroundColor: Colors.white.withOpacity(0.05),
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
             color: AppColors.accentCyan,
             minHeight: 8,
           ),
