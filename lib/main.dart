@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/app_theme.dart';
-import 'ui/screens/dashboard_screen.dart';
+import 'ui/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Lock landscape orientation to prevent layout issues during camera stream
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -21,10 +21,10 @@ class FormAnalyzerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Form Analyzer Pro',
+      title: 'Form Analyzer',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      home: const DashboardScreen(),
+      home: const SplashScreen(),
     );
   }
 }

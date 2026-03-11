@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
+<<<<<<< Updated upstream
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 
@@ -39,12 +40,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _history.where((e) => e.toUpperCase().contains('PUSH')).length;
 
   @override
+=======
+import '../widgets/glass_container.dart';
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  @override
+>>>>>>> Stashed changes
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
+<<<<<<< Updated upstream
             expandedHeight: 160,
             pinned: true,
             leading: IconButton(
@@ -208,10 +218,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Colors.white70,
                           fontSize: 13,
                         ),
+=======
+            expandedHeight: 200,
+            pinned: true,
+            backgroundColor: AppColors.background,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.accentCyan.withOpacity(0.2),
+                      AppColors.background,
+                    ],
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 40),
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: AppColors.accentCyan.withOpacity(0.1),
+                      child: const Icon(
+                        Icons.person_rounded,
+                        size: 40,
+                        color: AppColors.accentCyan,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'ATHLETE',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+>>>>>>> Stashed changes
                       ),
                     ),
                   ],
                 ),
+<<<<<<< Updated upstream
               );
             },
           ),
@@ -277,10 +326,138 @@ class _StatCard extends StatelessWidget {
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
+=======
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader('SETTINGS'),
+                  const SizedBox(height: 16),
+                  _buildSettingTile(
+                    'Voice Feedback',
+                    'Enable AI voice coaching',
+                    Icons.record_voice_over_rounded,
+                    true,
+                  ),
+                  _buildSettingTile(
+                    'Metric Units',
+                    'Use KG/CM instead of LB/IN',
+                    Icons.straighten_rounded,
+                    true,
+                  ),
+                  _buildSettingTile(
+                    'Haptic Feedback',
+                    'Vibrate on rep detection',
+                    Icons.vibration_rounded,
+                    true,
+                  ),
+
+                  const SizedBox(height: 32),
+                  _buildSectionHeader('ACCOUNT'),
+                  const SizedBox(height: 16),
+                  _buildSettingTile(
+                    'Privacy Policy',
+                    null,
+                    Icons.privacy_tip_rounded,
+                    false,
+                  ),
+                  _buildSettingTile(
+                    'Terms of Service',
+                    null,
+                    Icons.description_rounded,
+                    false,
+                  ),
+
+                  const SizedBox(height: 40),
+                  Center(
+                    child: Text(
+                      'FORM ANALYZER v1.0.0',
+                      style: GoogleFonts.inter(
+                        color: Colors.white24,
+                        fontSize: 10,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+>>>>>>> Stashed changes
             ),
           ),
         ],
       ),
     );
   }
+<<<<<<< Updated upstream
+=======
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.outfit(
+        color: Colors.white70,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  Widget _buildSettingTile(
+    String title,
+    String? subtitle,
+    IconData icon,
+    bool hasSwitch,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.accentCyan, size: 20),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.inter(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (hasSwitch)
+              Switch(
+                value: true,
+                onChanged: (v) {},
+                activeColor: AppColors.accentCyan,
+                activeTrackColor: AppColors.accentCyan.withOpacity(0.2),
+              )
+            else
+              const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+          ],
+        ),
+      ),
+    );
+  }
+>>>>>>> Stashed changes
 }

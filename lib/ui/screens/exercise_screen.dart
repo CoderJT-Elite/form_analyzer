@@ -7,27 +7,30 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
 import '../../models/exercise_model.dart';
 import '../../services/pose_detector_service.dart';
-import '../../services/storage_service.dart';
 import '../../services/tts_service.dart';
 import '../widgets/control_icon.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/pose_painter.dart';
-import '../widgets/rep_badge.dart';
 
 class ExerciseScreen extends StatefulWidget {
   final Exercise exercise;
+  final bool isRoutineMode;
 
-  const ExerciseScreen({super.key, required this.exercise});
+  const ExerciseScreen({
+    super.key,
+    required this.exercise,
+    this.isRoutineMode = false,
+  });
 
   @override
   State<ExerciseScreen> createState() => _ExerciseScreenState();
 }
 
-class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObserver {
+class _ExerciseScreenState extends State<ExerciseScreen>
+    with WidgetsBindingObserver {
   CameraController? _cameraController;
   final PoseDetectorService _poseDetector = PoseDetectorService();
   final TTSService _tts = TTSService();
-  final StorageService _storage = StorageService();
 
   bool _isCameraInitialized = false;
   bool _isProcessingFrame = false;
@@ -40,12 +43,25 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
   CameraLensDirection _lensDirection = CameraLensDirection.back;
   String? _errorMessage;
 
+  // New Workout State
+  final List<ExerciseSet> _completedSets = [];
+  int _currentRepCount = 0;
+  bool _isResting = false;
+  int _restTimeRemaining = 30;
+  Timer? _restTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initialize();
     _tts.init();
+    widget.exercise.analyzer.onRep = (count) {
+      if (mounted) {
+        setState(() => _currentRepCount = count);
+        _tts.speak("$count");
+      }
+    };
   }
 
   Future<void> _initialize() async {
@@ -55,27 +71,26 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
         (cam) => cam.lensDirection == _lensDirection,
         orElse: () => cameras.first,
       );
-      
+
       _lensDirection = description.lensDirection;
-      
+
       final controller = CameraController(
         description,
         ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.yuv420,
       );
-      
+
       _cameraController = controller;
       await controller.initialize();
-      // Unlock orientation to support 180-degree flips
-      
+
       _imageSize = Size(
         controller.value.previewSize!.width,
         controller.value.previewSize!.height,
       );
 
       await controller.startImageStream(_processImage);
-      
+
       if (mounted) {
         setState(() => _isCameraInitialized = true);
         _startCalibration();
@@ -106,8 +121,53 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
     });
   }
 
+  void _finishSet() {
+    if (_currentRepCount == 0 && widget.exercise.type != ExerciseType.plank) {
+      return;
+    }
+
+    final set = ExerciseSet(
+      reps: widget.exercise.type == ExerciseType.plank ? 0 : _currentRepCount,
+      duration: widget.exercise.type == ExerciseType.plank
+          ? Duration(seconds: widget.exercise.analyzer.repCount)
+          : null,
+      timestamp: DateTime.now(),
+    );
+
+    setState(() {
+      _completedSets.add(set);
+      _currentRepCount = 0;
+      widget.exercise.analyzer.reset();
+      _startRestTimer();
+    });
+
+    _tts.speak("Set complete. Resting for 30 seconds.");
+  }
+
+  void _startRestTimer() {
+    setState(() {
+      _isResting = true;
+      _restTimeRemaining = 30;
+    });
+
+    _restTimer?.cancel();
+    _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_restTimeRemaining > 1) {
+            _restTimeRemaining--;
+          } else {
+            _isResting = false;
+            _restTimer?.cancel();
+            _tts.speak("Rest over. Get ready for the next set.");
+          }
+        });
+      }
+    });
+  }
+
   Future<void> _processImage(CameraImage image) async {
-    if (_isProcessingFrame || !mounted || !_isCalibrated) return;
+    if (_isProcessingFrame || !mounted || !_isCalibrated || _isResting) return;
     _isProcessingFrame = true;
 
     try {
@@ -133,7 +193,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
           _poses = poses;
           _imageRotation = rotation;
         });
-        
+
         if (poses.isNotEmpty) {
           final oldMsg = widget.exercise.analyzer.statusMessage;
           widget.exercise.analyzer.processPose(poses.first);
@@ -148,7 +208,8 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
   }
 
   InputImageRotation _getImageRotation() {
-    return InputImageRotation.rotation90deg; // Simplified for now, can add back dynamic sensors
+    return InputImageRotation
+        .rotation90deg; // Simplified for now, can add back dynamic sensors
   }
 
   @override
@@ -156,7 +217,14 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
     WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
     _poseDetector.dispose();
-    _storage.saveWorkout(widget.exercise.analyzer.repCount, widget.exercise.name);
+    _calibrationTimer?.cancel();
+    _restTimer?.cancel();
+
+    // The workout saving/returning logic is now handled by _finishWorkout
+    // which is called when the user explicitly stops the workout or when the screen is popped.
+    // No need to call _finishWorkout here as dispose might be called for other reasons
+    // (e.g., screen rotation) before the workout is truly finished by user action.
+
     super.dispose();
   }
 
@@ -180,6 +248,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
               ),
             ),
           _buildUI(),
+          if (_isResting) _buildRestOverlay(),
           if (_errorMessage != null) _buildError(),
         ],
       ),
@@ -199,10 +268,14 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
                   padding: const EdgeInsets.all(12),
                   child: GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                    child: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 _GlassContainer(
+<<<<<<< Updated upstream
                    padding: const EdgeInsets.all(4),
                    child: Row(
                      mainAxisSize: MainAxisSize.min,
@@ -227,16 +300,66 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
                        ),
                      ],
                    ),
+=======
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    children: [
+                      Hero(
+                        tag: 'exercise_${widget.exercise.type.name}',
+                        child: Icon(
+                          widget.exercise.icon,
+                          color: AppColors.accentCyan,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ControlIcon(
+                        icon: _tts.isEnabled
+                            ? Icons.volume_up_rounded
+                            : Icons.volume_off_rounded,
+                        onTap: () => setState(() => _tts.toggle()),
+                      ),
+                      ControlIcon(
+                        icon: Icons.flip_camera_ios_rounded,
+                        onTap: () {
+                          _lensDirection =
+                              _lensDirection == CameraLensDirection.back
+                              ? CameraLensDirection.front
+                              : CameraLensDirection.back;
+                          _initialize();
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            RepBadge(count: widget.exercise.analyzer.repCount),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _StatBadge(label: 'SET', value: '${_completedSets.length + 1}'),
+                const SizedBox(width: 12),
+                _StatBadge(
+                  label: widget.exercise.type == ExerciseType.plank
+                      ? 'TIME'
+                      : 'REPS',
+                  value: widget.exercise.type == ExerciseType.plank
+                      ? '${widget.exercise.analyzer.repCount}s'
+                      : '$_currentRepCount',
+                  isMain: true,
+>>>>>>> Stashed changes
+                ),
+              ],
+            ),
             const Spacer(),
             if (!_isCalibrated)
               Center(
                 child: GlassContainer(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 30,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -263,7 +386,106 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
                 ),
               ),
             if (!_isCalibrated) const Spacer(),
-            _buildStatusFeedback(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Row(
+                children: [
+                  Expanded(flex: 3, child: _buildStatusFeedback()),
+                  const SizedBox(width: 8),
+                  if (_isCalibrated && !_isResting)
+                    _GlassContainer(
+                      padding: const EdgeInsets.all(12),
+                      child: IconButton(
+                        onPressed: _finishSet,
+                        icon: const Icon(
+                          Icons.add_task_rounded,
+                          color: AppColors.accentCyan,
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                  if (_isCalibrated) ...[
+                    const SizedBox(width: 8),
+                    _GlassContainer(
+                      padding: const EdgeInsets.all(12),
+                      child: IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.stop_rounded,
+                          color: Colors.redAccent,
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRestOverlay() {
+    return Container(
+      color: Colors.black87,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'RESTING',
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: CircularProgressIndicator(
+                    value: _restTimeRemaining / 30,
+                    strokeWidth: 8,
+                    color: AppColors.accentCyan,
+                    backgroundColor: Colors.white10,
+                  ),
+                ),
+                Text(
+                  '$_restTimeRemaining',
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 40,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: () => setState(() => _isResting = false),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentCyan,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              child: const Text(
+                'SKIP REST',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
       ),
@@ -300,6 +522,47 @@ class _ExerciseScreenState extends State<ExerciseScreen> with WidgetsBindingObse
   }
 }
 
+class _StatBadge extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isMain;
+
+  const _StatBadge({
+    required this.label,
+    required this.value,
+    this.isMain = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassContainer(
+      padding: EdgeInsets.symmetric(horizontal: isMain ? 24 : 16, vertical: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              color: Colors.white38,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+            ),
+          ),
+          Text(
+            value,
+            style: GoogleFonts.outfit(
+              color: isMain ? AppColors.accentCyan : Colors.white,
+              fontSize: isMain ? 32 : 24,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _GlassContainer extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -308,9 +571,6 @@ class _GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
-      padding: padding,
-      child: child,
-    );
+    return GlassContainer(padding: padding, child: child);
   }
 }
