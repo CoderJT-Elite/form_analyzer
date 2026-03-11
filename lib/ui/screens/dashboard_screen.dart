@@ -7,7 +7,12 @@ import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 import 'exercise_screen.dart';
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import 'profile_screen.dart';
+=======
+import 'history_screen.dart';
+import 'routine_execution_screen.dart';
+>>>>>>> Stashed changes
 =======
 import 'history_screen.dart';
 import 'routine_execution_screen.dart';
@@ -105,6 +110,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: CustomScrollView(
         slivers: [
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           SliverAppBar(
             expandedHeight: 180,
             pinned: true,
@@ -154,6 +160,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
 =======
+=======
+>>>>>>> Stashed changes
           _buildSliverAppBar(),
           SliverToBoxAdapter(
             child: Padding(
@@ -165,6 +173,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.5,
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes
                 ),
                 child: Padding(
@@ -202,6 +211,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
+=======
+>>>>>>> Stashed changes
                 ),
               ),
             ),

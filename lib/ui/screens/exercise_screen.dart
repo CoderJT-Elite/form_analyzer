@@ -276,6 +276,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                 ),
                 _GlassContainer(
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                    padding: const EdgeInsets.all(4),
                    child: Row(
                      mainAxisSize: MainAxisSize.min,
@@ -301,6 +302,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                      ],
                    ),
 =======
+=======
+>>>>>>> Stashed changes
                   padding: const EdgeInsets.all(4),
                   child: Row(
                     children: [
@@ -348,6 +351,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                       ? '${widget.exercise.analyzer.repCount}s'
                       : '$_currentRepCount',
                   isMain: true,
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 ),
               ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 
@@ -41,12 +42,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
 =======
+=======
+>>>>>>> Stashed changes
 import '../widgets/glass_container.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,6 +60,7 @@ class ProfileScreen extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             expandedHeight: 160,
             pinned: true,
@@ -219,6 +226,8 @@ class ProfileScreen extends StatelessWidget {
                           fontSize: 13,
                         ),
 =======
+=======
+>>>>>>> Stashed changes
             expandedHeight: 200,
             pinned: true,
             backgroundColor: AppColors.background,
@@ -255,11 +264,15 @@ class ProfileScreen extends StatelessWidget {
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1,
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                       ),
                     ),
                   ],
                 ),
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
               );
             },
@@ -327,6 +340,8 @@ class _StatCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
               letterSpacing: 1.2,
 =======
+=======
+>>>>>>> Stashed changes
               ),
             ),
           ),
@@ -386,6 +401,9 @@ class _StatCard extends StatelessWidget {
                   ),
                 ],
               ),
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             ),
           ),
@@ -394,7 +412,10 @@ class _StatCard extends StatelessWidget {
     );
   }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 
   Widget _buildSectionHeader(String title) {
     return Text(
@@ -459,5 +480,8 @@ class _StatCard extends StatelessWidget {
       ),
     );
   }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 }
