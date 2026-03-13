@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_constants.dart';
+import '../../logic/exercise_analyzer.dart';
 import '../../models/exercise_model.dart';
 import '../../services/pose_detector_service.dart';
 import '../../services/tts_service.dart';
@@ -61,6 +63,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         setState(() => _currentRepCount = count);
         _tts.speak("$count");
       }
+    };
+    // Task 3: Wire TTS feedback for coaching cues (e.g. "Go deeper next time.").
+    widget.exercise.analyzer.onFeedback = (message) {
+      _tts.speakFeedback(message);
     };
   }
 
@@ -274,6 +280,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                 imageSize: _imageSize!,
                 rotation: _imageRotation,
                 lensDirection: _lensDirection,
+                squatState: widget.exercise.analyzer is SquatAnalyzer
+                    ? (widget.exercise.analyzer as SquatAnalyzer).squatState
+                    : null,
+                isBusy: _isProcessingFrame,
               ),
             ),
 

@@ -3,6 +3,23 @@ import 'dart:ui';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../core/app_constants.dart';
 
+/// A simple moving-average filter that smooths a stream of values.
+class MovingAverageFilter {
+  final int windowSize;
+  final List<double> _buffer = [];
+
+  MovingAverageFilter({this.windowSize = 5});
+
+  /// Add [value] to the buffer and return the current average.
+  double add(double value) {
+    _buffer.add(value);
+    if (_buffer.length > windowSize) _buffer.removeAt(0);
+    return _buffer.reduce((a, b) => a + b) / _buffer.length;
+  }
+
+  void reset() => _buffer.clear();
+}
+
 class MathUtils {
   static double calculateJointAngleFromOffsets(Offset a, Offset b, Offset c) {
     final ba = Offset(a.dx - b.dx, a.dy - b.dy);
@@ -37,5 +54,36 @@ class MathUtils {
     final dotProduct = dx1 * dx2 + dy1 * dy2 + dz1 * dz2;
     final cosine = (dotProduct / (mag1 * mag2)).clamp(-1.0, 1.0);
     return math.acos(cosine) * 180 / math.pi;
+  }
+
+  /// Calculates the interior angle at point [b] using the **Law of Cosines**
+  /// with full 3D coordinates (x, y, z).
+  ///
+  /// For the triangle formed by [a], [b], [c]:
+  ///   cos(B) = (|AB|² + |BC|² − |AC|²) / (2·|AB|·|BC|)
+  static double calculateAngle(PoseLandmark a, PoseLandmark b, PoseLandmark c) {
+    final ab = math.sqrt(
+      math.pow(a.x - b.x, 2) +
+      math.pow(a.y - b.y, 2) +
+      math.pow(a.z - b.z, 2),
+    );
+    final bc = math.sqrt(
+      math.pow(b.x - c.x, 2) +
+      math.pow(b.y - c.y, 2) +
+      math.pow(b.z - c.z, 2),
+    );
+    final ac = math.sqrt(
+      math.pow(a.x - c.x, 2) +
+      math.pow(a.y - c.y, 2) +
+      math.pow(a.z - c.z, 2),
+    );
+
+    if (ab < AppConstants.minMagnitude || bc < AppConstants.minMagnitude) {
+      return 0.0;
+    }
+
+    // Law of Cosines: cos(B) = (ab² + bc² − ac²) / (2·ab·bc)
+    final cosB = ((ab * ab + bc * bc - ac * ac) / (2 * ab * bc)).clamp(-1.0, 1.0);
+    return math.acos(cosB) * 180 / math.pi;
   }
 }

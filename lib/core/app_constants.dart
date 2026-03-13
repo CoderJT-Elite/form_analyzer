@@ -1,5 +1,7 @@
 enum RepPhase { down, up }
 
+enum SquatState { neutral, descending, atDepth, ascending }
+
 class AppConstants {
   // Squat depth thresholds
   static const double squatDepthMin = 70;
