@@ -39,6 +39,10 @@ abstract class ExerciseAnalyzer {
   double? lastProcessedAngle;
   Function(int)? onRep;
 
+  /// Called with a coaching message when the analyzer has specific feedback
+  /// (e.g. "Go deeper next time.").
+  Function(String)? onFeedback;
+
   // Performance Tracking
   final List<String> currentRepIssues = [];
   final List<List<String>> allRepIssues = [];
@@ -88,93 +92,125 @@ abstract class ExerciseAnalyzer {
 }
 
 class SquatAnalyzer extends ExerciseAnalyzer {
-  final List<double> _angleHistory = [];
-  static const int _historyLimit = 3;
+  SquatState squatState = SquatState.neutral;
+  bool _reachedDepth = false;
+  final MovingAverageFilter _filter = MovingAverageFilter(windowSize: 5);
+  double? _prevFilteredAngle;
+
+  // Thresholds from the problem specification
+  static const double _atDepthThreshold = 95.0;       // knee ≤ 95° → atDepth
+  static const double _neutralThreshold = 160.0;      // knee ≥ 160° → neutral
+  static const double _ascendingThresholdDelta = 0.5; // min angle rise to detect ascending
+  static const double _minBackAngleDegrees = 40.0;    // below this = rounded back
+
+  @override
+  void reset() {
+    super.reset();
+    squatState = SquatState.neutral;
+    _reachedDepth = false;
+    _filter.reset();
+    _prevFilteredAngle = null;
+  }
 
   @override
   void processPose(Pose pose) {
-    final leftKnee = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.leftHip],
-      pose.landmarks[PoseLandmarkType.leftKnee],
-      pose.landmarks[PoseLandmarkType.leftAnkle],
-    );
-    final rightKnee = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.rightHip],
-      pose.landmarks[PoseLandmarkType.rightKnee],
-      pose.landmarks[PoseLandmarkType.rightAnkle],
-    );
+    final leftHip    = pose.landmarks[PoseLandmarkType.leftHip];
+    final leftKnee   = pose.landmarks[PoseLandmarkType.leftKnee];
+    final leftAnkle  = pose.landmarks[PoseLandmarkType.leftAnkle];
+    final rightHip   = pose.landmarks[PoseLandmarkType.rightHip];
+    final rightKnee  = pose.landmarks[PoseLandmarkType.rightKnee];
+    final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
 
-    final leftConf =
-        (pose.landmarks[PoseLandmarkType.leftKnee]?.likelihood ?? 0) +
-        (pose.landmarks[PoseLandmarkType.leftAnkle]?.likelihood ?? 0);
-    final rightConf =
-        (pose.landmarks[PoseLandmarkType.rightKnee]?.likelihood ?? 0) +
-        (pose.landmarks[PoseLandmarkType.rightAnkle]?.likelihood ?? 0);
-
-    double currentAngle = (leftConf > rightConf) ? leftKnee : rightKnee;
-
-    _angleHistory.add(currentAngle);
-    if (_angleHistory.length > _historyLimit) _angleHistory.removeAt(0);
-    currentAngle = _angleHistory.reduce((a, b) => a + b) / _angleHistory.length;
-    lastProcessedAngle = currentAngle;
-
-    final backAngle = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.leftShoulder],
-      pose.landmarks[PoseLandmarkType.leftHip],
-      pose.landmarks[PoseLandmarkType.leftKnee],
-    );
-
-    final hipsVisible =
-        (pose.landmarks[PoseLandmarkType.leftHip]?.likelihood ?? 0) > 0.6 ||
-        (pose.landmarks[PoseLandmarkType.rightHip]?.likelihood ?? 0) > 0.6;
-    final anklesVisible =
-        (pose.landmarks[PoseLandmarkType.leftAnkle]?.likelihood ?? 0) > 0.4 ||
-        (pose.landmarks[PoseLandmarkType.rightAnkle]?.likelihood ?? 0) > 0.4;
-
-    if (!hipsVisible || !anklesVisible) {
-      statusMessage = "Show full body on camera";
+    // Task 5: Confidence check — if any required landmark < 0.5, pause analysis.
+    final required = [leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle];
+    if (required.any((lm) => (lm?.likelihood ?? 0) < 0.5)) {
+      statusMessage = "Adjust position: Landmark obscured.";
       return;
     }
 
-    if (phase == RepPhase.up) {
-      if (currentAngle < AppConstants.squatDepthMax) {
-        phase = RepPhase.down;
-        statusMessage = "Great depth! Now stand up.";
-      } else if (currentAngle < AppConstants.insufficientDepthAngle) {
-        statusMessage = "Lower... keep going!";
-      } else {
-        statusMessage = "Squat down slowly";
-      }
-    } else {
-      // Logic for issues during descent or hold
-      if (backAngle < 45) {
+    // Task 1: Calculate angles using Law of Cosines via calculateAngle().
+    final leftAngle  = MathUtils.calculateAngle(leftHip!,  leftKnee!,  leftAnkle!);
+    final rightAngle = MathUtils.calculateAngle(rightHip!, rightKnee!, rightAnkle!);
+
+    // Prefer the more-confident side.
+    final leftConf  = leftKnee.likelihood  + leftAnkle.likelihood;
+    final rightConf = rightKnee.likelihood + rightAnkle.likelihood;
+    final rawAngle  = (leftConf >= rightConf) ? leftAngle : rightAngle;
+
+    // Task 1: Apply moving-average filter (window = 5).
+    final currentAngle = _filter.add(rawAngle);
+    lastProcessedAngle = currentAngle;
+
+    // Detect whether the angle is currently increasing (ascending direction).
+    final isAscending = _prevFilteredAngle != null &&
+        currentAngle > _prevFilteredAngle! + _ascendingThresholdDelta;
+    _prevFilteredAngle = currentAngle;
+
+    // Back-angle form check.
+    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
+    if (leftShoulder != null && leftShoulder.likelihood >= 0.5) {
+      final backAngle = MathUtils.calculateAngle(leftShoulder, leftHip, leftKnee);
+      if (backAngle < _minBackAngleDegrees) {
         addIssue("Rounded Back");
       }
+    }
 
-      if (currentAngle > AppConstants.squatStandingAngle) {
-        repCount++;
-        phase = RepPhase.up;
-        statusMessage = "Good rep! Stand tall.";
+    // Task 2: 4-state machine.
+    switch (squatState) {
+      case SquatState.neutral:
+        if (currentAngle < _neutralThreshold) {
+          squatState = SquatState.descending;
+          _reachedDepth = false;
+          statusMessage = "Going down...";
+        } else {
+          statusMessage = "Squat down slowly";
+        }
 
-        // Calculate rep score based on depth and back angle
-        double score = 1.0;
-        if (currentRepIssues.contains("Rounded Back")) score -= 0.3;
-        // If depth was barely enough
-        if (currentAngle > AppConstants.squatDepthMin + 10) score -= 0.1;
+      case SquatState.descending:
+        if (currentAngle <= _atDepthThreshold) {
+          // Reached required depth.
+          squatState = SquatState.atDepth;
+          _reachedDepth = true;
+          statusMessage = "Great depth! Now stand up.";
+        } else if (isAscending) {
+          // Started going back up without reaching depth.
+          squatState = SquatState.ascending;
+          statusMessage = "Drive up! Push through your heels.";
+        } else {
+          statusMessage = "Lower... keep going!";
+        }
 
-        repScores.add(score.clamp(0.0, 1.0));
-        allRepIssues.add(List.from(currentRepIssues));
-        currentRepIssues.clear();
+      case SquatState.atDepth:
+        if (currentAngle > _atDepthThreshold) {
+          squatState = SquatState.ascending;
+          statusMessage = "Drive up! Push through your heels.";
+        } else {
+          statusMessage = "Great depth! Now stand up.";
+        }
 
-        if (onRep != null) onRep!(repCount);
-      } else {
-        if (backAngle < 40) {
-          statusMessage = "Back straight! Look forward.";
-          addIssue("Rounded Back");
+      case SquatState.ascending:
+        if (currentAngle >= _neutralThreshold) {
+          squatState = SquatState.neutral;
+
+          if (_reachedDepth) {
+            // Task 2: Full cycle complete — count the rep.
+            repCount++;
+            double score = 1.0;
+            if (currentRepIssues.contains("Rounded Back")) score -= 0.3;
+            repScores.add(score.clamp(0.0, 1.0));
+            allRepIssues.add(List.from(currentRepIssues));
+            currentRepIssues.clear();
+            statusMessage = "Good rep! Stand tall.";
+            if (onRep != null) onRep!(repCount);
+          } else {
+            // Task 3: Ascending without ever entering atDepth — trigger TTS.
+            statusMessage = "Go deeper next time.";
+            if (onFeedback != null) onFeedback!("Go deeper next time.");
+          }
+          _reachedDepth = false;
         } else {
           statusMessage = "Drive up! Push through your heels.";
         }
-      }
     }
   }
 }

@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_constants.dart';
 
 class PosePainter extends CustomPainter {
   PosePainter({
@@ -10,6 +11,8 @@ class PosePainter extends CustomPainter {
     required this.rotation,
     required this.lensDirection,
     this.lastAngle,
+    this.squatState,
+    this.isBusy = false,
   });
 
   final List<Pose> poses;
@@ -17,6 +20,12 @@ class PosePainter extends CustomPainter {
   final InputImageRotation rotation;
   final CameraLensDirection lensDirection;
   final double? lastAngle;
+
+  /// Current squat state used to conditionally colour the femur lines.
+  final SquatState? squatState;
+
+  /// When [isBusy] is true the painter skips repaints to avoid frame stacking.
+  final bool isBusy;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -27,30 +36,40 @@ class PosePainter extends CustomPainter {
       ..strokeWidth = 3.0
       ..color = AppColors.accentCyan;
 
+    // Femur (hip → knee): Green when atDepth, Red otherwise.
+    final femurPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 4.0
+      ..color = squatState == SquatState.atDepth
+          ? AppColors.goodGreen
+          : AppColors.badRed;
+
     final dotPaint = Paint()
       ..style = PaintingStyle.fill
       ..color = Colors.white;
 
     for (final pose in poses) {
-      // Draw Connections
-      pose.landmarks.forEach((type, landmark) {
-        _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.leftHip, PoseLandmarkType.rightHip, paint, size);
-        
-        // Legs
-        _drawConnection(canvas, pose, PoseLandmarkType.leftHip, PoseLandmarkType.leftKnee, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.leftKnee, PoseLandmarkType.leftAnkle, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.rightHip, PoseLandmarkType.rightKnee, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.rightKnee, PoseLandmarkType.rightAnkle, paint, size);
+      // Draw standard skeleton connections (cyan).
+      _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder, paint, size);
+      _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip, paint, size);
+      _drawConnection(canvas, pose, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip, paint, size);
+      _drawConnection(canvas, pose, PoseLandmarkType.leftHip, PoseLandmarkType.rightHip, paint, size);
 
-        // Arms
-        _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftElbow, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.leftElbow, PoseLandmarkType.leftWrist, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightElbow, paint, size);
-        _drawConnection(canvas, pose, PoseLandmarkType.rightElbow, PoseLandmarkType.rightWrist, paint, size);
-      });
+      // Shin / lower-leg
+      _drawConnection(canvas, pose, PoseLandmarkType.leftKnee, PoseLandmarkType.leftAnkle, paint, size);
+      _drawConnection(canvas, pose, PoseLandmarkType.rightKnee, PoseLandmarkType.rightAnkle, paint, size);
+
+      // Arms
+      _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftElbow, paint, size);
+      _drawConnection(canvas, pose, PoseLandmarkType.leftElbow, PoseLandmarkType.leftWrist, paint, size);
+      _drawConnection(canvas, pose, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightElbow, paint, size);
+      _drawConnection(canvas, pose, PoseLandmarkType.rightElbow, PoseLandmarkType.rightWrist, paint, size);
+
+      // Femur (hip → knee) — conditionally coloured.
+      _drawConnection(canvas, pose, PoseLandmarkType.leftHip, PoseLandmarkType.leftKnee, femurPaint, size);
+      _drawConnection(canvas, pose, PoseLandmarkType.rightHip, PoseLandmarkType.rightKnee, femurPaint, size);
 
       // Draw Landmarks
       pose.landmarks.forEach((type, landmark) {
@@ -102,6 +121,11 @@ class PosePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant PosePainter oldDelegate) {
-    return oldDelegate.poses != poses || oldDelegate.lastAngle != lastAngle;
+    // isBusy guard: skip repaint while a new frame is being analyzed to
+    // prevent frame stacking and maintain high-speed UI responsiveness.
+    if (isBusy) return false;
+    return oldDelegate.poses != poses ||
+        oldDelegate.lastAngle != lastAngle ||
+        oldDelegate.squatState != squatState;
   }
 }
