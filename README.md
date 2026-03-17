@@ -1,144 +1,71 @@
 # Form Analyzer
 
-A Flutter application for real-time exercise form analysis using pose detection and ML Kit.
+A Flutter application for real-time exercise form analysis using pose detection and ML Kit. This repository provides a professional, open-source foundation for external review by university researchers and biomechanics professionals.
 
 ## Features
 
 - Real-time pose detection using Google ML Kit
-- **Back squat tracking** with depth monitoring (70° ≤ θ ≤ 90°)
+- **Back squat tracking** with dynamic depth monitoring
 - Live visual feedback with skeletal overlay
 - Form guidance and coaching messages
 - Automatic camera orientation handling
-- Frame rate control (15-20 FPS) for stable performance
+- Inference throttling for stable performance (target: 30 FPS)
 
-## Current Exercise Support
+## System Architecture
 
-### Back Squats
-- Tracks Hip-Knee-Ankle angle in real-time
-- Validates proper squat depth (70-90 degrees at knee)
-- Counts reps automatically
-- Provides form feedback:
-  - "Good depth! Now stand up" - when reaching proper depth
-  - "Go lower" - when not deep enough
-  - "Too deep - maintain control" - safety warning
-  - "Great squat!" - rep completed
+The application is built on a **Service-Oriented Model** to separate concerns between the UI, camera handling, and machine learning inference. This modular architecture allows for easy swapping of underlying ML models or camera implementations.
 
-## Requirements
+![System Data Flow Diagram](assets/system_data_flow_diagram_placeholder.png)
 
-- Flutter SDK ^3.10.4
-- Android: minSdk 21 or higher
-- Camera permission required
+- **Pose Detection Service**: Encapsulates the Google ML Kit Pose Detection API, managing the lifecycle of the model and providing a continuous stream of detected anatomical landmarks.
+- **Camera Service**: Manages the device camera, frame capture, and format conversion (optimizing for YUV420) to ensure high-throughput image delivery.
+- **Form Analysis Engine**: Processes the stream of structured landmarks, applying biomechanical heuristics to determine exercise states, count repetitions, and provide corrective feedback.
+- **UI Layer**: Consumes the real-time analysis results to provide immediate visual feedback, including a scaled skeletal overlay and situational text prompts.
+
+## Technical Specifications
+
+### Asynchronous Processing Lock
+To maintain real-time performance and prevent memory exhaustion, the system implements an **Asynchronous Processing Lock**. 
+This mechanism safely manages inference throttling to maintain a stable **30 FPS on mid-range mobile hardware**.
+
+- **Frame Dropping**: If a new camera frame arrives while the previous frame is still being processed by the ML model, the new frame is intelligently dropped.
+- **Lock Management**: An internal `_isProcessingFrame` flag is atomically checked and set to `true` before model inference, and reliably reset to `false` in a `finally` block, ensuring the pipeline never stalls even if an exception occurs during inference.
+
+### 3D Vector Dot Product Math
+The core joint angle calculation utilizes the 3D Vector Dot Product implemented in `math_utils.dart`. Given three 3D points forming a joint $A$, $B$ (vertex), and $C$, we define vectors $\vec{u} = A - B$ and $\vec{v} = C - B$.
+
+The angle $\theta$ is calculated using the following LaTeX formula:
+$$ \cos(\theta) = \frac{\vec{u} \cdot \vec{v}}{\|\vec{u}\| \|\vec{v}\|} $$
+
+$$ \theta = \arccos\left(\frac{u_x v_x + u_y v_y + u_z v_z}{\sqrt{u_x^2 + u_y^2 + u_z^2} \sqrt{v_x^2 + v_y^2 + v_z^2}}\right) \times \frac{180}{\pi} $$
+
+This ensures mathematically rigorous joint angle tracking in 3-dimensional space, accounting for depth away from the camera plane.
 
 ## Getting Started
 
 ### Prerequisites
-
-Make sure you have Flutter installed. If not, follow the [Flutter installation guide](https://docs.flutter.dev/get-started/install).
+- Flutter SDK ^3.10.4
+- Android: minSdk 21 or higher
+- Camera permissions
 
 ### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-
-### Running the App
-
-To run the app on a connected device or emulator:
-
 ```bash
+git clone <repository_url>
+cd form_analyzer
+flutter pub get
 flutter run
 ```
 
-For release build:
-
-```bash
-flutter build apk --release
-```
-
-## Permissions
-
-The app requires camera permission to function. On first launch, you'll be prompted to grant camera access.
-
-## Architecture
-
-- **Pose Detection**: Uses Google ML Kit's Pose Detection API in stream mode
-- **Camera**: Flutter camera plugin with YUV420 format for optimal performance
-- **Angle Calculation**: 3D vector math using dot product formula for accurate joint angles
-- **Rep Counting**: State machine-based tracking using Hip-Knee-Ankle angles
-- **UI**: Custom PosePainter class for skeletal overlay visualization
-- **Performance**: Processing lock ensures stable 15-20 FPS by dropping frames when needed
-
-## Technical Details
-
-### calculateAngle Function
-The core angle calculation uses the dot product formula:
-```dart
-cos(θ) = (a·b) / (|a||b|)
-```
-where `a` and `b` are 3D vectors from the joint to adjacent landmarks.
-
-### Squat Detection Logic
-- **Standing**: Knee angle ≥ 160° (straight legs)
-- **Proper Depth**: 70° ≤ knee angle ≤ 90° (good squat)
-- **Too Deep**: Knee angle < 70° (safety concern)
-- **Partial**: 90° < angle < 160° (transitioning)
-
-### Processing Lock
-The `_isProcessingFrame` flag prevents frame overlap:
-- Set `true` before processing
-- Returns early if already processing (frame drop)
-- Always set `false` in `finally` block
-- Maintains stable 15-20 FPS
-
-## Recent Fixes (v1.0.0)
-
-### ✅ Fixed Issues
-- **iOS Camera Permission**: Added required camera usage descriptions
-- **Deprecated APIs**: Replaced all `withOpacity()` with `withValues(alpha: ...)`
-- **Missing Imports**: Added `flutter/services.dart` for DeviceOrientation
-- **Android SDK**: Updated targetSdk to 34 for latest Android
-
-### ✅ Production Enhancements
-- **ProGuard Rules**: Added for ML Kit and TensorFlow Lite (release builds)
-- **Code Minification**: Enabled for smaller APK size
-- **Error Handling**: Enhanced camera and permission error messages
-- **Documentation**: Comprehensive guides for deployment and testing
-
 ## Testing
-
-Run unit tests:
+Comprehensive testing is crucial for research validation. Run the unit test suite:
 ```bash
 flutter test
 ```
-
-For comprehensive testing procedures, see [TESTING_GUIDE.md](TESTING_GUIDE.md).
-
-Tests cover:
-- Angle calculation accuracy (90°, 180°, etc.)
-- 3D coordinate handling
-- Edge cases (zero magnitude vectors)
+Tests cover angle calculation accuracy, 3D coordinate handling, and edge cases (e.g., zero magnitude vectors).
 
 ## Troubleshooting
-
 If you encounter camera or image processing errors:
-
 1. Ensure camera permissions are granted
 2. Check that your device meets the minimum Android SDK requirement (API 21+)
 3. Try restarting the app if camera initialization fails
 4. Make sure your full body is visible in the camera frame
-
-## Future Enhancements
-
-Potential additions (not currently implemented):
-- Multiple exercise types (lunges, push-ups, etc.)
-- Bilateral tracking (comparing left vs right)
-- Rep history and analytics
-- Configurable depth thresholds
-- Audio feedback
-- Video recording of sets
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
