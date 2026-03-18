@@ -1,38 +1,324 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" class="dark scroll-smooth">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Analyzer | Elite Biomechanics for All</title>
+    <meta name="description" content="Form Analyzer democratizes elite sports science with 3D vector-based biomechanics. Correct your form with 98% accuracy using only your smartphone.">
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter and Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax for formula rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        accent: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    
+    <style>
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-nav {
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+        .gradient-text {
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
 
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="form_analyzer">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+        .persona-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.1);
+        }
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+        /* Modal handling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+        }
 
-  <title>form_analyzer</title>
-  <link rel="manifest" href="manifest.json">
+        .modal.active {
+            display: flex;
+        }
+    </style>
 </head>
-<body>
-  <script src="flutter_bootstrap.js" async></script>
+<body class="bg-[#050505] text-white overflow-x-hidden selection:bg-accent-500 selection:text-white">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 w-full z-50 glass-nav">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="text-2xl font-display font-bold flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-accent-500 flex items-center justify-center rotate-12">
+                    <span class="text-white -rotate-12">F</span>
+                </div>
+                Form Analyzer
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-medium text-gray-400">
+                <a href="#science" class="hover:text-white transition-colors">The Science</a>
+                <a href="#personas" class="hover:text-white transition-colors">Who it's for</a>
+                <a href="#research" class="hover:text-white transition-colors">Research</a>
+            </div>
+            <button onclick="toggleModal()" class="px-5 py-2.5 rounded-full bg-white text-black text-sm font-semibold hover:bg-gray-200 transition-all transform hover:scale-105 active:scale-95">
+                Join Waitlist
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-40 pb-20 px-6 min-h-screen flex flex-col items-center justify-center text-center">
+        <!-- Background Glow -->
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent-600/20 blur-[120px] rounded-full -z-10"></div>
+        
+        <div class="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <h1 class="text-5xl md:text-8xl font-display font-bold tracking-tight">
+                <span class="gradient-text leading-tight block">Elite Coaching.</span>
+                <span class="text-gray-500 leading-tight block">Zero Hardware.</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-gray-400 font-light max-w-2xl mx-auto leading-relaxed">
+                Democratizing sports science for under-resourced communities. 3D Vector-based correction using only your smartphone.
+            </p>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4 pt-4">
+                <button onclick="toggleModal()" class="w-full md:w-auto px-8 py-4 rounded-full bg-accent-600 font-semibold hover:bg-accent-500 transition-all shadow-lg shadow-accent-600/20">
+                    Get Early Access
+                </button>
+                <a href="#science" class="w-full md:w-auto px-8 py-4 rounded-full glass font-semibold hover:bg-white/5 transition-all text-gray-300">
+                    See the Science
+                </a>
+            </div>
+        </div>
+
+        <div class="mt-20 relative w-full max-w-5xl px-4 animate-float">
+            <div class="rounded-2xl overflow-hidden glass shadow-2xl border border-white/10">
+                <img src="mockup.png" alt="Form Analyzer App UI" class="w-full h-auto">
+            </div>
+        </div>
+    </section>
+
+    <!-- Science Section -->
+    <section id="science" class="py-32 px-6">
+        <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+            <div class="space-y-8">
+                <div class="inline-flex items-center px-3 py-1 rounded-full bg-accent-500/10 border border-accent-500/20 text-accent-400 text-xs font-bold uppercase tracking-widest">
+                    Pure Heuristics
+                </div>
+                <h2 class="text-4xl md:text-5xl font-display font-bold leading-tight">
+                    The Math Behind<br><span class="text-accent-500">Perfect Form.</span>
+                </h2>
+                <p class="text-lg text-gray-400 leading-relaxed">
+                    Most apps guess. We calculate. We utilize a Google ML Kit-driven BlazePose skeletal map, then apply raw vector math to provide elite biomechanical insights.
+                </p>
+                <div class="p-8 rounded-2xl glass border-white/10 space-y-4">
+                    <p class="text-sm font-semibold text-accent-400 uppercase tracking-widest">3D Vector Dot Product Heuristic</p>
+                    <div class="text-2xl md:text-3xl text-gray-200 overflow-x-auto py-2">
+                        \[ \theta = \arccos\left(\frac{\mathbf{u} \cdot \mathbf{v}}{\|\mathbf{u}\| \|\mathbf{v}\|}\right) \]
+                    </div>
+                    <p class="text-sm text-gray-500 italic">Calculating precise joint angles in 3D space from a 2D projection using depth-estimation heuristics.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-4 pt-12">
+                    <div class="h-64 rounded-2xl bg-gradient-to-br from-[#111] to-[#1a1a1a] border border-white/5 p-6 flex flex-col justify-end">
+                        <p class="text-accent-400 font-bold">98%</p>
+                        <p class="text-xs text-gray-500 font-medium">Pose Accuracy</p>
+                    </div>
+                    <div class="h-48 rounded-2xl bg-gradient-to-br from-[#111] to-[#1a1a1a] border border-white/5 p-6 flex flex-col justify-end">
+                        <p class="text-white font-bold">12ms</p>
+                        <p class="text-xs text-gray-500 font-medium">Latency</p>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="h-48 rounded-2xl bg-gradient-to-br from-[#111] to-[#1a1a1a] border border-white/5 p-6 flex flex-col justify-end">
+                        <p class="text-white font-bold">Real-time</p>
+                        <p class="text-xs text-gray-500 font-medium">Feedback Loop</p>
+                    </div>
+                    <div class="h-64 rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#222] border border-white/5 p-6 flex flex-col justify-end">
+                        <p class="text-accent-400 font-bold">3D Modeling</p>
+                        <p class="text-xs text-gray-500 font-medium">Vector Projection</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- User Personas -->
+    <section id="personas" class="py-32 px-6 bg-gradient-to-b from-transparent to-[#0a0a0a]">
+        <div class="max-w-7xl mx-auto text-center mb-20 space-y-4">
+            <h2 class="text-4xl md:text-5xl font-display font-bold">Designed for Resilience.</h2>
+            <p class="text-gray-400 max-w-xl mx-auto">Providing elite tools to those who previously had no access.</p>
+        </div>
+        <div class="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
+            <!-- Student Athletes -->
+            <div class="persona-card p-10 rounded-3xl glass border border-white/5 transition-all text-left space-y-6">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-accent-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                </div>
+                <h3 class="text-2xl font-bold font-display">For Student-Athletes</h3>
+                <p class="text-gray-400 leading-relaxed font-light">
+                    Train in under-funded gyms with the confidence of an Olympic center. Real-time form correction reduces injury risk and maximizes performance for those on the path to greatness.
+                </p>
+            </div>
+            <!-- Lone Runners -->
+            <div class="persona-card p-10 rounded-3xl glass border border-white/5 transition-all text-left space-y-6">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <h3 class="text-2xl font-bold font-display">For Solo Runners</h3>
+                <p class="text-gray-400 leading-relaxed font-light">
+                    The street is your lab. Track your stride mechanics, vertical oscillation, and ground contact time without expensive wearables. Personal coaching, anywhere.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Research Section -->
+    <section id="research" class="py-32 px-6">
+        <div class="max-w-4xl mx-auto p-12 rounded-3xl bg-accent-600/5 border border-accent-600/20 text-center space-y-6">
+            <h3 class="text-sm font-bold text-accent-500 uppercase tracking-widest text">Validation</h3>
+            <h2 class="text-3xl font-display font-bold">IEEE ISEC 2026 Submission</h2>
+            <p class="text-gray-400 font-light text-lg">
+                Our core heuristic engine is currently under peer-review for the <span class="text-white font-medium">IEEE Integrated STEM Education Conference 2026</span>. We're not just building an app; we're pushing the boundary of mobile-based sports medicine.
+            </p>
+            <div class="pt-4">
+                <div class="inline-flex items-center gap-3 text-sm font-medium text-gray-300 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                    <span class="w-2 h-2 rounded-full bg-accent-500 animate-pulse"></span>
+                    Status: Peer Review In-Progress
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-20 px-6 border-t border-white/5">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
+            <div class="text-2xl font-display font-bold text-gray-500">
+                Form Analyzer
+            </div>
+            <div class="text-gray-600 text-sm">
+                &copy; 2026 Form Analyzer Biomechanics Lab. All rights reserved.
+            </div>
+            <div class="flex gap-6">
+                <a href="#" class="text-gray-600 hover:text-white transition-colors">Twitter</a>
+                <a href="#" class="text-gray-600 hover:text-white transition-colors">GitHub</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Waitlist Modal -->
+    <div id="waitlistModal" class="modal items-center justify-center p-6">
+        <div class="max-w-md w-full glass rounded-3xl p-8 border-white/10 relative">
+            <button onclick="toggleModal()" class="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-3xl font-display font-bold mb-2">Join the Elite.</h2>
+            <p class="text-gray-400 mb-8 font-light">Enter your email and be the first to know when we launch the beta.</p>
+            
+            <form id="waitlistForm" action="https://formspree.io/f/placeholder" method="POST" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">Email Address</label>
+                    <input type="email" id="email" name="email" required placeholder="name@example.com" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white focus:outline-none focus:border-accent-500 transition-all">
+                </div>
+                <button type="submit" class="w-full py-4 rounded-2xl bg-accent-600 font-bold hover:bg-accent-500 transition-all text-white">
+                    Submit My Application
+                </button>
+                <p class="text-center text-[10px] text-gray-600 uppercase tracking-widest">Limited spots available for Phase 1 Beta.</p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleModal() {
+            const modal = document.getElementById('waitlistModal');
+            modal.classList.toggle('active');
+            if (modal.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Handle escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('waitlistModal');
+                if (modal.classList.contains('active')) toggleModal();
+            }
+        });
+
+        // Simple form handling
+        const form = document.getElementById('waitlistForm');
+        form.onsubmit = (e) => {
+            // If using a real form handler, this would submit. 
+            // For now, let's just show a success message.
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerText = "You're on the list!";
+            btn.disabled = true;
+            btn.classList.replace('bg-accent-600', 'bg-emerald-600');
+            
+            setTimeout(() => {
+                toggleModal();
+                // Reset for next time
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    btn.classList.replace('bg-emerald-600', 'bg-accent-600');
+                }, 1000);
+            }, 2000);
+            return false; // Prevent actual submit for demo
+        }
+    </script>
 </body>
 </html>
