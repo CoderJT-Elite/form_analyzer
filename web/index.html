@@ -460,7 +460,16 @@
 
         // Form Submission — Google Form POST via hidden iframe
         const form = document.getElementById('waitlistForm');
-        form.onsubmit = (e) => {
+        const iframe = document.querySelector('iframe[name="hidden_iframe"]');
+        let iframeReady = false;
+
+        // First load of the iframe is the blank initial state; mark it as ready after that.
+        iframe.addEventListener('load', function onFirstLoad() {
+            iframeReady = true;
+            iframe.removeEventListener('load', onFirstLoad);
+        });
+
+        form.onsubmit = () => {
             const btn = form.querySelector('button[type="submit"]');
             const originalText = btn.innerText;
 
@@ -468,8 +477,23 @@
             btn.disabled = true;
 
             // The form POSTs to Google Forms; the hidden iframe absorbs the redirect.
-            // Show success feedback after a short delay.
-            setTimeout(() => {
+            // Listen for the iframe reload (Google's "Thank you" confirmation page) to
+            // confirm delivery, with a 10-second fallback that resets the button.
+            let confirmed = false;
+            const fallback = setTimeout(() => {
+                if (!confirmed) {
+                    btn.innerText = "Check your inbox.";
+                    btn.disabled = false;
+                    iframe.removeEventListener('load', onConfirm);
+                    setTimeout(() => { btn.innerText = originalText; }, 3000);
+                }
+            }, 10000);
+
+            function onConfirm() {
+                if (!iframeReady) { iframeReady = true; return; }
+                confirmed = true;
+                clearTimeout(fallback);
+                iframe.removeEventListener('load', onConfirm);
                 btn.innerText = "Applied Successfully.";
                 btn.classList.add('!bg-emerald-600');
                 setTimeout(() => {
@@ -481,7 +505,8 @@
                         btn.classList.remove('!bg-emerald-600');
                     }, 1000);
                 }, 1500);
-            }, 1000);
+            }
+            iframe.addEventListener('load', onConfirm);
         };
 
         // Production Beta Counter Logic
