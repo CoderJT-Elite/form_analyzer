@@ -141,6 +141,7 @@
                 <a href="#engine" class="hover:text-white transition-all">The Engine</a>
                 <a href="#demo" class="hover:text-white transition-all">Live Scan</a>
                 <a href="#impact" class="hover:text-white transition-all">Impact</a>
+                <a href="#validation" class="hover:text-white transition-all">Validation</a>
                 <a href="#research" class="hover:text-white transition-all">Research</a>
             </div>
 
@@ -314,6 +315,61 @@
         </div>
     </section>
 
+    <!-- Technical Validation Section -->
+    <section id="validation" class="py-32 px-6 relative overflow-hidden">
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[50vh] bg-cyan-500/5 blur-[140px] rounded-full -z-10"></div>
+
+        <div class="max-w-5xl mx-auto reveal">
+            <!-- High-visibility card -->
+            <div class="rounded-[3rem] border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent p-12 md:p-16 relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-72 h-72 bg-cyan-500/15 blur-[90px] rounded-full pointer-events-none"></div>
+
+                <!-- Badge -->
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[9px] font-black uppercase tracking-[3px] mb-10">
+                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                    </svg>
+                    Academic Recognition
+                </div>
+
+                <h2 class="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6 leading-tight">
+                    Scientifically <br><span class="text-cyan-500">Validated Depth.</span>
+                </h2>
+
+                <p class="text-xl text-gray-400 leading-relaxed font-light max-w-3xl mb-12">
+                    Our joint-angle modeling and real-time inference methods have been recognized for their technical depth by academic leads at the <span class="text-white font-medium">BYU Data-Driven Engineering Lab.</span>
+                </p>
+
+                <!-- 3D Vector Dot Product formula code block -->
+                <div class="code-window rounded-[1.5rem] overflow-hidden">
+                    <div class="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                        <div class="flex gap-2">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-800"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-800"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-800"></div>
+                        </div>
+                        <span class="text-[9px] font-mono text-gray-600 uppercase tracking-widest">joint_angle.py &bull; 3D Vector Dot Product</span>
+                    </div>
+                    <div class="p-8 md:p-10 overflow-x-auto">
+                        <code class="font-mono text-sm md:text-base leading-loose block selection:bg-cyan-500/40 whitespace-pre">
+<span class="text-gray-500"># 3D Vector Dot Product — Joint Angle Calculation</span>
+<span class="text-gray-500"># θ = arccos( (u · v) / (|u| × |v|) )</span>
+
+<span class="text-cyan-500">import</span> <span class="text-white">numpy as np</span>
+
+<span class="text-purple-400">def</span> <span class="text-cyan-400">joint_angle</span><span class="text-white">(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:</span>
+    <span class="text-gray-500">"""Compute the angle (degrees) at joint B between limb segments BA and BC."""</span>
+    u <span class="text-white">=</span> a <span class="text-white">-</span> b  <span class="text-gray-500"># vector B → A</span>
+    v <span class="text-white">=</span> c <span class="text-white">-</span> b  <span class="text-gray-500"># vector B → C</span>
+    cos_theta <span class="text-white">=</span> <span class="text-cyan-500">np.dot</span><span class="text-white">(u, v)</span> / <span class="text-white">(</span><span class="text-cyan-500">np.linalg.norm</span><span class="text-white">(u)</span> * <span class="text-cyan-500">np.linalg.norm</span><span class="text-white">(v))</span>
+    <span class="text-purple-400">return</span> <span class="text-cyan-500">np.degrees</span><span class="text-white">(</span><span class="text-cyan-500">np.arccos</span><span class="text-white">(</span><span class="text-cyan-500">np.clip</span><span class="text-white">(cos_theta,</span> <span class="text-amber-400">-1.0</span><span class="text-white">,</span> <span class="text-amber-400">1.0</span><span class="text-white">)))</span>
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Research Footer -->
     <section id="research" class="py-32 px-6 border-t border-white/5 bg-[#030303]">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-20">
@@ -343,17 +399,19 @@
             <h2 class="text-5xl font-extrabold tracking-tighter mb-4">Secure Your Spot.</h2>
             <p class="text-gray-400 mb-10 font-light text-xl leading-relaxed">Apply for the early-access beta and help us democratize sports science.</p>
             
-            <!-- PRODUCTION READY FORM WITH FORMSPREE -->
-            <form id="waitlistForm" action="https://formspree.io/f/mvzwveen" method="POST" class="space-y-8">
+            <!-- GOOGLE FORM POST — replace FORM_ID and entry.XXXXXXXXXX with your form's values -->
+            <form id="waitlistForm" action="https://docs.google.com/forms/d/e/1FAIpQLSc8v_PLACEHOLDER_FORM_ID/formResponse" method="POST" target="hidden_iframe" class="space-y-8">
                 <div class="space-y-3">
                     <label class="block ml-1 text-[11px] font-black text-gray-600 uppercase tracking-[4px]">Verified Email</label>
-                    <input type="email" name="email" required placeholder="athlete@domain.com" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
+                    <input type="email" name="entry.1045781291" required placeholder="athlete@domain.com" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
                 </div>
                 <button type="submit" class="w-full py-6 rounded-3xl bg-cyan-500 text-white font-black text-xs uppercase tracking-[4px] hover:bg-cyan-400 transition-all shadow-stone-900 shadow-2xl active:scale-[0.98]">
                     Reserve Access &rarr;
                 </button>
                 <p class="text-center text-[9px] text-gray-500 uppercase tracking-[3px] font-bold">Encrypted &bull; No Tracking &bull; Strictly Private</p>
             </form>
+            <!-- Hidden iframe absorbs the Google Forms redirect -->
+            <iframe name="hidden_iframe" class="hidden" aria-hidden="true"></iframe>
         </div>
     </div>
 
@@ -400,53 +458,31 @@
             if (e.key === 'Escape') closeModal();
         });
 
-        // Form Submission with Formspree
+        // Form Submission — Google Form POST via hidden iframe
         const form = document.getElementById('waitlistForm');
-        form.onsubmit = async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button');
+        form.onsubmit = (e) => {
+            const btn = form.querySelector('button[type="submit"]');
             const originalText = btn.innerText;
-            
-            // UI Feedback
+
             btn.innerText = "Sending...";
             btn.disabled = true;
 
-            const data = new FormData(form);
-            
-            try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    body: data,
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    btn.innerText = "Applied Successfully.";
-                    btn.classList.add('!bg-emerald-600');
-                    setTimeout(() => {
-                        closeModal();
-                        form.reset();
-                        setTimeout(() => {
-                            btn.innerText = originalText;
-                            btn.disabled = false;
-                            btn.classList.remove('!bg-emerald-600');
-                        }, 1000);
-                    }, 1500);
-                } else {
-                    throw new Error('Submission failed');
-                }
-            } catch (error) {
-                btn.innerText = "Error. Try again.";
-                btn.classList.add('!bg-red-600');
+            // The form POSTs to Google Forms; the hidden iframe absorbs the redirect.
+            // Show success feedback after a short delay.
+            setTimeout(() => {
+                btn.innerText = "Applied Successfully.";
+                btn.classList.add('!bg-emerald-600');
                 setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                    btn.classList.remove('!bg-red-600');
-                }, 2000);
-            }
-        }
+                    closeModal();
+                    form.reset();
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                        btn.classList.remove('!bg-emerald-600');
+                    }, 1000);
+                }, 1500);
+            }, 1000);
+        };
 
         // Production Beta Counter Logic
         function updateBetaCounter() {
