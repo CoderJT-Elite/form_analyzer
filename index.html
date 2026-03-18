@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FormAnalyzer | Coaching for the Next Generation</title>
+    <meta name="description" content="Hardware-agnostic, edge-AI powered biomechanics for elite performance and injury prevention.">
+    
+    <!-- Design Tokens & Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            cyan: '#06b6d4', // cyan-500
+                            dark: '#050505',
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #050505;
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-cyan {
+            background: rgba(6, 182, 212, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(6, 182, 212, 0.1);
+        }
+
+        .cyan-glow {
+            box-shadow: 0 0 40px -10px rgba(6, 182, 212, 0.2);
+        }
+
+        .cyan-text-glow {
+            text-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+
+        .floating-ui {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .code-window {
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .modal-blur {
+            backdrop-filter: blur(12px);
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .btn-pill {
+            @apply px-6 py-2.5 rounded-full font-semibold transition-all duration-300 active:scale-95;
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <!-- Sticky Glass Navigation -->
+    <nav class="fixed top-0 left-0 w-full z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between glass h-16 px-8 rounded-full">
+            <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-cyan-500 cyan-glow"></div>
+                <span class="text-xl font-bold tracking-tight">FormAnalyzer</span>
+            </div>
+            
+            <div class="hidden md:flex gap-8 text-sm font-medium text-gray-400">
+                <a href="#engine" class="hover:text-white transition-colors">The Engine</a>
+                <a href="#impact" class="hover:text-white transition-colors">Social Impact</a>
+                <a href="#research" class="hover:text-white transition-colors">Research</a>
+            </div>
+
+            <button onclick="openModal()" class="px-6 py-2.5 rounded-full bg-white text-black text-sm font-bold hover:bg-gray-200 transition-all active:scale-95">
+                Get Beta Access
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-48 pb-32 px-6 overflow-hidden min-h-screen flex flex-col items-center">
+        <!-- Background Accents -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-cyan-500/10 blur-[120px] rounded-full -z-10"></div>
+        
+        <div class="max-w-4xl mx-auto text-center space-y-8">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase tracking-[2px]">
+                Edge-AI Powered &bull; Hardware-Agnostic
+            </div>
+            
+            <h1 class="text-6xl md:text-8xl font-bold tracking-tighter leading-[1.1]">
+                Coaching for the <br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-500">Next Generation.</span>
+            </h1>
+            
+            <p class="text-xl md:text-2xl text-gray-400 font-light max-w-2xl mx-auto leading-relaxed">
+                Elite-level biomechanics correction delivered through your smartphone. Democratizing sports science for every athlete, everywhere.
+            </p>
+            
+            <div class="pt-6">
+                <button onclick="openModal()" class="px-10 py-5 rounded-full bg-cyan-500 text-white font-bold text-lg hover:bg-cyan-400 transition-all shadow-2xl shadow-cyan-500/20 active:scale-95">
+                    Secure My Spot
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-24 relative w-full max-w-5xl floating-ui">
+            <div class="rounded-3xl overflow-hidden glass p-2 border border-white/10 cyan-glow">
+                <img src="mockup.png" alt="Form Analyzer Floating UI" class="w-full h-auto rounded-3xl shadow-2xl">
+                <!-- Floating Labels Simulation if Image wasn't perfect -->
+                <div class="absolute top-1/4 left-8 glass px-4 py-2 rounded-xl text-cyan-400 font-mono text-xs border border-cyan-500/30">
+                    KNEE ANGLE: 112.4°
+                </div>
+                <div class="absolute bottom-1/4 right-8 glass px-4 py-2 rounded-xl text-emerald-400 font-mono text-xs border border-emerald-500/30">
+                    DEPTH: OPTIMAL
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- The Engine (Technical Spike) -->
+    <section id="engine" class="py-32 px-6 bg-brand-dark overflow-hidden">
+        <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-24 items-center">
+            <div class="space-y-8">
+                <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-500 border border-cyan-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path></svg>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-bold tracking-tight">3D Rotation<br><span class="text-cyan-500 uppercase text-sm tracking-[5px]">Invariance</span></h2>
+                <p class="text-lg text-gray-400 leading-relaxed font-light">
+                    Our heuristics Engine utilizes dot-product normalization to ensure accuracy regardless of camera angle. By calculating relative joint vectors in 3D projective space, we deliver lab-grade accuracy directly to the edge.
+                </p>
+                <div class="flex gap-4">
+                    <div class="p-6 rounded-3xl glass-cyan border-cyan-500/10 flex-1">
+                        <div class="text-3xl font-bold text-white mb-1">98.2%</div>
+                        <div class="text-xs text-cyan-500 font-bold uppercase tracking-widest leading-loose">Pose Accuracy</div>
+                    </div>
+                    <div class="p-6 rounded-3xl glass-cyan border-cyan-500/10 flex-1">
+                        <div class="text-3xl font-bold text-white mb-1">&lt; 15ms</div>
+                        <div class="text-xs text-cyan-500 font-bold uppercase tracking-widest leading-loose">Latent Frame Delay</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="relative group">
+                <div class="absolute -inset-4 bg-cyan-500/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                <div class="code-window p-8 relative">
+                    <div class="flex gap-2 mb-6">
+                        <div class="w-3 h-3 rounded-full bg-red-500/40"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500/40"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500/40"></div>
+                    </div>
+                    <code class="font-mono text-sm leading-8 text-cyan-300">
+                        <span class="text-purple-400">float</span> calculateAngle(Vector3 u, Vector3 v) {<br>
+                        &nbsp;&nbsp;<span class="text-gray-500">// Normalize for rotation invariance</span><br>
+                        &nbsp;&nbsp;<span class="text-purple-400">float</span> dot_prod = dot(u, v);<br>
+                        &nbsp;&nbsp;<span class="text-purple-400">float</span> theta = acos(dot_prod / (length(u) * length(v)));<br>
+                        &nbsp;&nbsp;<span class="text-orange-400">return</span> theta * (<span class="text-cyan-500">180.0</span> / PI);<br>
+                        }
+                    </code>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Impact -->
+    <section id="impact" class="py-32 px-6 bg-gradient-to-b from-brand-dark to-[#080808]">
+        <div class="max-w-7xl mx-auto space-y-20">
+            <div class="text-center space-y-4">
+                <h2 class="text-4xl md:text-5xl font-bold">Built for Resilience.</h2>
+                <p class="text-gray-500 max-w-lg mx-auto font-light">Leveraging high-end tech to bridge the gap in athletic coaching.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Under-resourced Athletes -->
+                <div class="p-12 rounded-[2.5rem] glass border border-white/5 space-y-8 hover:bg-white/[0.04] transition-colors group">
+                    <div class="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-cyan-500/10 transition-colors">
+                        <svg class="w-8 h-8 text-white group-hover:text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    </div>
+                    <h3 class="text-3xl font-bold font-sans">Student-Athletes</h3>
+                    <p class="text-gray-400 leading-relaxed font-light text-lg">
+                        Empowering athletes in under-resourced communities who lack access to professional strength and conditioning staff. Lab-grade feedback on your terms, for your goals.
+                    </p>
+                </div>
+                
+                <!-- Injury Prevention -->
+                <div class="p-12 rounded-[2.5rem] glass border border-white/5 space-y-8 hover:bg-white/[0.04] transition-colors group text-left">
+                    <div class="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-emerald-500/10 transition-colors">
+                        <svg class="w-8 h-8 text-white group-hover:text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <h3 class="text-3xl font-bold font-sans">Amateur Runners</h3>
+                    <p class="text-gray-400 leading-relaxed font-light text-lg">
+                        Reducing long-term stress injuries through precise gait and form analysis. Move efficient, stay active longer, and reach your peak without the elite price tag.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Research Footer -->
+    <section id="research" class="py-24 px-6 border-t border-white/5">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 text-center md:text-left">
+            <div class="space-y-4">
+                <div class="text-gray-500 text-xs font-bold uppercase tracking-[4px]">Validation & IP</div>
+                <div class="flex flex-wrap items-center justify-center md:justify-start gap-8 opacity-40 grayscale group hover:grayscale-0 transition-all duration-700">
+                    <p class="text-xl font-bold">IEEE ISEC 2026</p>
+                    <p class="text-xl font-bold italic">Provisional Patent Pending</p>
+                </div>
+            </div>
+            
+            <div class="text-right flex flex-col items-center md:items-end gap-2">
+                <div class="text-2xl font-bold text-gray-500 tracking-tighter">FormAnalyzer</div>
+                <p class="text-gray-600 text-[10px] uppercase tracking-widest font-bold">© 2026 PROACTIVE BIOMECHANICS LAB</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Waitlist Modal -->
+    <div id="waitlistModal" class="fixed inset-0 z-[100] modal-blur items-center justify-center hidden p-6">
+        <div class="max-w-md w-full glass rounded-[2.5rem] p-10 border-white/10 relative transition-all duration-500 scale-95 opacity-0" id="modalContent">
+            <button onclick="closeModal()" class="absolute top-8 right-8 text-gray-500 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h2 class="text-4xl font-bold tracking-tight mb-4">Secure My Spot.</h2>
+            <p class="text-gray-400 mb-8 font-light text-lg">Join the beta cohort for elite biomechanics. Limited spots available.</p>
+            
+            <!-- Google Form POST Action Placeholder -->
+            <form id="waitlistForm" action="https://docs.google.com/forms/d/e/FILL_YOUR_FORM_ID/formResponse" method="POST" class="space-y-6">
+                <div class="space-y-2">
+                    <label for="email" class="block ml-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Email Address</label>
+                    <input type="email" id="email" name="entry.FILL_YOUR_ENTRY_ID" required placeholder="athlete@nexus.com" class="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-lg text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-4 focus:ring-cyan-500/5">
+                </div>
+                <button type="submit" class="w-full py-5 rounded-3xl bg-cyan-500 text-white font-bold text-xl hover:bg-cyan-400 transition-all shadow-2xl shadow-cyan-500/20 active:scale-95">
+                    Reserve Appointment
+                </button>
+                <div class="flex items-center justify-center gap-2 pt-2">
+                    <span class="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></span>
+                    <span class="text-[10px] text-gray-500 uppercase tracking-[2px] font-bold">Active Beta Application</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const modal = document.getElementById('waitlistModal');
+        const content = document.getElementById('modalContent');
+
+        function openModal() {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+            document.body.style.overflow = 'auto';
+        }
+
+        // Handle Escape Key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Form Success Handling
+        const form = document.getElementById('waitlistForm');
+        form.onsubmit = (e) => {
+            // Success demo logic
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerText = "Reserved Successfully.";
+            btn.disabled = true;
+            btn.classList.replace('bg-cyan-500', 'bg-emerald-600');
+            
+            setTimeout(() => {
+                closeModal();
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    btn.classList.replace('bg-emerald-600', 'bg-cyan-500');
+                }, 1000);
+            }, 1500);
+            return false; // Prevent actual redirect for demo
+        }
+    </script>
+</body>
+</html>
