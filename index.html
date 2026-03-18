@@ -341,7 +341,7 @@
             <p class="text-gray-400 mb-10 font-light text-xl leading-relaxed">Apply for the early-access beta and help us democratize sports science.</p>
             
             <!-- PRODUCTION READY FORM WITH FORMSPREE -->
-            <form id="waitlistForm" action="https://formspree.io/f/YOUR_ID_HERE" method="POST" class="space-y-8">
+            <form id="waitlistForm" action="https://formspree.io/f/mvzwveen" method="POST" class="space-y-8">
                 <div class="space-y-3">
                     <label class="block ml-1 text-[11px] font-black text-gray-600 uppercase tracking-[4px]">Verified Email</label>
                     <input type="email" name="email" required placeholder="athlete@domain.com" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
@@ -397,24 +397,52 @@
             if (e.key === 'Escape') closeModal();
         });
 
-        // Demo Form Success
+        // Form Submission with Formspree
         const form = document.getElementById('waitlistForm');
-        form.onsubmit = (e) => {
+        form.onsubmit = async (e) => {
+            e.preventDefault();
             const btn = e.target.querySelector('button');
             const originalText = btn.innerText;
-            btn.innerText = "Application Sent.";
-            btn.disabled = true;
-            btn.classList.add('!bg-emerald-600');
             
-            setTimeout(() => {
-                closeModal();
+            // UI Feedback
+            btn.innerText = "Sending...";
+            btn.disabled = true;
+
+            const data = new FormData(form);
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: data,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    btn.innerText = "Applied Successfully.";
+                    btn.classList.add('!bg-emerald-600');
+                    setTimeout(() => {
+                        closeModal();
+                        form.reset();
+                        setTimeout(() => {
+                            btn.innerText = originalText;
+                            btn.disabled = false;
+                            btn.classList.remove('!bg-emerald-600');
+                        }, 1000);
+                    }, 1500);
+                } else {
+                    throw new Error('Submission failed');
+                }
+            } catch (error) {
+                btn.innerText = "Error. Try again.";
+                btn.classList.add('!bg-red-600');
                 setTimeout(() => {
                     btn.innerText = originalText;
                     btn.disabled = false;
-                    btn.classList.remove('!bg-emerald-600');
-                }, 1000);
-            }, 1500);
-            return false; // Demo mode
+                    btn.classList.remove('!bg-red-600');
+                }, 2000);
+            }
         }
     </script>
 </body>
