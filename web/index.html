@@ -44,6 +44,47 @@
             color: #ffffff;
             -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* Custom Cursor */
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #06b6d4;
+        }
+
+        .cursor-outline {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(6, 182, 212, 0.5);
+            transition: width 0.2s, height 0.2s;
+        }
+
+        body:hover .cursor-dot {
+            opacity: 1;
+        }
+
+        body:hover .cursor-outline {
+            opacity: 1;
+        }
+
+        a:hover ~ .cursor-outline,
+        button:hover ~ .cursor-outline {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(6, 182, 212, 0.1);
         }
 
         /* Ambient Grain Texture */
@@ -77,6 +118,7 @@
         .hero-title {
             background: linear-gradient(180deg, #fff 30%, rgba(255,255,255,0.4) 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -98,6 +140,17 @@
         .reveal.active {
             opacity: 1;
             transform: translateY(0);
+        }
+
+        .tilt-card {
+            transition: transform 0.1s ease;
+            transform-style: preserve-3d;
+            will-change: transform;
+        }
+
+        .magnetic-btn {
+            transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s, box-shadow 0.2s;
+            will-change: transform;
         }
 
         .scanning-line {
@@ -129,6 +182,9 @@
 </head>
 <body class="font-sans selection:bg-cyan-500/30">
 
+    <div class="cursor-dot"></div>
+    <div class="cursor-outline"></div>
+
     <!-- Sticky Navigation -->
     <nav class="fixed top-0 left-0 w-full z-50 p-6 md:p-8">
         <div class="max-w-7xl mx-auto flex items-center justify-between glass h-16 px-8 rounded-full border border-white/10">
@@ -138,14 +194,14 @@
             </div>
             
             <div class="hidden lg:flex gap-10 text-[11px] font-bold uppercase tracking-[2px] text-gray-400">
-                <a href="#engine" class="hover:text-white transition-all">The Engine</a>
-                <a href="#demo" class="hover:text-white transition-all">Live Scan</a>
-                <a href="#impact" class="hover:text-white transition-all">Impact</a>
-                <a href="#validation" class="hover:text-white transition-all">Validation</a>
-                <a href="#research" class="hover:text-white transition-all">Research</a>
+                <a href="#engine" class="hover:text-white transition-all magnetic-btn">The Engine</a>
+                <a href="#demo" class="hover:text-white transition-all magnetic-btn">Live Scan</a>
+                <a href="#impact" class="hover:text-white transition-all magnetic-btn">Impact</a>
+                <a href="#validation" class="hover:text-white transition-all magnetic-btn">Validation</a>
+                <a href="#research" class="hover:text-white transition-all magnetic-btn">Research</a>
             </div>
 
-            <button onclick="openModal()" class="px-6 py-2.5 rounded-full bg-white text-black text-[11px] font-extrabold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">
+            <button onclick="openModal()" class="magnetic-btn px-6 py-2.5 rounded-full bg-white text-black text-[11px] font-extrabold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">
                 Get Access
             </button>
         </div>
@@ -176,17 +232,17 @@
             </p>
             
             <div class="flex flex-col sm:flex-row items-center justify-center gap-6 pt-10">
-                <button onclick="openModal()" class="w-full sm:w-auto px-12 py-5 rounded-full bg-cyan-500 text-white font-black text-xs uppercase tracking-[3px] hover:bg-cyan-400 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all active:scale-95">
+                <button onclick="openModal()" class="magnetic-btn w-full sm:w-auto px-12 py-5 rounded-full bg-cyan-500 text-white font-black text-xs uppercase tracking-[3px] hover:bg-cyan-400 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all active:scale-95">
                     Start Your Beta
                 </button>
-                <a href="#demo" class="text-gray-400 text-[11px] font-bold uppercase tracking-[2px] hover:text-white transition-colors">
+                <a href="#demo" class="magnetic-btn text-gray-400 text-[11px] font-bold uppercase tracking-[2px] hover:text-white transition-colors">
                     Watch the engine &rarr;
                 </a>
             </div>
         </div>
 
-        <div class="mt-32 relative w-full max-w-6xl px-4 floating reveal pointer-events-none">
-            <div class="rounded-[3rem] overflow-hidden glass p-3 border border-white/10 shadow-2xl cyan-glow">
+        <div class="mt-32 relative w-full max-w-6xl px-4 floating reveal pointer-events-none tilt-card">
+            <div class="rounded-[3rem] overflow-hidden glass p-3 border border-white/10 shadow-2xl cyan-glow tilt-card">
                 <img src="mockup.png" alt="Form Analyzer UI" class="w-full h-auto rounded-[2.5rem] grayscale-[0.2] brightness-110">
                 
                 <!-- dynamic overlays -->
@@ -284,20 +340,20 @@
     <section id="impact" class="py-32 px-6">
         <div class="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2 grid sm:grid-cols-2 gap-8">
-                <div class="p-10 rounded-[3rem] glass-cyan reveal group cursor-default">
+                <div class="p-10 rounded-[3rem] glass-cyan reveal group cursor-default tilt-card">
                     <h3 class="text-2xl font-bold mb-4 group-hover:text-cyan-400 transition-colors tracking-tight">Student-Athletes</h3>
                     <p class="text-gray-400 font-light leading-relaxed">
                         Democratic access to coaching. For the high-schooler in an under-resourced weight room, we provide the Olympian's advantage.
                     </p>
                 </div>
-                <div class="p-10 rounded-[3rem] glass reveal delay-100 group cursor-default">
+                <div class="p-10 rounded-[3rem] glass reveal delay-100 group cursor-default tilt-card">
                     <h3 class="text-2xl font-bold mb-4 group-hover:text-emerald-400 transition-colors tracking-tight">Injury Prevention</h3>
                     <p class="text-gray-400 font-light leading-relaxed">
                         Identify chronic stress patterns in your gait before they become sidelined seasons. Move longer, move better.
                     </p>
                 </div>
             </div>
-            <div class="p-10 rounded-[3rem] bg-cyan-600/5 border border-cyan-500/20 reveal flex flex-col justify-between">
+            <div class="p-10 rounded-[3rem] bg-cyan-600/5 border border-cyan-500/20 reveal flex flex-col justify-between tilt-card">
                 <div>
                     <div class="text-[10px] font-black uppercase text-cyan-500 tracking-[3px] mb-4">Beta Roadmap</div>
                     <h3 class="text-4xl font-extrabold tracking-tighter mb-6">Phase 1 <br>Live Now.</h3>
@@ -535,6 +591,60 @@
 
         setInterval(updateBetaCounter, 15000); // Check/Update every 15s
         updateBetaCounter(); // Initial call
+        
+        // 3D Tilt Effect
+        document.querySelectorAll('.tilt-card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = ((y - centerY) / centerY) * -8;
+                const rotateY = ((x - centerX) / centerX) * 8;
+                
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+                setTimeout(() => {
+                    card.style.transition = 'transform 0.1s ease';
+                }, 300);
+            });
+            card.addEventListener('mouseenter', () => {
+                card.style.transition = 'none';
+            });
+        });
+
+        // Magnetic Buttons
+        document.querySelectorAll('.magnetic-btn').forEach(btn => {
+            btn.addEventListener('mousemove', (e) => {
+                const rect = btn.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                btn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = `translate(0px, 0px)`;
+            });
+        });
+
+        // Custom Cursor Logic
+        const cursorDot = document.querySelector('.cursor-dot');
+        const cursorOutline = document.querySelector('.cursor-outline');
+
+        window.addEventListener('mousemove', (e) => {
+            const posX = e.clientX;
+            const posY = e.clientY;
+
+            cursorDot.style.left = `${posX}px`;
+            cursorDot.style.top = `${posY}px`;
+
+            cursorOutline.animate({
+                left: `${posX}px`,
+                top: `${posY}px`
+            }, { duration: 500, fill: 'forwards' });
+        });
     </script>
 </body>
 </html>

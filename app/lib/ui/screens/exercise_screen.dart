@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
@@ -59,6 +60,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     _tts.init();
     widget.exercise.analyzer.onRep = (count) {
       if (mounted) {
+        if (count > _currentRepCount) {
+          HapticFeedback.heavyImpact();
+        }
         setState(() => _currentRepCount = count);
         _tts.speak("$count");
       }

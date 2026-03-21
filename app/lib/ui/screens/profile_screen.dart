@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
 import '../../models/exercise_model.dart';
@@ -16,6 +17,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final StorageService _storageService = StorageService();
   List<WorkoutSession>? _sessions;
   bool _isLoading = true;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -36,6 +38,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _handleRefresh() async {
+    HapticFeedback.mediumImpact();
+    setState(() => _isSyncing = true);
+    // Simulate secure network sync
+    await Future.delayed(const Duration(milliseconds: 1800));
+    await _loadData();
+    setState(() => _isSyncing = false);
+    HapticFeedback.lightImpact();
+  }
+
   int get _totalReps =>
       _sessions?.fold<int>(0, (s, e) => s + e.totalReps) ?? 0;
   int get _totalSessions => _sessions?.length ?? 0;
@@ -52,8 +64,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        backgroundColor: AppColors.surface,
+        color: AppColors.accentCyan,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
           SliverAppBar(
             expandedHeight: 140,
             pinned: true,
@@ -118,6 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -198,14 +216,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: AppColors.accentCyan.withValues(alpha: 0.2),
             ),
           ),
-          child: Text(
-            'BETA TESTER',
-            style: GoogleFonts.outfit(
-              color: AppColors.accentCyan,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isSyncing) ...[
+                const SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.accentCyan,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'SYNCING...',
+                  style: GoogleFonts.outfit(
+                    color: AppColors.accentCyan,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ] else
+                Text(
+                  'BETA TESTER',
+                  style: GoogleFonts.outfit(
+                    color: AppColors.accentCyan,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2,
+                  ),
+                ),
+            ],
           ),
         ),
       ],

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/app_colors.dart';
 
 /// A premium glassmorphic card used throughout the app.
@@ -52,7 +53,13 @@ class GlassContainer extends StatelessWidget {
     );
 
     if (onTap != null) {
-      return GestureDetector(onTap: onTap, child: content);
+      return GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap!();
+        },
+        child: content,
+      );
     }
     return content;
   }
