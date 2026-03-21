@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
-import '../../core/app_constants.dart';
 import '../../logic/exercise_analyzer.dart';
 import '../../models/exercise_model.dart';
 import '../../services/pose_detector_service.dart';
