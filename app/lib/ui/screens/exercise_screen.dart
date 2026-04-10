@@ -234,6 +234,24 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     });
   }
 
+  Future<void> _flipCamera() async {
+    _calibrationTimer?.cancel();
+    await _cameraController?.stopImageStream();
+    await _cameraController?.dispose();
+    _cameraController = null;
+
+    setState(() {
+      _isCameraInitialized = false;
+      _isCalibrated = false;
+      _calibrationCountdown = 3;
+      _lensDirection = _lensDirection == CameraLensDirection.back
+          ? CameraLensDirection.front
+          : CameraLensDirection.back;
+    });
+
+    await _initialize();
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -347,15 +365,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                 _GlassContainer(
                   padding: const EdgeInsets.all(12),
                   child: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _lensDirection =
-                            _lensDirection == CameraLensDirection.back
-                            ? CameraLensDirection.front
-                            : CameraLensDirection.back;
-                        _initialize();
-                      });
-                    },
+                    onPressed: _flipCamera,
                     icon: const Icon(
                       Icons.flip_camera_ios_rounded,
                       color: Colors.white,
@@ -492,8 +502,11 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Widget _buildError() {
-    return Center(
-      child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+      ),
     );
   }
 }

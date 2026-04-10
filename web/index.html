@@ -176,6 +176,13 @@
             box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
         }
 
+        /* Modal Backdrop */
+        .modal-blur {
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
         /* Hide Scrollbar */
         ::-webkit-scrollbar { display: none; }
     </style>
@@ -455,19 +462,17 @@
             <h2 class="text-5xl font-extrabold tracking-tighter mb-4">Secure Your Spot.</h2>
             <p class="text-gray-400 mb-10 font-light text-xl leading-relaxed">Apply for the early-access beta and help us democratize sports science.</p>
             
-            <!-- GOOGLE FORM POST — replace FORM_ID and entry.XXXXXXXXXX with your form's values -->
-            <form id="waitlistForm" action="https://docs.google.com/forms/d/e/1FAIpQLSc8v_PLACEHOLDER_FORM_ID/formResponse" method="POST" target="hidden_iframe" class="space-y-8">
+            <!-- PRODUCTION READY FORM WITH FORMSPREE -->
+            <form id="waitlistForm" action="https://formspree.io/f/mvzwveen" method="POST" class="space-y-8">
                 <div class="space-y-3">
                     <label class="block ml-1 text-[11px] font-black text-gray-600 uppercase tracking-[4px]">Verified Email</label>
-                    <input type="email" name="entry.1045781291" required placeholder="athlete@domain.com" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
+                    <input type="email" name="email" required placeholder="athlete@domain.com" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
                 </div>
                 <button type="submit" class="w-full py-6 rounded-3xl bg-cyan-500 text-white font-black text-xs uppercase tracking-[4px] hover:bg-cyan-400 transition-all shadow-stone-900 shadow-2xl active:scale-[0.98]">
                     Reserve Access &rarr;
                 </button>
                 <p class="text-center text-[9px] text-gray-500 uppercase tracking-[3px] font-bold">Encrypted &bull; No Tracking &bull; Strictly Private</p>
             </form>
-            <!-- Hidden iframe absorbs the Google Forms redirect -->
-            <iframe name="hidden_iframe" class="hidden" aria-hidden="true"></iframe>
         </div>
     </div>
 
@@ -514,56 +519,53 @@
             if (e.key === 'Escape') closeModal();
         });
 
-        // Form Submission — Google Form POST via hidden iframe
+        // Form Submission with Formspree
         const form = document.getElementById('waitlistForm');
-        const iframe = document.querySelector('iframe[name="hidden_iframe"]');
-        let iframeReady = false;
-
-        // First load of the iframe is the blank initial state; mark it as ready after that.
-        iframe.addEventListener('load', function onFirstLoad() {
-            iframeReady = true;
-            iframe.removeEventListener('load', onFirstLoad);
-        });
-
-        form.onsubmit = () => {
-            const btn = form.querySelector('button[type="submit"]');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
             const originalText = btn.innerText;
 
+            // UI Feedback
             btn.innerText = "Sending...";
             btn.disabled = true;
 
-            // The form POSTs to Google Forms; the hidden iframe absorbs the redirect.
-            // Listen for the iframe reload (Google's "Thank you" confirmation page) to
-            // confirm delivery, with a 10-second fallback that resets the button.
-            let confirmed = false;
-            const fallback = setTimeout(() => {
-                if (!confirmed) {
-                    btn.innerText = "Check your inbox.";
-                    btn.disabled = false;
-                    iframe.removeEventListener('load', onConfirm);
-                    setTimeout(() => { btn.innerText = originalText; }, 3000);
-                }
-            }, 10000);
+            const data = new FormData(form);
 
-            function onConfirm() {
-                if (!iframeReady) { iframeReady = true; return; }
-                confirmed = true;
-                clearTimeout(fallback);
-                iframe.removeEventListener('load', onConfirm);
-                btn.innerText = "Applied Successfully.";
-                btn.classList.add('!bg-emerald-600');
-                setTimeout(() => {
-                    closeModal();
-                    form.reset();
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: data,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    btn.innerText = "Applied Successfully.";
+                    btn.classList.add('!bg-emerald-600');
                     setTimeout(() => {
-                        btn.innerText = originalText;
-                        btn.disabled = false;
-                        btn.classList.remove('!bg-emerald-600');
-                    }, 1000);
-                }, 1500);
+                        closeModal();
+                        form.reset();
+                        setTimeout(() => {
+                            btn.innerText = originalText;
+                            btn.disabled = false;
+                            btn.classList.remove('!bg-emerald-600');
+                        }, 1000);
+                    }, 1500);
+                } else {
+                    throw new Error('Submission failed');
+                }
+            } catch (error) {
+                btn.innerText = "Error. Try again.";
+                btn.classList.add('!bg-red-600');
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    btn.classList.remove('!bg-red-600');
+                }, 2000);
             }
-            iframe.addEventListener('load', onConfirm);
-        };
+        }
 
         // Production Beta Counter Logic
         function updateBetaCounter() {
