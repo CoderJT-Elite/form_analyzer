@@ -1,7 +1,28 @@
 import 'package:flutter/material.dart';
 import '../logic/exercise_analyzer.dart';
 
-enum ExerciseType { squat, pushup, lunge, plank, overheadPress }
+enum ExerciseType {
+  squat,
+  pushup,
+  lunge,
+  plank,
+  overheadPress;
+
+  String get displayName {
+    switch (this) {
+      case ExerciseType.squat:
+        return 'Squats';
+      case ExerciseType.pushup:
+        return 'Push-Ups';
+      case ExerciseType.lunge:
+        return 'Lunges';
+      case ExerciseType.plank:
+        return 'Plank';
+      case ExerciseType.overheadPress:
+        return 'Overhead Press';
+    }
+  }
+}
 
 class Exercise {
   final String name;

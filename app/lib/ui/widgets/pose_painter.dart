@@ -1,4 +1,5 @@
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
@@ -124,7 +125,7 @@ class PosePainter extends CustomPainter {
     // isBusy guard: skip repaint while a new frame is being analyzed to
     // prevent frame stacking and maintain high-speed UI responsiveness.
     if (isBusy) return false;
-    return oldDelegate.poses != poses ||
+    return !listEquals(oldDelegate.poses, poses) ||
         oldDelegate.lastAngle != lastAngle ||
         oldDelegate.squatState != squatState;
   }

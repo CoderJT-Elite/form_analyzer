@@ -21,6 +21,21 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
   final List<WorkoutSession> _completedSessions = [];
   final StorageService _storage = StorageService();
 
+  IconData _exerciseIcon(ExerciseType type) {
+    switch (type) {
+      case ExerciseType.squat:
+        return Icons.fitness_center_rounded;
+      case ExerciseType.pushup:
+        return Icons.horizontal_rule_rounded;
+      case ExerciseType.lunge:
+        return Icons.directions_walk_rounded;
+      case ExerciseType.overheadPress:
+        return Icons.upload_rounded;
+      case ExerciseType.plank:
+        return Icons.view_headline_rounded;
+    }
+  }
+
   void _nextExercise() async {
     if (_currentIndex < widget.routine.exercises.length) {
       final type = widget.routine.exercises[_currentIndex];
@@ -232,7 +247,7 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      widget.routine.exercises[_currentIndex].name
+                      widget.routine.exercises[_currentIndex].displayName
                           .toUpperCase(),
                       style: GoogleFonts.outfit(
                         color: Colors.white,
@@ -247,19 +262,8 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                       child: GlassContainer(
                         padding: const EdgeInsets.all(40),
                         child: Icon(
-                          widget.routine.exercises[_currentIndex].name ==
-                                  'squat'
-                              ? Icons.fitness_center_rounded
-                              : widget.routine.exercises[_currentIndex].name ==
-                                    'pushup'
-                              ? Icons.horizontal_rule_rounded
-                              : widget.routine.exercises[_currentIndex].name ==
-                                    'lunge'
-                              ? Icons.directions_walk_rounded
-                              : widget.routine.exercises[_currentIndex].name ==
-                                    'overheadPress'
-                              ? Icons.upload_rounded
-                              : Icons.view_headline_rounded,
+                          _exerciseIcon(
+                              widget.routine.exercises[_currentIndex]),
                           color: AppColors.accentCyan,
                           size: 80,
                         ),
