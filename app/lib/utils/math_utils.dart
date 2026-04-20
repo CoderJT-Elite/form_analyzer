@@ -48,6 +48,15 @@ class SmoothedLandmark {
   final double likelihood;
 }
 
+/// Applies exponential moving average smoothing to a set of named landmarks.
+///
+/// Each landmark is identified by a string [key]. On every call to [smooth],
+/// the returned position is a weighted blend of the new raw value and the
+/// previous smoothed value.
+///
+/// [alpha] controls responsiveness: values closer to 1.0 follow the raw
+/// signal more tightly (less smoothing), while values closer to 0.0 produce
+/// a steadier but more lagged output. Defaults to [AppConstants.landmarkSmoothingAlpha].
 class LandmarkSmoother {
   LandmarkSmoother({this.alpha = AppConstants.landmarkSmoothingAlpha});
 
@@ -170,7 +179,9 @@ class MathUtils {
     return math.acos(cosine) * 180 / math.pi;
   }
 
-  /// Returns true when all Z values are finite and not effectively flat.
+  /// Returns true when all Z values are finite and not near zero.
+  /// 'Near zero' here means every Z coordinate is below [AppConstants.minMagnitude]
+  /// in absolute magnitude, indicating the depth channel contains no useful data.
   /// When this check fails, angle math falls back to 2D (x/y) to avoid
   /// noisy depth values from causing unstable joint angles.
   static bool _hasReliableZCoordinates({

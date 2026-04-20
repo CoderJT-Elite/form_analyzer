@@ -190,10 +190,10 @@ class SquatAnalyzer extends ExerciseAnalyzer {
 
       if (backAngle < AppConstants.squatBackAngleCritical) {
         addIssue('Critical Back Rounding');
-        notifySafetyAlert('Back Straight');
+        notifySafetyAlert('Straighten back now');
       } else if (backAngle < AppConstants.squatBackAngleMin) {
         addIssue('Rounded Back');
-        notifyCorrection('Back Straight');
+        notifyCorrection('Keep back straight');
       }
     }
 
@@ -318,10 +318,10 @@ class PushupAnalyzer extends ExerciseAnalyzer {
     final rightAngle =
         MathUtils.calculateJointAngle(rightShoulder, rightElbow, rightWrist);
 
-    final leftConf = (leftElbow?.likelihood ?? 0) + (leftWrist?.likelihood ?? 0);
-    final rightConf = (rightElbow?.likelihood ?? 0) + (rightWrist?.likelihood ?? 0);
+    final leftConfidence = (leftElbow?.likelihood ?? 0) + (leftWrist?.likelihood ?? 0);
+    final rightConfidence = (rightElbow?.likelihood ?? 0) + (rightWrist?.likelihood ?? 0);
 
-    final rawAngle = leftConf >= rightConf ? leftAngle : rightAngle;
+    final rawAngle = leftConfidence >= rightConfidence ? leftAngle : rightAngle;
     final currentAngle = _angleFilter.add(rawAngle);
     final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
     _prevAngle = currentAngle;
@@ -492,9 +492,9 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
       rightWristLandmark,
     );
 
-    final leftConf = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
-    final rightConf = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
-    final rawAngle = leftConf >= rightConf ? leftElbow : rightElbow;
+    final leftConfidence = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
+    final rightConfidence = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
+    final rawAngle = leftConfidence >= rightConfidence ? leftElbow : rightElbow;
 
     final currentAngle = _angleFilter.add(rawAngle);
     final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
