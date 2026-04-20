@@ -138,7 +138,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
   Future<void> _processImage(CameraImage image) async {
     if (_isProcessingFrame || !_isCameraInitialized) return;
-    // Process every Nth frame to reduce UI-isolate pressure.
+    // Process every Nth frame to reduce UI isolate pressure.
     _frameCounter++;
     if (_frameCounter % _frameSkipInterval != 0) return;
     _isProcessingFrame = true;
