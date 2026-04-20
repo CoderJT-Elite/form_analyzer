@@ -1,6 +1,9 @@
 import 'package:flutter_tts/flutter_tts.dart';
 
 class TTSService {
+  static const int _correctionThrottleMilliseconds = 900;
+  static const int _safetyThrottleMilliseconds = 1200;
+
   final FlutterTts _flutterTts = FlutterTts();
   bool isEnabled = true;
   String _lastSpokenMessage = '';
@@ -33,7 +36,7 @@ class TTSService {
   Future<void> speakCorrection(String message) async {
     if (!isEnabled) return;
     final now = DateTime.now();
-    if (now.difference(_lastCorrectionAt).inMilliseconds < 900) return;
+    if (now.difference(_lastCorrectionAt).inMilliseconds < _correctionThrottleMilliseconds) return;
     _lastCorrectionAt = now;
     _lastSpokenMessage = '';
     await _flutterTts.speak(message);
@@ -42,7 +45,7 @@ class TTSService {
   Future<void> speakSafety(String message) async {
     if (!isEnabled) return;
     final now = DateTime.now();
-    if (now.difference(_lastSafetyAt).inMilliseconds < 1200) return;
+    if (now.difference(_lastSafetyAt).inMilliseconds < _safetyThrottleMilliseconds) return;
     _lastSafetyAt = now;
     _lastSpokenMessage = '';
     await _flutterTts.speak(message);

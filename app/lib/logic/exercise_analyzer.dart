@@ -472,18 +472,27 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
 
   @override
   void processPose(Pose pose) {
+    final leftElbowLandmark = pose.landmarks[PoseLandmarkType.leftElbow];
+    final leftWristLandmark = pose.landmarks[PoseLandmarkType.leftWrist];
+    final rightElbowLandmark = pose.landmarks[PoseLandmarkType.rightElbow];
+    final rightWristLandmark = pose.landmarks[PoseLandmarkType.rightWrist];
+
     final leftElbow = MathUtils.calculateJointAngle(
       pose.landmarks[PoseLandmarkType.leftShoulder],
-      pose.landmarks[PoseLandmarkType.leftElbow],
-      pose.landmarks[PoseLandmarkType.leftWrist],
+      leftElbowLandmark,
+      leftWristLandmark,
     );
     final rightElbow = MathUtils.calculateJointAngle(
       pose.landmarks[PoseLandmarkType.rightShoulder],
-      pose.landmarks[PoseLandmarkType.rightElbow],
-      pose.landmarks[PoseLandmarkType.rightWrist],
+      rightElbowLandmark,
+      rightWristLandmark,
     );
 
-    final currentAngle = _angleFilter.add((leftElbow + rightElbow) / 2);
+    final leftConfidence = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
+    final rightConfidence = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
+    final rawAngle = leftConfidence >= rightConfidence ? leftElbow : rightElbow;
+
+    final currentAngle = _angleFilter.add(rawAngle);
     final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
     _prevAngle = currentAngle;
     lastProcessedAngle = currentAngle;

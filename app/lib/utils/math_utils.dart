@@ -151,12 +151,7 @@ class MathUtils {
     final v2y = cy - by;
     final v2z = cz - bz;
 
-    final hasReliableZ = az.isFinite &&
-        bz.isFinite &&
-        cz.isFinite &&
-        !(az.abs() < AppConstants.minMagnitude &&
-            bz.abs() < AppConstants.minMagnitude &&
-            cz.abs() < AppConstants.minMagnitude);
+    final hasReliableZ = _hasReliableZCoordinates(az: az, bz: bz, cz: cz);
 
     final mag1 = hasReliableZ
         ? math.sqrt((v1x * v1x) + (v1y * v1y) + (v1z * v1z))
@@ -173,5 +168,18 @@ class MathUtils {
         hasReliableZ ? (v1x * v2x) + (v1y * v2y) + (v1z * v2z) : (v1x * v2x) + (v1y * v2y);
     final cosine = (dotProduct / (mag1 * mag2)).clamp(-1.0, 1.0);
     return math.acos(cosine) * 180 / math.pi;
+  }
+
+  static bool _hasReliableZCoordinates({
+    required double az,
+    required double bz,
+    required double cz,
+  }) {
+    final allFinite = az.isFinite && bz.isFinite && cz.isFinite;
+    final effectivelyFlat =
+        az.abs() < AppConstants.minMagnitude &&
+        bz.abs() < AppConstants.minMagnitude &&
+        cz.abs() < AppConstants.minMagnitude;
+    return allFinite && !effectivelyFlat;
   }
 }
