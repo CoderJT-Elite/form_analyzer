@@ -1,7 +1,9 @@
 import 'package:flutter_tts/flutter_tts.dart';
 
 class TTSService {
-  // Tuned for typical rep cadence: fast corrective hints, slightly slower safety repeats.
+  // 900 ms is fast enough to cue the user mid-rep without interrupting the next
+  // frame's audio. 1200 ms for safety alerts gives the user a moment to react
+  // before the warning fires again — longer to avoid alarm fatigue.
   static const int _correctionThrottleMilliseconds = 900;
   static const int _safetyThrottleMilliseconds = 1200;
 

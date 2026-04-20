@@ -56,8 +56,9 @@ class SmoothedLandmark {
 ///
 /// [alpha] controls responsiveness: values closer to 1.0 follow the raw
 /// signal more tightly (less smoothing), while values closer to 0.0 produce
-/// a steadier but more lagged output. Defaults to [AppConstants.landmarkSmoothingAlpha]
-/// when not provided at construction time.
+/// a steadier but more lagged output. When not provided at construction time,
+/// defaults to the value of [AppConstants.landmarkSmoothingAlpha] (defined in
+/// `app_constants.dart`).
 class LandmarkSmoother {
   LandmarkSmoother({this.alpha = AppConstants.landmarkSmoothingAlpha});
 
