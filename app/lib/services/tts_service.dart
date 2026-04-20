@@ -30,7 +30,6 @@ class TTSService {
 
   Future<void> speakSuccess(String message) async {
     if (!isEnabled) return;
-    _lastSpokenMessage = '';
     await _flutterTts.speak(message);
   }
 
@@ -39,7 +38,6 @@ class TTSService {
     final now = DateTime.now();
     if (now.difference(_lastCorrectionAt).inMilliseconds < _correctionThrottleMilliseconds) return;
     _lastCorrectionAt = now;
-    _lastSpokenMessage = '';
     await _flutterTts.speak(message);
   }
 
@@ -48,7 +46,6 @@ class TTSService {
     final now = DateTime.now();
     if (now.difference(_lastSafetyAt).inMilliseconds < _safetyThrottleMilliseconds) return;
     _lastSafetyAt = now;
-    _lastSpokenMessage = '';
     await _flutterTts.speak(message);
   }
 
@@ -56,7 +53,6 @@ class TTSService {
   /// Use for important one-off coaching cues (e.g. "Go deeper next time.").
   Future<void> speakFeedback(String message) async {
     if (!isEnabled) return;
-    _lastSpokenMessage = '';
     await _flutterTts.speak(message);
   }
 

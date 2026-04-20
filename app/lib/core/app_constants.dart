@@ -21,7 +21,6 @@ class AppConstants {
 
   static const double deadliftBackAngleMin = 160.0;
 
-
   // Squat scoring penalties
   static const double squatRoundedBackPenalty = 0.3;
   static const double squatCriticalBackRoundingPenalty = 0.5;
