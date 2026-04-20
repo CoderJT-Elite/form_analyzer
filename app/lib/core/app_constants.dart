@@ -4,6 +4,7 @@ enum SquatState { neutral, eccentric, concentric }
 
 class AppConstants {
   // Visibility / confidence
+  // Minimum landmark likelihood required before a landmark is used for analysis.
   // 0.7 was chosen from live testing to reduce false positives from partial occlusion while keeping rep detection responsive.
   static const double visibilityThreshold = 0.7;
 
