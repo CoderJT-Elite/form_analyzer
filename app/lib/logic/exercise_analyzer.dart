@@ -492,9 +492,9 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
       rightWristLandmark,
     );
 
-    final leftConfidence = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
-    final rightConfidence = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
-    final rawAngle = leftConfidence >= rightConfidence ? leftElbow : rightElbow;
+    final leftLikelihoodSum = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
+    final rightLikelihoodSum = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
+    final rawAngle = leftLikelihoodSum >= rightLikelihoodSum ? leftElbow : rightElbow;
 
     final currentAngle = _angleFilter.add(rawAngle);
     final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
@@ -599,7 +599,7 @@ class PlankAnalyzer extends ExerciseAnalyzer {
       if (backAngle <= AppConstants.plankBackAngleMin) {
         statusMessage = 'Hips too high! Lower them.';
       } else {
-        statusMessage = 'Do not sag! Hips up.';
+        statusMessage = "Don't sag! Hips up.";
       }
     }
   }

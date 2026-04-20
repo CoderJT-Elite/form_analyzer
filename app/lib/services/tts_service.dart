@@ -53,6 +53,7 @@ class TTSService {
   /// Use for important one-off coaching cues (e.g. "Go deeper next time.").
   Future<void> speakFeedback(String message) async {
     if (!isEnabled) return;
+    _lastSpokenMessage = '';
     await _flutterTts.speak(message);
   }
 
