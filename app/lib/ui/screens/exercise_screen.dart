@@ -62,7 +62,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     widget.exercise.analyzer.onRep = (count) {
       if (mounted) {
         if (count > _currentRepCount) {
-          HapticFeedback.selectionClick();
+          HapticFeedback.mediumImpact();
         }
         setState(() => _currentRepCount = count);
         _tts.speakSuccess('Rep $count');

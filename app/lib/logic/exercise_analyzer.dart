@@ -62,12 +62,12 @@ abstract class ExerciseAnalyzer {
     return landmark != null && landmark.likelihood >= AppConstants.visibilityThreshold;
   }
 
-  void emitCorrection(String message) {
+  void notifyCorrection(String message) {
     statusMessage = message;
     if (onCorrection != null) onCorrection!(message);
   }
 
-  void emitSafetyAlert(String message) {
+  void notifySafetyAlert(String message) {
     statusMessage = message;
     if (onSafetyAlert != null) onSafetyAlert!(message);
   }
@@ -190,10 +190,10 @@ class SquatAnalyzer extends ExerciseAnalyzer {
 
       if (backAngle < AppConstants.squatBackAngleCritical) {
         addIssue('Critical Back Rounding');
-        emitSafetyAlert('Back Straight');
+        notifySafetyAlert('Back Straight');
       } else if (backAngle < AppConstants.squatBackAngleMin) {
         addIssue('Rounded Back');
-        emitCorrection('Back Straight');
+        notifyCorrection('Back Straight');
       }
     }
 
@@ -225,7 +225,7 @@ class SquatAnalyzer extends ExerciseAnalyzer {
           phase = RepPhase.concentric;
           statusMessage = 'Drive up';
         } else if (!_reachedDepth && angleDelta > directionDelta) {
-          emitCorrection('Lower');
+          notifyCorrection('Lower');
         } else {
           statusMessage = _reachedDepth ? 'Great depth, stand up' : 'Lower';
         }
@@ -251,7 +251,7 @@ class SquatAnalyzer extends ExerciseAnalyzer {
             statusMessage = 'Rep $repCount';
             if (onRep != null) onRep!(repCount);
           } else {
-            emitCorrection('Lower');
+            notifyCorrection('Lower');
             if (onFeedback != null) onFeedback!('Go deeper next time');
           }
 
@@ -341,7 +341,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
           statusMessage = 'Push up';
         } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
             currentAngle > AppConstants.pushupDepthThreshold + deadZone) {
-          emitCorrection('Lower');
+          notifyCorrection('Lower');
         } else {
           statusMessage = 'Lower';
         }
@@ -428,7 +428,7 @@ class LungeAnalyzer extends ExerciseAnalyzer {
           statusMessage = 'Drive up';
         } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
             currentAngle > AppConstants.lungeDepthThreshold + deadZone) {
-          emitCorrection('Lower');
+          notifyCorrection('Lower');
         } else {
           statusMessage = 'Lower';
         }
@@ -524,7 +524,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
           statusMessage = 'Press up';
         } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
             currentAngle > AppConstants.overheadPressStartThreshold + deadZone) {
-          emitCorrection('Lower');
+          notifyCorrection('Lower');
         } else {
           statusMessage = 'Lower';
         }

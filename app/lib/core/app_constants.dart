@@ -4,6 +4,7 @@ enum SquatState { neutral, eccentric, concentric }
 
 class AppConstants {
   // Visibility / confidence
+  // 0.7 avoids noisy tracking while still allowing responsive analysis.
   static const double visibilityThreshold = 0.7;
 
   // Global movement hysteresis and smoothing
