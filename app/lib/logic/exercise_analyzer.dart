@@ -492,9 +492,9 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
       rightWristLandmark,
     );
 
-    final leftLikelihoodSum = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
-    final rightLikelihoodSum = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
-    final rawAngle = leftLikelihoodSum >= rightLikelihoodSum ? leftElbow : rightElbow;
+    final leftConf = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
+    final rightConf = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
+    final rawAngle = leftConf >= rightConf ? leftElbow : rightElbow;
 
     final currentAngle = _angleFilter.add(rawAngle);
     final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
