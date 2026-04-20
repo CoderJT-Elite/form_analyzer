@@ -4,7 +4,7 @@ enum SquatState { neutral, eccentric, concentric }
 
 class AppConstants {
   // Visibility / confidence
-  // 0.7 avoids noisy tracking while still allowing responsive analysis.
+  // 0.7 was chosen from live testing to reduce false positives from partial occlusion while keeping rep detection responsive.
   static const double visibilityThreshold = 0.7;
 
   // Global movement hysteresis and smoothing
@@ -20,6 +20,11 @@ class AppConstants {
   static const double squatBackAngleCritical = 145.0;
 
   static const double deadliftBackAngleMin = 160.0;
+
+
+  // Squat scoring penalties
+  static const double squatRoundedBackPenalty = 0.3;
+  static const double squatCriticalBackRoundingPenalty = 0.5;
 
   static const double pushupDepthThreshold = 90.0;
   static const double pushupNeutralThreshold = 155.0;

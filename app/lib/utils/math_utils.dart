@@ -170,6 +170,9 @@ class MathUtils {
     return math.acos(cosine) * 180 / math.pi;
   }
 
+  /// Returns true when all Z values are finite and not effectively flat.
+  /// When this check fails, angle math falls back to 2D (x/y) to avoid
+  /// noisy depth values from causing unstable joint angles.
   static bool _hasReliableZCoordinates({
     required double az,
     required double bz,

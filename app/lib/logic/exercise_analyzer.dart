@@ -241,8 +241,12 @@ class SquatAnalyzer extends ExerciseAnalyzer {
           if (_reachedDepth) {
             repCount++;
             double score = 1.0;
-            if (currentRepIssues.contains('Rounded Back')) score -= 0.3;
-            if (currentRepIssues.contains('Critical Back Rounding')) score -= 0.5;
+            if (currentRepIssues.contains('Rounded Back')) {
+              score -= AppConstants.squatRoundedBackPenalty;
+            }
+            if (currentRepIssues.contains('Critical Back Rounding')) {
+              score -= AppConstants.squatCriticalBackRoundingPenalty;
+            }
 
             repScores.add(score.clamp(0.0, 1.0));
             allRepIssues.add(List.from(currentRepIssues));

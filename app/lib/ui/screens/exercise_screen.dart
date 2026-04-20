@@ -38,6 +38,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   bool _isProcessingFrame = false;
   int _calibrationCountdown = 3;
   bool _isCalibrated = false;
+  static const int _frameSkipInterval = 2;
   int _frameCounter = 0;
   Timer? _calibrationTimer;
   List<Pose> _poses = [];
@@ -137,9 +138,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
   Future<void> _processImage(CameraImage image) async {
     if (_isProcessingFrame || !_isCameraInitialized) return;
-    // Process every other camera frame to reduce UI-isolate pressure.
+    // Process every Nth frame to reduce UI-isolate pressure.
     _frameCounter++;
-    if (_frameCounter.isOdd) return;
+    if (_frameCounter % _frameSkipInterval != 0) return;
     _isProcessingFrame = true;
 
     try {

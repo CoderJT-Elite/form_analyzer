@@ -1,6 +1,7 @@
 import 'package:flutter_tts/flutter_tts.dart';
 
 class TTSService {
+  // Tuned for typical rep cadence: fast corrective hints, slightly slower safety repeats.
   static const int _correctionThrottleMilliseconds = 900;
   static const int _safetyThrottleMilliseconds = 1200;
 
