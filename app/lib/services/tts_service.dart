@@ -4,6 +4,8 @@ class TTSService {
   final FlutterTts _flutterTts = FlutterTts();
   bool isEnabled = true;
   String _lastSpokenMessage = '';
+  DateTime _lastCorrectionAt = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastSafetyAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   Future<void> init() async {
     await _flutterTts.setLanguage("en-US");
@@ -19,6 +21,30 @@ class TTSService {
     if (message.contains('Ready') || message.contains('Align')) return;
     
     _lastSpokenMessage = message;
+    await _flutterTts.speak(message);
+  }
+
+  Future<void> speakSuccess(String message) async {
+    if (!isEnabled) return;
+    _lastSpokenMessage = '';
+    await _flutterTts.speak(message);
+  }
+
+  Future<void> speakCorrection(String message) async {
+    if (!isEnabled) return;
+    final now = DateTime.now();
+    if (now.difference(_lastCorrectionAt).inMilliseconds < 900) return;
+    _lastCorrectionAt = now;
+    _lastSpokenMessage = '';
+    await _flutterTts.speak(message);
+  }
+
+  Future<void> speakSafety(String message) async {
+    if (!isEnabled) return;
+    final now = DateTime.now();
+    if (now.difference(_lastSafetyAt).inMilliseconds < 1200) return;
+    _lastSafetyAt = now;
+    _lastSpokenMessage = '';
     await _flutterTts.speak(message);
   }
 

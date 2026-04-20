@@ -12,6 +12,7 @@ class PosePainter extends CustomPainter {
     required this.lensDirection,
     this.lastAngle,
     this.squatState,
+    this.activeLandmarkTypes,
     this.isBusy = false,
   });
 
@@ -23,6 +24,7 @@ class PosePainter extends CustomPainter {
 
   /// Current squat state used to conditionally colour the femur lines.
   final SquatState? squatState;
+  final Set<PoseLandmarkType>? activeLandmarkTypes;
 
   /// When [isBusy] is true the painter skips repaints to avoid frame stacking.
   final bool isBusy;
@@ -36,13 +38,13 @@ class PosePainter extends CustomPainter {
       ..strokeWidth = 3.0
       ..color = AppColors.accentCyan;
 
-    // Femur (hip → knee): Green when atDepth, Red otherwise.
+    // Femur (hip → knee): Green during concentric drive, red otherwise.
     final femurPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..strokeWidth = 4.0
-      ..color = squatState == SquatState.atDepth
+      ..color = squatState == SquatState.concentric
           ? AppColors.goodGreen
           : AppColors.badRed;
 
@@ -51,29 +53,31 @@ class PosePainter extends CustomPainter {
       ..color = Colors.white;
 
     for (final pose in poses) {
-      // Draw standard skeleton connections (cyan).
-      _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder, paint, size);
-      _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip, paint, size);
-      _drawConnection(canvas, pose, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip, paint, size);
-      _drawConnection(canvas, pose, PoseLandmarkType.leftHip, PoseLandmarkType.rightHip, paint, size);
+      const skeleton = <(PoseLandmarkType, PoseLandmarkType)>[
+        (PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder),
+        (PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip),
+        (PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip),
+        (PoseLandmarkType.leftHip, PoseLandmarkType.rightHip),
+        (PoseLandmarkType.leftKnee, PoseLandmarkType.leftAnkle),
+        (PoseLandmarkType.rightKnee, PoseLandmarkType.rightAnkle),
+        (PoseLandmarkType.leftShoulder, PoseLandmarkType.leftElbow),
+        (PoseLandmarkType.leftElbow, PoseLandmarkType.leftWrist),
+        (PoseLandmarkType.rightShoulder, PoseLandmarkType.rightElbow),
+        (PoseLandmarkType.rightElbow, PoseLandmarkType.rightWrist),
+      ];
+      for (final connection in skeleton) {
+        _drawConnection(canvas, pose, connection.$1, connection.$2, paint, size);
+      }
 
-      // Shin / lower-leg
-      _drawConnection(canvas, pose, PoseLandmarkType.leftKnee, PoseLandmarkType.leftAnkle, paint, size);
-      _drawConnection(canvas, pose, PoseLandmarkType.rightKnee, PoseLandmarkType.rightAnkle, paint, size);
-
-      // Arms
-      _drawConnection(canvas, pose, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftElbow, paint, size);
-      _drawConnection(canvas, pose, PoseLandmarkType.leftElbow, PoseLandmarkType.leftWrist, paint, size);
-      _drawConnection(canvas, pose, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightElbow, paint, size);
-      _drawConnection(canvas, pose, PoseLandmarkType.rightElbow, PoseLandmarkType.rightWrist, paint, size);
-
-      // Femur (hip → knee) — conditionally coloured.
       _drawConnection(canvas, pose, PoseLandmarkType.leftHip, PoseLandmarkType.leftKnee, femurPaint, size);
       _drawConnection(canvas, pose, PoseLandmarkType.rightHip, PoseLandmarkType.rightKnee, femurPaint, size);
 
       // Draw Landmarks
       pose.landmarks.forEach((type, landmark) {
         if (landmark.likelihood < 0.5) return;
+        if (activeLandmarkTypes != null && !activeLandmarkTypes!.contains(type)) {
+          return;
+        }
         canvas.drawCircle(_transform(landmark.x, landmark.y, size), 4, dotPaint);
       });
     }
@@ -84,6 +88,10 @@ class PosePainter extends CustomPainter {
     final lm2 = pose.landmarks[end];
     if (lm1 == null || lm2 == null) return;
     if (lm1.likelihood < 0.5 || lm2.likelihood < 0.5) return;
+    if (activeLandmarkTypes != null &&
+        (!activeLandmarkTypes!.contains(start) || !activeLandmarkTypes!.contains(end))) {
+      return;
+    }
 
     canvas.drawLine(
       _transform(lm1.x, lm1.y, size),
@@ -126,6 +134,7 @@ class PosePainter extends CustomPainter {
     if (isBusy) return false;
     return oldDelegate.poses != poses ||
         oldDelegate.lastAngle != lastAngle ||
-        oldDelegate.squatState != squatState;
+        oldDelegate.squatState != squatState ||
+        oldDelegate.activeLandmarkTypes != activeLandmarkTypes;
   }
 }

@@ -38,6 +38,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   bool _isProcessingFrame = false;
   int _calibrationCountdown = 3;
   bool _isCalibrated = false;
+  int _frameCounter = 0;
   Timer? _calibrationTimer;
   List<Pose> _poses = [];
   Size? _imageSize;
@@ -61,15 +62,21 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     widget.exercise.analyzer.onRep = (count) {
       if (mounted) {
         if (count > _currentRepCount) {
-          HapticFeedback.heavyImpact();
+          HapticFeedback.selectionClick();
         }
         setState(() => _currentRepCount = count);
-        _tts.speak("$count");
+        _tts.speakSuccess('Rep $count');
       }
     };
-    // Task 3: Wire TTS feedback for coaching cues (e.g. "Go deeper next time.").
     widget.exercise.analyzer.onFeedback = (message) {
       _tts.speakFeedback(message);
+    };
+    widget.exercise.analyzer.onCorrection = (message) {
+      _tts.speakCorrection(message);
+    };
+    widget.exercise.analyzer.onSafetyAlert = (message) {
+      HapticFeedback.heavyImpact();
+      _tts.speakSafety(message);
     };
   }
 
@@ -85,7 +92,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
       final controller = CameraController(
         description,
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.yuv420,
       );
@@ -130,6 +137,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
   Future<void> _processImage(CameraImage image) async {
     if (_isProcessingFrame || !_isCameraInitialized) return;
+    _frameCounter++;
+    if (_frameCounter.isOdd) return;
     _isProcessingFrame = true;
 
     try {
@@ -286,6 +295,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                 squatState: widget.exercise.analyzer is SquatAnalyzer
                     ? (widget.exercise.analyzer as SquatAnalyzer).squatState
                     : null,
+                activeLandmarkTypes: widget.exercise.analyzer.activeLandmarkTypes,
                 isBusy: _isProcessingFrame,
               ),
             ),
