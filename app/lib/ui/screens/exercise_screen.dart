@@ -300,7 +300,11 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      _isCameraInitialized = false;
+      if (mounted) {
+        setState(() => _isCameraInitialized = false);
+      } else {
+        _isCameraInitialized = false;
+      }
       final controller = _cameraController;
       _cameraController = null;
       controller?.dispose();
