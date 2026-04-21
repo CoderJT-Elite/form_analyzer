@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
@@ -35,6 +36,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   final TTSService _tts = TTSService();
 
   bool _isCameraInitialized = false;
+  bool _isInitializingCamera = false;
   bool _isProcessingFrame = false;
   int _calibrationCountdown = 3;
   bool _isCalibrated = false;
@@ -43,7 +45,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   Timer? _calibrationTimer;
   List<Pose> _poses = [];
   Size? _imageSize;
-  final InputImageRotation _imageRotation = InputImageRotation.rotation90deg;
+  InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
+  InputImageFormat _inputImageFormat = InputImageFormat.nv21;
   CameraLensDirection _lensDirection = CameraLensDirection.front;
   String? _errorMessage;
 
@@ -82,20 +85,41 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Future<void> _initialize() async {
+    if (_isInitializingCamera) return;
+    _isInitializingCamera = true;
     try {
       final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        if (mounted) {
+          setState(() => _errorMessage = 'No cameras available on this device.');
+        }
+        return;
+      }
+
+      await _disposeCameraController();
+      _calibrationTimer?.cancel();
+
       final description = cameras.firstWhere(
         (cam) => cam.lensDirection == _lensDirection,
         orElse: () => cameras.first,
       );
 
       _lensDirection = description.lensDirection;
+      _imageRotation = InputImageRotationValue.fromRawValue(
+            description.sensorOrientation,
+          ) ??
+          InputImageRotation.rotation0deg;
+      _inputImageFormat = Platform.isIOS
+          ? InputImageFormat.bgra8888
+          : InputImageFormat.nv21;
 
       final controller = CameraController(
         description,
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.yuv420,
+        imageFormatGroup: Platform.isIOS
+            ? ImageFormatGroup.bgra8888
+            : ImageFormatGroup.nv21,
       );
 
       _cameraController = controller;
@@ -109,13 +133,20 @@ class _ExerciseScreenState extends State<ExerciseScreen>
       await controller.startImageStream(_processImage);
 
       if (mounted) {
-        setState(() => _isCameraInitialized = true);
+        setState(() {
+          _isCameraInitialized = true;
+          _isCalibrated = false;
+          _calibrationCountdown = 3;
+          _errorMessage = null;
+        });
         _startCalibration();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _errorMessage = e.toString());
       }
+    } finally {
+      _isInitializingCamera = false;
     }
   }
 
@@ -144,12 +175,13 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     _isProcessingFrame = true;
 
     try {
+      if (image.planes.isEmpty) return;
       final inputImage = InputImage.fromBytes(
         bytes: image.planes[0].bytes,
         metadata: InputImageMetadata(
           size: Size(image.width.toDouble(), image.height.toDouble()),
           rotation: _imageRotation,
-          format: InputImageFormat.bgra8888,
+          format: _inputImageFormat,
           bytesPerRow: image.planes[0].bytesPerRow,
         ),
       );
@@ -248,7 +280,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
+    unawaited(_disposeCameraController());
     _poseDetector.dispose();
     _calibrationTimer?.cancel();
     _restTimer?.cancel();
@@ -258,13 +290,14 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = _cameraController;
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
-    if (state == AppLifecycleState.inactive) {
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _isCameraInitialized = false;
+      unawaited(_disposeCameraController());
+    } else if (state == AppLifecycleState.resumed &&
+        _cameraController == null &&
+        mounted) {
       _initialize();
     }
   }
@@ -359,14 +392,16 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                 _GlassContainer(
                   padding: const EdgeInsets.all(12),
                   child: IconButton(
-                    onPressed: () {
+                    onPressed: () async {
                       setState(() {
                         _lensDirection =
                             _lensDirection == CameraLensDirection.back
                             ? CameraLensDirection.front
                             : CameraLensDirection.back;
-                        _initialize();
+                        _isCameraInitialized = false;
+                        _errorMessage = null;
                       });
+                      await _initialize();
                     },
                     icon: const Icon(
                       Icons.flip_camera_ios_rounded,
@@ -507,6 +542,26 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     return Center(
       child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
     );
+  }
+
+  Future<void> _disposeCameraController() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    if (controller == null) return;
+
+    try {
+      if (controller.value.isStreamingImages) {
+        await controller.stopImageStream();
+      }
+    } catch (_) {
+      // Ignore stream stop errors during shutdown.
+    }
+
+    try {
+      await controller.dispose();
+    } catch (_) {
+      // Ignore dispose errors from stale controller instances.
+    }
   }
 }
 
