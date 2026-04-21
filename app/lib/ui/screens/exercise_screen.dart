@@ -87,6 +87,15 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   Future<void> _initialize() async {
     if (_isInitializingCamera) return;
     _isInitializingCamera = true;
+    if (mounted) {
+      setState(() {
+        _isCameraInitialized = false;
+        _errorMessage = null;
+      });
+    } else {
+      _isCameraInitialized = false;
+      _errorMessage = null;
+    }
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
@@ -411,8 +420,6 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                             _lensDirection == CameraLensDirection.back
                             ? CameraLensDirection.front
                             : CameraLensDirection.back;
-                        _isCameraInitialized = false;
-                        _errorMessage = null;
                       });
                       await _initialize();
                     },
