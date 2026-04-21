@@ -99,53 +99,57 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         if (mounted) {
           setState(() => _errorMessage = 'No cameras available on this device.');
         }
-        return;
-      }
+      } else {
+        await _disposeCameraController();
+        _calibrationTimer?.cancel();
 
-      await _disposeCameraController();
-      _calibrationTimer?.cancel();
+        final description = cameras.firstWhere(
+          (cam) => cam.lensDirection == _lensDirection,
+          orElse: () => cameras.first,
+        );
 
-      final description = cameras.firstWhere(
-        (cam) => cam.lensDirection == _lensDirection,
-        orElse: () => cameras.first,
-      );
+        _lensDirection = description.lensDirection;
+        final mappedRotation = InputImageRotationValue.fromRawValue(
+          description.sensorOrientation,
+        );
+        if (mappedRotation == null) {
+          debugPrint(
+            'Unknown sensor orientation ${description.sensorOrientation}; using rotation0deg fallback.',
+          );
+        }
+        _imageRotation = mappedRotation ?? InputImageRotation.rotation0deg;
+        _inputImageFormat = Platform.isIOS
+            ? InputImageFormat.bgra8888
+            : InputImageFormat.nv21;
 
-      _lensDirection = description.lensDirection;
-      _imageRotation = InputImageRotationValue.fromRawValue(
-            description.sensorOrientation,
-          ) ??
-          InputImageRotation.rotation0deg;
-      _inputImageFormat = Platform.isIOS
-          ? InputImageFormat.bgra8888
-          : InputImageFormat.nv21;
+        final controller = CameraController(
+          description,
+          ResolutionPreset.medium,
+          enableAudio: false,
+          imageFormatGroup: Platform.isIOS
+              ? ImageFormatGroup.bgra8888
+              : ImageFormatGroup.nv21,
+        );
 
-      final controller = CameraController(
-        description,
-        ResolutionPreset.medium,
-        enableAudio: false,
-        imageFormatGroup: Platform.isIOS
-            ? ImageFormatGroup.bgra8888
-            : ImageFormatGroup.nv21,
-      );
+        _cameraController = controller;
+        await controller.initialize();
 
-      _cameraController = controller;
-      await controller.initialize();
+        _imageSize = Size(
+          controller.value.previewSize!.width,
+          controller.value.previewSize!.height,
+        );
 
-      _imageSize = Size(
-        controller.value.previewSize!.width,
-        controller.value.previewSize!.height,
-      );
+        await controller.startImageStream(_processImage);
 
-      await controller.startImageStream(_processImage);
-
-      if (mounted) {
-        setState(() {
-          _isCameraInitialized = true;
-          _isCalibrated = false;
-          _calibrationCountdown = 3;
-          _errorMessage = null;
-        });
-        _startCalibration();
+        if (mounted) {
+          setState(() {
+            _isCameraInitialized = true;
+            _isCalibrated = false;
+            _calibrationCountdown = 3;
+            _errorMessage = null;
+          });
+          _startCalibration();
+        }
       }
     } catch (e) {
       if (mounted) {
