@@ -1,8 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:form_analyzer/main.dart';
+import 'package:form_analyzer/ui/screens/splash_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-const Duration _splashTransitionDelay = Duration(milliseconds: 3500);
 
 void main() {
   testWidgets('Dashboard smoke test', (WidgetTester tester) async {
@@ -10,7 +9,7 @@ void main() {
 
     // Build our app and trigger a frame.
     await tester.pumpWidget(const FormAnalyzerApp());
-    await tester.pump(_splashTransitionDelay);
+    await tester.pump(kSplashScreenHoldDuration);
     await tester.pumpAndSettle();
 
     // Verify that we are on the main dashboard section.

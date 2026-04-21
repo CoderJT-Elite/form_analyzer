@@ -45,8 +45,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   Timer? _calibrationTimer;
   List<Pose> _poses = [];
   Size? _imageSize;
-  InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
-  InputImageFormat _inputImageFormat = InputImageFormat.nv21;
+  late InputImageRotation _imageRotation;
+  late InputImageFormat _inputImageFormat;
   CameraLensDirection _lensDirection = CameraLensDirection.front;
   String? _errorMessage;
 
@@ -176,7 +176,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
     try {
       if (image.planes.isEmpty) {
-        debugPrint('Skipping frame with no image planes.');
+        debugPrint(
+          'Skipping frame: no image planes available (camera may still be initializing).',
+        );
         return;
       }
       final inputImage = InputImage.fromBytes(
@@ -283,7 +285,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_disposeCameraController());
+    final controller = _cameraController;
+    _cameraController = null;
+    controller?.dispose();
     _poseDetector.dispose();
     _calibrationTimer?.cancel();
     _restTimer?.cancel();

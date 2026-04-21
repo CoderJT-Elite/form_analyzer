@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
 import 'main_navigation_wrapper.dart';
 
+const Duration kSplashScreenHoldDuration = Duration(milliseconds: 3200);
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -45,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _fadeController.forward();
 
-    Timer(const Duration(milliseconds: 3200), () {
+    Timer(kSplashScreenHoldDuration, () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
