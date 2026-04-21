@@ -175,7 +175,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     _isProcessingFrame = true;
 
     try {
-      if (image.planes.isEmpty) return;
+      if (image.planes.isEmpty) {
+        debugPrint('Skipping frame with no image planes.');
+        return;
+      }
       final inputImage = InputImage.fromBytes(
         bytes: image.planes[0].bytes,
         metadata: InputImageMetadata(
@@ -553,14 +556,14 @@ class _ExerciseScreenState extends State<ExerciseScreen>
       if (controller.value.isStreamingImages) {
         await controller.stopImageStream();
       }
-    } catch (_) {
-      // Ignore stream stop errors during shutdown.
+    } catch (e) {
+      debugPrint('Error stopping image stream: $e');
     }
 
     try {
       await controller.dispose();
-    } catch (_) {
-      // Ignore dispose errors from stale controller instances.
+    } catch (e) {
+      debugPrint('Error disposing camera controller: $e');
     }
   }
 }
