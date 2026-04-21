@@ -100,8 +100,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
           setState(() => _errorMessage = 'No cameras available on this device.');
         }
       } else {
-        await _disposeCameraController();
         _calibrationTimer?.cancel();
+        await _disposeCameraController();
 
         final description = cameras.firstWhere(
           (cam) => cam.lensDirection == _lensDirection,
