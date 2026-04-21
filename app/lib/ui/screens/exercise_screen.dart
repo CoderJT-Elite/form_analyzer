@@ -301,7 +301,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       _isCameraInitialized = false;
-      unawaited(_disposeCameraController());
+      final controller = _cameraController;
+      _cameraController = null;
+      controller?.dispose();
     } else if (state == AppLifecycleState.resumed &&
         _cameraController == null &&
         mounted) {
