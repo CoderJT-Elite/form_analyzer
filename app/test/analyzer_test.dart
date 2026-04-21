@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:form_analyzer/logic/exercise_analyzer.dart';
-import 'package:form_analyzer/core/app_constants.dart';
 
 void main() {
   group('SquatAnalyzer Tests', () {
@@ -12,7 +11,7 @@ void main() {
 
     test('Initial state is correct', () {
       expect(analyzer.repCount, 0);
-      expect(analyzer.phase, RepPhase.up);
+      expect(analyzer.phase, RepPhase.neutral);
       expect(analyzer.repScores, isEmpty);
       expect(analyzer.allRepIssues, isEmpty);
     });

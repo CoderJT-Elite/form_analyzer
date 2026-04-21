@@ -34,28 +34,42 @@ class PerformanceMetrics {
 
 abstract class ExerciseAnalyzer {
   int repCount = 0;
-  RepPhase phase = RepPhase.up;
-  String statusMessage = "Align yourself in frame";
+  RepPhase phase = RepPhase.neutral;
+  String statusMessage = 'Align yourself in frame';
   double? lastProcessedAngle;
   Function(int)? onRep;
-
-  /// Called with a coaching message when the analyzer has specific feedback
-  /// (e.g. "Go deeper next time.").
   Function(String)? onFeedback;
+  Function(String)? onCorrection;
+  Function(String)? onSafetyAlert;
 
-  // Performance Tracking
   final List<String> currentRepIssues = [];
   final List<List<String>> allRepIssues = [];
-  final List<double> repScores = []; // 0.0 to 1.0
+  final List<double> repScores = [];
+
+  Set<PoseLandmarkType> get activeLandmarkTypes;
 
   void reset() {
     repCount = 0;
-    phase = RepPhase.up;
-    statusMessage = "Get ready!";
+    phase = RepPhase.neutral;
+    statusMessage = 'Get ready!';
     lastProcessedAngle = null;
     currentRepIssues.clear();
     allRepIssues.clear();
     repScores.clear();
+  }
+
+  bool isLandmarkVisible(PoseLandmark? landmark) {
+    return landmark != null && landmark.likelihood >= AppConstants.visibilityThreshold;
+  }
+
+  void notifyCorrection(String message) {
+    statusMessage = message;
+    if (onCorrection != null) onCorrection!(message);
+  }
+
+  void notifySafetyAlert(String message) {
+    statusMessage = message;
+    if (onSafetyAlert != null) onSafetyAlert!(message);
   }
 
   void processPose(Pose pose);
@@ -94,194 +108,285 @@ abstract class ExerciseAnalyzer {
 class SquatAnalyzer extends ExerciseAnalyzer {
   SquatState squatState = SquatState.neutral;
   bool _reachedDepth = false;
-  final MovingAverageFilter _filter = MovingAverageFilter(windowSize: 5);
+  final MovingAverageFilter _angleFilter =
+      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
+  final LandmarkSmoother _landmarkSmoother = LandmarkSmoother();
   double? _prevFilteredAngle;
 
-  // Thresholds from the problem specification
-  static const double _atDepthThreshold = 95.0;       // knee ≤ 95° → atDepth
-  static const double _neutralThreshold = 160.0;      // knee ≥ 160° → neutral
-  static const double _ascendingThresholdDelta = 0.5; // min angle rise to detect ascending
-  static const double _minBackAngleDegrees = 40.0;    // below this = rounded back
+  @override
+  Set<PoseLandmarkType> get activeLandmarkTypes => {
+        PoseLandmarkType.leftShoulder,
+        PoseLandmarkType.rightShoulder,
+        PoseLandmarkType.leftHip,
+        PoseLandmarkType.rightHip,
+        PoseLandmarkType.leftKnee,
+        PoseLandmarkType.rightKnee,
+        PoseLandmarkType.leftAnkle,
+        PoseLandmarkType.rightAnkle,
+      };
 
   @override
   void reset() {
     super.reset();
     squatState = SquatState.neutral;
     _reachedDepth = false;
-    _filter.reset();
+    _angleFilter.reset();
+    _landmarkSmoother.reset();
     _prevFilteredAngle = null;
   }
 
   @override
   void processPose(Pose pose) {
-    final leftHip    = pose.landmarks[PoseLandmarkType.leftHip];
-    final leftKnee   = pose.landmarks[PoseLandmarkType.leftKnee];
-    final leftAnkle  = pose.landmarks[PoseLandmarkType.leftAnkle];
-    final rightHip   = pose.landmarks[PoseLandmarkType.rightHip];
-    final rightKnee  = pose.landmarks[PoseLandmarkType.rightKnee];
+    final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
+    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
+    final leftAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
+    final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
+    final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
     final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
 
-    // Task 5: Confidence check — if any required landmark < 0.5, pause analysis.
     final required = [leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle];
-    if (required.any((lm) => (lm?.likelihood ?? 0) < 0.5)) {
-      statusMessage = "Adjust position: Landmark obscured.";
+    if (required.any((lm) => !isLandmarkVisible(lm))) {
+      statusMessage = 'Adjust Camera';
       return;
     }
 
-    // Task 1: Calculate angles using Law of Cosines via calculateAngle().
-    final leftAngle  = MathUtils.calculateAngle(leftHip!,  leftKnee!,  leftAnkle!);
-    final rightAngle = MathUtils.calculateAngle(rightHip!, rightKnee!, rightAnkle!);
+    final leftHipSmooth = _smooth(leftHip!, 'leftHip');
+    final leftKneeSmooth = _smooth(leftKnee!, 'leftKnee');
+    final leftAnkleSmooth = _smooth(leftAnkle!, 'leftAnkle');
 
-    // Prefer the more-confident side.
-    final leftConf  = leftKnee.likelihood  + leftAnkle.likelihood;
-    final rightConf = rightKnee.likelihood + rightAnkle.likelihood;
-    final rawAngle  = (leftConf >= rightConf) ? leftAngle : rightAngle;
+    final rightHipSmooth = _smooth(rightHip!, 'rightHip');
+    final rightKneeSmooth = _smooth(rightKnee!, 'rightKnee');
+    final rightAnkleSmooth = _smooth(rightAnkle!, 'rightAnkle');
 
-    // Task 1: Apply moving-average filter (window = 5).
-    final currentAngle = _filter.add(rawAngle);
+    final leftAngle = MathUtils.calculateAngleFromSmoothed(
+      leftHipSmooth,
+      leftKneeSmooth,
+      leftAnkleSmooth,
+    );
+    final rightAngle = MathUtils.calculateAngleFromSmoothed(
+      rightHipSmooth,
+      rightKneeSmooth,
+      rightAnkleSmooth,
+    );
+
+    final leftConfidence = leftKneeSmooth.likelihood + leftAnkleSmooth.likelihood;
+    final rightConfidence = rightKneeSmooth.likelihood + rightAnkleSmooth.likelihood;
+    final rawAngle = leftConfidence >= rightConfidence ? leftAngle : rightAngle;
+
+    final currentAngle = _angleFilter.add(rawAngle);
     lastProcessedAngle = currentAngle;
 
-    // Detect whether the angle is currently increasing (ascending direction).
-    final isAscending = _prevFilteredAngle != null &&
-        currentAngle > _prevFilteredAngle! + _ascendingThresholdDelta;
+    final angleDelta = _prevFilteredAngle == null ? 0.0 : currentAngle - _prevFilteredAngle!;
     _prevFilteredAngle = currentAngle;
 
-    // Back-angle form check.
     final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
-    if (leftShoulder != null && leftShoulder.likelihood >= 0.5) {
-      final backAngle = MathUtils.calculateAngle(leftShoulder, leftHip, leftKnee);
-      if (backAngle < _minBackAngleDegrees) {
-        addIssue("Rounded Back");
+    if (isLandmarkVisible(leftShoulder)) {
+      final shoulderSmooth = _smooth(leftShoulder!, 'leftShoulder');
+      final backAngle = MathUtils.calculateAngleFromSmoothed(
+        shoulderSmooth,
+        leftHipSmooth,
+        leftKneeSmooth,
+      );
+
+      if (backAngle < AppConstants.squatBackAngleCritical) {
+        addIssue('Critical Back Rounding');
+        notifySafetyAlert('Straighten back now');
+      } else if (backAngle < AppConstants.squatBackAngleMin) {
+        addIssue('Rounded Back');
+        notifyCorrection('Keep back straight');
       }
     }
 
-    // Task 2: 4-state machine.
+    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
+    final directionDelta = AppConstants.angleDirectionDeltaDegrees;
+
     switch (squatState) {
       case SquatState.neutral:
-        if (currentAngle < _neutralThreshold) {
-          squatState = SquatState.descending;
+        phase = RepPhase.neutral;
+        if (currentAngle < AppConstants.squatNeutralThreshold - deadZone) {
+          squatState = SquatState.eccentric;
+          phase = RepPhase.eccentric;
           _reachedDepth = false;
-          statusMessage = "Going down...";
+          statusMessage = 'Lower with control';
         } else {
-          statusMessage = "Squat down slowly";
+          statusMessage = 'Squat down slowly';
         }
+        break;
 
-      case SquatState.descending:
-        if (currentAngle <= _atDepthThreshold) {
-          // Reached required depth.
-          squatState = SquatState.atDepth;
+      case SquatState.eccentric:
+        phase = RepPhase.eccentric;
+
+        if (currentAngle <= AppConstants.squatDepthThreshold) {
           _reachedDepth = true;
-          statusMessage = "Great depth! Now stand up.";
-        } else if (isAscending) {
-          // Started going back up without reaching depth.
-          squatState = SquatState.ascending;
-          statusMessage = "Drive up! Push through your heels.";
-        } else {
-          statusMessage = "Lower... keep going!";
         }
 
-      case SquatState.atDepth:
-        if (currentAngle > _atDepthThreshold) {
-          squatState = SquatState.ascending;
-          statusMessage = "Drive up! Push through your heels.";
+        if (_reachedDepth && angleDelta > directionDelta) {
+          squatState = SquatState.concentric;
+          phase = RepPhase.concentric;
+          statusMessage = 'Drive up';
+        } else if (!_reachedDepth && angleDelta > directionDelta) {
+          notifyCorrection('Lower');
         } else {
-          statusMessage = "Great depth! Now stand up.";
+          statusMessage = _reachedDepth ? 'Great depth, stand up' : 'Lower';
         }
+        break;
 
-      case SquatState.ascending:
-        if (currentAngle >= _neutralThreshold) {
+      case SquatState.concentric:
+        phase = RepPhase.concentric;
+
+        if (currentAngle >= AppConstants.squatNeutralThreshold) {
           squatState = SquatState.neutral;
+          phase = RepPhase.neutral;
 
           if (_reachedDepth) {
-            // Task 2: Full cycle complete — count the rep.
             repCount++;
             double score = 1.0;
-            if (currentRepIssues.contains("Rounded Back")) score -= 0.3;
+            if (currentRepIssues.contains('Rounded Back')) {
+              score -= AppConstants.squatRoundedBackPenalty;
+            }
+            if (currentRepIssues.contains('Critical Back Rounding')) {
+              score -= AppConstants.squatCriticalBackRoundingPenalty;
+            }
+
             repScores.add(score.clamp(0.0, 1.0));
             allRepIssues.add(List.from(currentRepIssues));
             currentRepIssues.clear();
-            statusMessage = "Good rep! Stand tall.";
+
+            statusMessage = 'Rep $repCount';
             if (onRep != null) onRep!(repCount);
           } else {
-            // Task 3: Ascending without ever entering atDepth — trigger TTS.
-            statusMessage = "Go deeper next time.";
-            if (onFeedback != null) onFeedback!("Go deeper next time.");
+            notifyCorrection('Lower');
+            if (onFeedback != null) onFeedback!('Go deeper next time');
           }
+
           _reachedDepth = false;
         } else {
-          statusMessage = "Drive up! Push through your heels.";
+          statusMessage = 'Stand tall';
         }
+        break;
     }
+  }
+
+  SmoothedLandmark _smooth(PoseLandmark landmark, String key) {
+    return _landmarkSmoother.smooth(
+      key: key,
+      x: landmark.x,
+      y: landmark.y,
+      z: landmark.z,
+      likelihood: landmark.likelihood,
+    );
   }
 }
 
 class PushupAnalyzer extends ExerciseAnalyzer {
-  final List<double> _angleHistory = [];
-  static const int _historyLimit = 3;
+  final MovingAverageFilter _angleFilter =
+      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
+  double? _prevAngle;
+
+  @override
+  Set<PoseLandmarkType> get activeLandmarkTypes => {
+        PoseLandmarkType.leftShoulder,
+        PoseLandmarkType.rightShoulder,
+        PoseLandmarkType.leftElbow,
+        PoseLandmarkType.rightElbow,
+        PoseLandmarkType.leftWrist,
+        PoseLandmarkType.rightWrist,
+      };
+
+  @override
+  void reset() {
+    super.reset();
+    _angleFilter.reset();
+    _prevAngle = null;
+  }
 
   @override
   void processPose(Pose pose) {
-    final leftElbow = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.leftShoulder],
-      pose.landmarks[PoseLandmarkType.leftElbow],
-      pose.landmarks[PoseLandmarkType.leftWrist],
-    );
-    final rightElbow = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.rightShoulder],
-      pose.landmarks[PoseLandmarkType.rightElbow],
-      pose.landmarks[PoseLandmarkType.rightWrist],
-    );
+    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
+    final leftElbow = pose.landmarks[PoseLandmarkType.leftElbow];
+    final leftWrist = pose.landmarks[PoseLandmarkType.leftWrist];
+    final rightShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
+    final rightElbow = pose.landmarks[PoseLandmarkType.rightElbow];
+    final rightWrist = pose.landmarks[PoseLandmarkType.rightWrist];
 
-    final leftConf =
-        (pose.landmarks[PoseLandmarkType.leftElbow]?.likelihood ?? 0) +
-        (pose.landmarks[PoseLandmarkType.leftWrist]?.likelihood ?? 0);
-    final rightConf =
-        (pose.landmarks[PoseLandmarkType.rightElbow]?.likelihood ?? 0) +
-        (pose.landmarks[PoseLandmarkType.rightWrist]?.likelihood ?? 0);
-
-    double currentAngle = (leftConf > rightConf) ? leftElbow : rightElbow;
-
-    _angleHistory.add(currentAngle);
-    if (_angleHistory.length > _historyLimit) _angleHistory.removeAt(0);
-    currentAngle = _angleHistory.reduce((a, b) => a + b) / _angleHistory.length;
-    lastProcessedAngle = currentAngle;
-
-    final shouldersVisible =
-        (pose.landmarks[PoseLandmarkType.leftShoulder]?.likelihood ?? 0) >
-            0.6 ||
-        (pose.landmarks[PoseLandmarkType.rightShoulder]?.likelihood ?? 0) > 0.6;
-    final wristsVisible =
-        (pose.landmarks[PoseLandmarkType.leftWrist]?.likelihood ?? 0) > 0.6 ||
-        (pose.landmarks[PoseLandmarkType.rightWrist]?.likelihood ?? 0) > 0.6;
-
-    if (!shouldersVisible || !wristsVisible) {
-      statusMessage = "Show upper body on camera";
+    if (!isLandmarkVisible(leftElbow) && !isLandmarkVisible(rightElbow)) {
+      statusMessage = 'Adjust Camera';
       return;
     }
 
-    if (phase == RepPhase.up) {
-      if (currentAngle < 90) {
-        phase = RepPhase.down;
-        statusMessage = "Deep enough! Push back up.";
-      } else if (currentAngle < 120) {
-        statusMessage = "Lower... chest to floor!";
-      } else {
-        statusMessage = "Lower your chest slowly";
-      }
-    } else {
-      if (currentAngle > 155) {
-        repCount++;
-        phase = RepPhase.up;
-        statusMessage = "Perfect! Fully extended.";
-        if (onRep != null) onRep!(repCount);
-      } else {
-        statusMessage = "Lock those elbows at the top";
-      }
+    final leftAngle = MathUtils.calculateJointAngle(leftShoulder, leftElbow, leftWrist);
+    final rightAngle =
+        MathUtils.calculateJointAngle(rightShoulder, rightElbow, rightWrist);
+
+    final leftConfidence = (leftElbow?.likelihood ?? 0) + (leftWrist?.likelihood ?? 0);
+    final rightConfidence = (rightElbow?.likelihood ?? 0) + (rightWrist?.likelihood ?? 0);
+
+    final rawAngle = leftConfidence >= rightConfidence ? leftAngle : rightAngle;
+    final currentAngle = _angleFilter.add(rawAngle);
+    final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
+    _prevAngle = currentAngle;
+    lastProcessedAngle = currentAngle;
+
+    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
+
+    switch (phase) {
+      case RepPhase.neutral:
+        if (currentAngle < AppConstants.pushupNeutralThreshold - deadZone) {
+          phase = RepPhase.eccentric;
+          statusMessage = 'Lower your chest';
+        } else {
+          statusMessage = 'Lower with control';
+        }
+        break;
+
+      case RepPhase.eccentric:
+        if (currentAngle <= AppConstants.pushupDepthThreshold) {
+          phase = RepPhase.concentric;
+          statusMessage = 'Push up';
+        } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
+            currentAngle > AppConstants.pushupDepthThreshold + deadZone) {
+          notifyCorrection('Lower');
+        } else {
+          statusMessage = 'Lower';
+        }
+        break;
+
+      case RepPhase.concentric:
+        if (currentAngle >= AppConstants.pushupNeutralThreshold) {
+          repCount++;
+          phase = RepPhase.neutral;
+          statusMessage = 'Rep $repCount';
+          if (onRep != null) onRep!(repCount);
+        } else {
+          statusMessage = 'Lock elbows at top';
+        }
+        break;
     }
   }
 }
 
 class LungeAnalyzer extends ExerciseAnalyzer {
+  final MovingAverageFilter _angleFilter =
+      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
+  double? _prevAngle;
+
+  @override
+  Set<PoseLandmarkType> get activeLandmarkTypes => {
+        PoseLandmarkType.leftHip,
+        PoseLandmarkType.rightHip,
+        PoseLandmarkType.leftKnee,
+        PoseLandmarkType.rightKnee,
+        PoseLandmarkType.leftAnkle,
+        PoseLandmarkType.rightAnkle,
+      };
+
+  @override
+  void reset() {
+    super.reset();
+    _angleFilter.reset();
+    _prevAngle = null;
+  }
+
   @override
   void processPose(Pose pose) {
     final leftKnee = MathUtils.calculateJointAngle(
@@ -295,79 +400,150 @@ class LungeAnalyzer extends ExerciseAnalyzer {
       pose.landmarks[PoseLandmarkType.rightAnkle],
     );
 
-    double currentAngle = math.min(leftKnee, rightKnee);
+    final currentAngle = _angleFilter.add(math.min(leftKnee, rightKnee));
+    final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
+    _prevAngle = currentAngle;
     lastProcessedAngle = currentAngle;
 
     final hipsVisible =
-        (pose.landmarks[PoseLandmarkType.leftHip]?.likelihood ?? 0) > 0.5 ||
-        (pose.landmarks[PoseLandmarkType.rightHip]?.likelihood ?? 0) > 0.5;
+        isLandmarkVisible(pose.landmarks[PoseLandmarkType.leftHip]) ||
+            isLandmarkVisible(pose.landmarks[PoseLandmarkType.rightHip]);
 
     if (!hipsVisible) {
-      statusMessage = "Keep your lower body visible";
+      statusMessage = 'Adjust Camera';
       return;
     }
 
-    if (phase == RepPhase.up) {
-      if (currentAngle < 100) {
-        phase = RepPhase.down;
-        statusMessage = "Good depth! Step back up.";
-      } else {
-        statusMessage = "Step forward and sink your hips";
-      }
-    } else {
-      if (currentAngle > 160) {
-        repCount++;
-        phase = RepPhase.up;
-        statusMessage = "Great lunge! Switch legs.";
-        if (onRep != null) onRep!(repCount);
-      } else {
-        statusMessage = "Return to neutral standing";
-      }
+    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
+
+    switch (phase) {
+      case RepPhase.neutral:
+        if (currentAngle < AppConstants.lungeNeutralThreshold - deadZone) {
+          phase = RepPhase.eccentric;
+          statusMessage = 'Lower into lunge';
+        } else {
+          statusMessage = 'Step forward and lower';
+        }
+        break;
+
+      case RepPhase.eccentric:
+        if (currentAngle <= AppConstants.lungeDepthThreshold) {
+          phase = RepPhase.concentric;
+          statusMessage = 'Drive up';
+        } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
+            currentAngle > AppConstants.lungeDepthThreshold + deadZone) {
+          notifyCorrection('Lower');
+        } else {
+          statusMessage = 'Lower';
+        }
+        break;
+
+      case RepPhase.concentric:
+        if (currentAngle >= AppConstants.lungeNeutralThreshold) {
+          repCount++;
+          phase = RepPhase.neutral;
+          statusMessage = 'Rep $repCount';
+          if (onRep != null) onRep!(repCount);
+        } else {
+          statusMessage = 'Return to neutral standing';
+        }
+        break;
     }
   }
 }
 
 class OverheadPressAnalyzer extends ExerciseAnalyzer {
+  final MovingAverageFilter _angleFilter =
+      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
+  double? _prevAngle;
+
+  @override
+  Set<PoseLandmarkType> get activeLandmarkTypes => {
+        PoseLandmarkType.leftShoulder,
+        PoseLandmarkType.rightShoulder,
+        PoseLandmarkType.leftElbow,
+        PoseLandmarkType.rightElbow,
+        PoseLandmarkType.leftWrist,
+        PoseLandmarkType.rightWrist,
+      };
+
+  @override
+  void reset() {
+    super.reset();
+    _angleFilter.reset();
+    _prevAngle = null;
+  }
+
   @override
   void processPose(Pose pose) {
+    final leftElbowLandmark = pose.landmarks[PoseLandmarkType.leftElbow];
+    final leftWristLandmark = pose.landmarks[PoseLandmarkType.leftWrist];
+    final rightElbowLandmark = pose.landmarks[PoseLandmarkType.rightElbow];
+    final rightWristLandmark = pose.landmarks[PoseLandmarkType.rightWrist];
+
     final leftElbow = MathUtils.calculateJointAngle(
       pose.landmarks[PoseLandmarkType.leftShoulder],
-      pose.landmarks[PoseLandmarkType.leftElbow],
-      pose.landmarks[PoseLandmarkType.leftWrist],
+      leftElbowLandmark,
+      leftWristLandmark,
     );
     final rightElbow = MathUtils.calculateJointAngle(
       pose.landmarks[PoseLandmarkType.rightShoulder],
-      pose.landmarks[PoseLandmarkType.rightElbow],
-      pose.landmarks[PoseLandmarkType.rightWrist],
+      rightElbowLandmark,
+      rightWristLandmark,
     );
 
-    double currentAngle = (leftElbow + rightElbow) / 2;
+    final leftConfidence = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
+    final rightConfidence = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
+    final rawAngle = leftConfidence >= rightConfidence ? leftElbow : rightElbow;
+
+    final currentAngle = _angleFilter.add(rawAngle);
+    final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
+    _prevAngle = currentAngle;
     lastProcessedAngle = currentAngle;
 
     final shouldersVisible =
-        (pose.landmarks[PoseLandmarkType.leftShoulder]?.likelihood ?? 0) > 0.6;
+        isLandmarkVisible(pose.landmarks[PoseLandmarkType.leftShoulder]) ||
+            isLandmarkVisible(pose.landmarks[PoseLandmarkType.rightShoulder]);
 
     if (!shouldersVisible) {
-      statusMessage = "Show your torso and arms";
+      statusMessage = 'Adjust Camera';
       return;
     }
 
-    if (phase == RepPhase.up) {
-      if (currentAngle < 100) {
-        phase = RepPhase.down;
-        statusMessage = "Power up! Press to the sky.";
-      } else {
-        statusMessage = "Lower to shoulder level";
-      }
-    } else {
-      if (currentAngle > 165) {
-        repCount++;
-        phase = RepPhase.up;
-        statusMessage = "Full extension! Rep counted.";
-        if (onRep != null) onRep!(repCount);
-      } else {
-        statusMessage = "Reach higher! Lock elbows.";
-      }
+    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
+
+    switch (phase) {
+      case RepPhase.neutral:
+        if (currentAngle < AppConstants.overheadPressLockoutThreshold - deadZone) {
+          phase = RepPhase.eccentric;
+          statusMessage = 'Lower to shoulder level';
+        } else {
+          statusMessage = 'Lower under control';
+        }
+        break;
+
+      case RepPhase.eccentric:
+        if (currentAngle <= AppConstants.overheadPressStartThreshold) {
+          phase = RepPhase.concentric;
+          statusMessage = 'Press up';
+        } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
+            currentAngle > AppConstants.overheadPressStartThreshold + deadZone) {
+          notifyCorrection('Lower');
+        } else {
+          statusMessage = 'Lower';
+        }
+        break;
+
+      case RepPhase.concentric:
+        if (currentAngle >= AppConstants.overheadPressLockoutThreshold) {
+          repCount++;
+          phase = RepPhase.neutral;
+          statusMessage = 'Rep $repCount';
+          if (onRep != null) onRep!(repCount);
+        } else {
+          statusMessage = 'Reach higher';
+        }
+        break;
     }
   }
 }
@@ -377,7 +553,26 @@ class PlankAnalyzer extends ExerciseAnalyzer {
   bool _isHolding = false;
 
   @override
+  Set<PoseLandmarkType> get activeLandmarkTypes => {
+        PoseLandmarkType.leftShoulder,
+        PoseLandmarkType.rightShoulder,
+        PoseLandmarkType.leftHip,
+        PoseLandmarkType.rightHip,
+        PoseLandmarkType.leftKnee,
+        PoseLandmarkType.rightKnee,
+      };
+
+  @override
   void processPose(Pose pose) {
+    final keyVisible =
+        isLandmarkVisible(pose.landmarks[PoseLandmarkType.leftShoulder]) &&
+            isLandmarkVisible(pose.landmarks[PoseLandmarkType.leftHip]) &&
+            isLandmarkVisible(pose.landmarks[PoseLandmarkType.leftKnee]);
+    if (!keyVisible) {
+      statusMessage = 'Adjust Camera';
+      return;
+    }
+
     final backAngle = MathUtils.calculateJointAngle(
       pose.landmarks[PoseLandmarkType.leftShoulder],
       pose.landmarks[PoseLandmarkType.leftHip],
@@ -386,7 +581,8 @@ class PlankAnalyzer extends ExerciseAnalyzer {
 
     lastProcessedAngle = backAngle;
 
-    final isFormCorrect = backAngle > 160 && backAngle < 195;
+    final isFormCorrect = backAngle > AppConstants.plankBackAngleMin &&
+        backAngle < AppConstants.plankBackAngleMax;
 
     if (isFormCorrect) {
       if (!_isHolding) {
@@ -394,14 +590,14 @@ class PlankAnalyzer extends ExerciseAnalyzer {
         _isHolding = true;
       }
       repCount = _timer.elapsed.inSeconds;
-      statusMessage = "Hold tight! Core engaged: ${repCount}s";
+      statusMessage = 'Hold tight! Core engaged: ${repCount}s';
     } else {
       if (_isHolding) {
         _timer.stop();
         _isHolding = false;
       }
-      if (backAngle <= 160) {
-        statusMessage = "Hips too high! Lower them.";
+      if (backAngle <= AppConstants.plankBackAngleMin) {
+        statusMessage = 'Hips too high! Lower them.';
       } else {
         statusMessage = "Don't sag! Hips up.";
       }
