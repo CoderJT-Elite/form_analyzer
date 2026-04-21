@@ -36,7 +36,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   final TTSService _tts = TTSService();
 
   bool _isCameraInitialized = false;
-  bool _isInitializingCamera = false;
+  Future<void>? _cameraInitializationFuture;
   bool _isProcessingFrame = false;
   int _calibrationCountdown = 3;
   bool _isCalibrated = false;
@@ -85,17 +85,14 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Future<void> _initialize() async {
-    if (_isInitializingCamera) return;
-    _isInitializingCamera = true;
-    if (mounted) {
-      setState(() {
-        _isCameraInitialized = false;
-        _errorMessage = null;
-      });
-    } else {
-      _isCameraInitialized = false;
-      _errorMessage = null;
-    }
+    final inFlightInit = _cameraInitializationFuture;
+    if (inFlightInit != null) return inFlightInit;
+
+    final completer = Completer<void>();
+    _cameraInitializationFuture = completer.future;
+    _isCameraInitialized = false;
+    _errorMessage = null;
+    if (mounted) setState(() {});
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
@@ -155,7 +152,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         setState(() => _errorMessage = e.toString());
       }
     } finally {
-      _isInitializingCamera = false;
+      completer.complete();
+      _cameraInitializationFuture = null;
     }
   }
 
@@ -311,8 +309,6 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         state == AppLifecycleState.detached) {
       if (mounted) {
         setState(() => _isCameraInitialized = false);
-      } else {
-        _isCameraInitialized = false;
       }
       final controller = _cameraController;
       _cameraController = null;
