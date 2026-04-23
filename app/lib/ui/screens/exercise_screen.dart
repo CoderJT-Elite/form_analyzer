@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
@@ -35,6 +36,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   final TTSService _tts = TTSService();
 
   bool _isCameraInitialized = false;
+  Future<void>? _cameraInitializationFuture;
   bool _isProcessingFrame = false;
   int _calibrationCountdown = 3;
   bool _isCalibrated = false;
@@ -43,7 +45,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   Timer? _calibrationTimer;
   List<Pose> _poses = [];
   Size? _imageSize;
-  final InputImageRotation _imageRotation = InputImageRotation.rotation90deg;
+  late InputImageRotation _imageRotation;
+  late InputImageFormat _inputImageFormat;
   CameraLensDirection _lensDirection = CameraLensDirection.front;
   String? _errorMessage;
 
@@ -82,40 +85,79 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Future<void> _initialize() async {
+    final inFlightInit = _cameraInitializationFuture;
+    if (inFlightInit != null) return inFlightInit;
+
+    final completer = Completer<void>();
+    _cameraInitializationFuture = completer.future;
+    _isCameraInitialized = false;
+    _errorMessage = null;
+    if (mounted) setState(() {});
     try {
       final cameras = await availableCameras();
-      final description = cameras.firstWhere(
-        (cam) => cam.lensDirection == _lensDirection,
-        orElse: () => cameras.first,
-      );
+      if (cameras.isEmpty) {
+        if (mounted) {
+          setState(() => _errorMessage = 'No cameras available on this device.');
+        }
+      } else {
+        _calibrationTimer?.cancel();
+        await _disposeCameraController();
 
-      _lensDirection = description.lensDirection;
+        final description = cameras.firstWhere(
+          (cam) => cam.lensDirection == _lensDirection,
+          orElse: () => cameras.first,
+        );
 
-      final controller = CameraController(
-        description,
-        ResolutionPreset.medium,
-        enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.yuv420,
-      );
+        _lensDirection = description.lensDirection;
+        final mappedRotation = InputImageRotationValue.fromRawValue(
+          description.sensorOrientation,
+        );
+        if (mappedRotation == null) {
+          debugPrint(
+            'Unknown sensor orientation ${description.sensorOrientation}; using rotation0deg fallback.',
+          );
+        }
+        _imageRotation = mappedRotation ?? InputImageRotation.rotation0deg;
+        _inputImageFormat = Platform.isIOS
+            ? InputImageFormat.bgra8888
+            : InputImageFormat.nv21;
 
-      _cameraController = controller;
-      await controller.initialize();
+        final controller = CameraController(
+          description,
+          ResolutionPreset.medium,
+          enableAudio: false,
+          imageFormatGroup: Platform.isIOS
+              ? ImageFormatGroup.bgra8888
+              : ImageFormatGroup.nv21,
+        );
 
-      _imageSize = Size(
-        controller.value.previewSize!.width,
-        controller.value.previewSize!.height,
-      );
+        _cameraController = controller;
+        await controller.initialize();
 
-      await controller.startImageStream(_processImage);
+        _imageSize = Size(
+          controller.value.previewSize!.width,
+          controller.value.previewSize!.height,
+        );
 
-      if (mounted) {
-        setState(() => _isCameraInitialized = true);
-        _startCalibration();
+        await controller.startImageStream(_processImage);
+
+        if (mounted) {
+          setState(() {
+            _isCameraInitialized = true;
+            _isCalibrated = false;
+            _calibrationCountdown = 3;
+            _errorMessage = null;
+          });
+          _startCalibration();
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _errorMessage = e.toString());
       }
+    } finally {
+      completer.complete();
+      _cameraInitializationFuture = null;
     }
   }
 
@@ -144,12 +186,18 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     _isProcessingFrame = true;
 
     try {
+      if (image.planes.isEmpty) {
+        debugPrint(
+          'Skipping frame: no image planes available (camera may still be initializing).',
+        );
+        return;
+      }
       final inputImage = InputImage.fromBytes(
         bytes: image.planes[0].bytes,
         metadata: InputImageMetadata(
           size: Size(image.width.toDouble(), image.height.toDouble()),
           rotation: _imageRotation,
-          format: InputImageFormat.bgra8888,
+          format: _inputImageFormat,
           bytesPerRow: image.planes[0].bytesPerRow,
         ),
       );
@@ -248,7 +296,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
+    final controller = _cameraController;
+    _cameraController = null;
+    controller?.dispose();
     _poseDetector.dispose();
     _calibrationTimer?.cancel();
     _restTimer?.cancel();
@@ -258,13 +308,18 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = _cameraController;
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
-    if (state == AppLifecycleState.inactive) {
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      if (mounted) {
+        setState(() => _isCameraInitialized = false);
+      }
+      final controller = _cameraController;
+      _cameraController = null;
+      controller?.dispose();
+    } else if (state == AppLifecycleState.resumed &&
+        _cameraController == null &&
+        mounted) {
       _initialize();
     }
   }
@@ -359,14 +414,14 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                 _GlassContainer(
                   padding: const EdgeInsets.all(12),
                   child: IconButton(
-                    onPressed: () {
+                    onPressed: () async {
                       setState(() {
                         _lensDirection =
                             _lensDirection == CameraLensDirection.back
                             ? CameraLensDirection.front
                             : CameraLensDirection.back;
-                        _initialize();
                       });
+                      await _initialize();
                     },
                     icon: const Icon(
                       Icons.flip_camera_ios_rounded,
@@ -507,6 +562,26 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     return Center(
       child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
     );
+  }
+
+  Future<void> _disposeCameraController() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    if (controller == null) return;
+
+    try {
+      if (controller.value.isStreamingImages) {
+        await controller.stopImageStream();
+      }
+    } catch (e) {
+      debugPrint('Error stopping image stream: $e');
+    }
+
+    try {
+      await controller.dispose();
+    } catch (e) {
+      debugPrint('Error disposing camera controller: $e');
+    }
   }
 }
 
