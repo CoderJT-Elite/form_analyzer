@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
+import '../../models/exercise_catalog.dart';
 import '../../models/exercise_model.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
@@ -491,12 +492,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: ExerciseType.values.map((type) {
+                  children: ExerciseCatalog.all.map((exercise) {
+                    final type = exercise.type;
                     final isSelected = selectedExercises.contains(type);
                     return FilterChip(
                       selected: isSelected,
                       label: Text(
-                        type.name.toUpperCase(),
+                        exercise.name,
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,

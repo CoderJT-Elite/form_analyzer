@@ -32,6 +32,21 @@ git push -u origin main
 4. Save and wait for the deployment to finish.
 5. Your landing page will be available at `https://YOUR_USERNAME.github.io/form-analyzer/web/`.
 
+## 🔒 Privacy & Release Readiness
+
+- Camera frames are processed on-device for live form analysis.
+- Workout history is stored locally using SharedPreferences.
+- Voice coaching and haptic feedback can be toggled in **Profile → Settings**.
+
+### Quality checklist before release
+
+From `/home/runner/work/form_analyzer/form_analyzer/app`:
+
+```bash
+flutter analyze
+flutter test
+```
+
 ---
 &copy; 2026 Form Analyzer Biomechanics Lab.
 Validation: IEEE ISEC 2026 Submission Peer-Review.

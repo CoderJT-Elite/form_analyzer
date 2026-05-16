@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
+import '../../models/exercise_catalog.dart';
 import '../../models/exercise_model.dart';
-import '../../logic/exercise_analyzer.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 import 'exercise_screen.dart';
@@ -24,68 +24,7 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
   void _nextExercise() async {
     if (_currentIndex < widget.routine.exercises.length) {
       final type = widget.routine.exercises[_currentIndex];
-
-      // Map ExerciseType to a full Exercise object
-      // (In a real app, this logic would be centralized)
-      final exercises = [
-        Exercise(
-          name: 'SQUATS',
-          description: 'Perfect your depth and torso angle',
-          instructions:
-              'Stand with feet shoulder-width apart. Lower your hips until thighs are parallel to the floor.',
-          muscleGroup: 'Quadriceps, Glutes',
-          difficulty: 'Intermediate',
-          icon: Icons.fitness_center_rounded,
-          type: ExerciseType.squat,
-          analyzer: SquatAnalyzer(),
-        ),
-        Exercise(
-          name: 'PUSH-UPS',
-          description: 'Build upper body and core strength',
-          instructions:
-              'Keep your body in a straight line. Lower your chest until it nearly touches the floor.',
-          muscleGroup: 'Chest, Triceps, Shoulders',
-          difficulty: 'Beginner',
-          icon: Icons.horizontal_rule_rounded,
-          type: ExerciseType.pushup,
-          analyzer: PushupAnalyzer(),
-        ),
-        Exercise(
-          name: 'LUNGES',
-          description: 'Improves balance and leg strength',
-          instructions:
-              'Step forward and lower your back knee until it nearly touches the ground.',
-          muscleGroup: 'Hamstrings, Glutes',
-          difficulty: 'Beginner',
-          icon: Icons.directions_walk_rounded,
-          type: ExerciseType.lunge,
-          analyzer: LungeAnalyzer(),
-        ),
-        Exercise(
-          name: 'OVERHEAD PRESS',
-          description: 'Build powerful shoulders',
-          instructions:
-              'Press the weights directly overhead while keeping your core tight.',
-          muscleGroup: 'Shoulders, Triceps',
-          difficulty: 'Intermediate',
-          icon: Icons.upload_rounded,
-          type: ExerciseType.overheadPress,
-          analyzer: OverheadPressAnalyzer(),
-        ),
-        Exercise(
-          name: 'PLANK',
-          description: 'The ultimate core endurance test',
-          instructions:
-              'Hold a straight body position resting on your forearms and toes.',
-          muscleGroup: 'Core, Abs',
-          difficulty: 'Advanced',
-          icon: Icons.view_headline_rounded,
-          type: ExerciseType.plank,
-          analyzer: PlankAnalyzer(),
-        ),
-      ];
-
-      final exercise = exercises.firstWhere((e) => e.type == type);
+      final exercise = ExerciseCatalog.exerciseForType(type);
 
       final result = await Navigator.push<WorkoutSession>(
         context,
@@ -247,19 +186,9 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                       child: GlassContainer(
                         padding: const EdgeInsets.all(40),
                         child: Icon(
-                          widget.routine.exercises[_currentIndex].name ==
-                                  'squat'
-                              ? Icons.fitness_center_rounded
-                              : widget.routine.exercises[_currentIndex].name ==
-                                    'pushup'
-                              ? Icons.horizontal_rule_rounded
-                              : widget.routine.exercises[_currentIndex].name ==
-                                    'lunge'
-                              ? Icons.directions_walk_rounded
-                              : widget.routine.exercises[_currentIndex].name ==
-                                    'overheadPress'
-                              ? Icons.upload_rounded
-                              : Icons.view_headline_rounded,
+                          ExerciseCatalog.templateForType(
+                            widget.routine.exercises[_currentIndex],
+                          ).icon,
                           color: AppColors.accentCyan,
                           size: 80,
                         ),

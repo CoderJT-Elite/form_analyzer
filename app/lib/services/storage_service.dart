@@ -7,6 +7,8 @@ class StorageService {
   static const String _sessionsKey = 'workout_sessions_v2';
   static const String _routinesKey = 'workout_routines_v1';
   static const String _routineSessionsKey = 'routine_sessions_v1';
+  static const String _voiceCoachingEnabledKey = 'voice_coaching_enabled_v1';
+  static const String _hapticFeedbackEnabledKey = 'haptic_feedback_enabled_v1';
 
   Future<void> saveSession(WorkoutSession session) async {
     final prefs = await SharedPreferences.getInstance();
@@ -163,5 +165,25 @@ class StorageService {
               '${s.exerciseType.name}: ${s.totalReps} total reps on ${s.date}',
         )
         .toList();
+  }
+
+  Future<void> setVoiceCoachingEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_voiceCoachingEnabledKey, enabled);
+  }
+
+  Future<bool> isVoiceCoachingEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_voiceCoachingEnabledKey) ?? true;
+  }
+
+  Future<void> setHapticFeedbackEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_hapticFeedbackEnabledKey, enabled);
+  }
+
+  Future<bool> isHapticFeedbackEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_hapticFeedbackEnabledKey) ?? true;
   }
 }

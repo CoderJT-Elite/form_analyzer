@@ -34,6 +34,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   CameraController? _cameraController;
   final PoseDetectorService _poseDetector = PoseDetectorService();
   final TTSService _tts = TTSService();
+  final StorageService _storage = StorageService();
 
   bool _isCameraInitialized = false;
   Future<void>? _cameraInitializationFuture;
@@ -56,17 +57,18 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   bool _isResting = false;
   int _restTimeRemaining = 30;
   Timer? _restTimer;
+  bool _hapticsEnabled = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initialize();
-    _tts.init();
+    _loadFeedbackPreferences();
     widget.exercise.analyzer.onRep = (count) {
       if (mounted) {
         if (count > _currentRepCount) {
-          HapticFeedback.mediumImpact();
+          _triggerHaptic(HapticFeedback.mediumImpact);
         }
         setState(() => _currentRepCount = count);
         _tts.speakSuccess('Rep $count');
@@ -79,9 +81,19 @@ class _ExerciseScreenState extends State<ExerciseScreen>
       _tts.speakCorrection(message);
     };
     widget.exercise.analyzer.onSafetyAlert = (message) {
-      HapticFeedback.heavyImpact();
+      _triggerHaptic(HapticFeedback.heavyImpact);
       _tts.speakSafety(message);
     };
+  }
+
+  Future<void> _loadFeedbackPreferences() async {
+    await _tts.init();
+    final voiceEnabled = await _storage.isVoiceCoachingEnabled();
+    final hapticsEnabled = await _storage.isHapticFeedbackEnabled();
+    _tts.setEnabled(voiceEnabled);
+    if (mounted) {
+      setState(() => _hapticsEnabled = hapticsEnabled);
+    }
   }
 
   Future<void> _initialize() async {
@@ -151,9 +163,22 @@ class _ExerciseScreenState extends State<ExerciseScreen>
           _startCalibration();
         }
       }
-    } catch (e) {
+    } on CameraException catch (e) {
+      final message = switch (e.code) {
+        'CameraAccessDenied' => 'Camera access was denied. Please enable camera permission and try again.',
+        'CameraAccessRestricted' => 'Camera access is restricted on this device.',
+        'AudioAccessDenied' => 'Microphone/camera permission denied.',
+        _ => 'Could not start the camera (${e.code}). Please try again.',
+      };
       if (mounted) {
-        setState(() => _errorMessage = e.toString());
+        setState(() => _errorMessage = message);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _errorMessage =
+              'Something went wrong while starting the camera. Please retry.';
+        });
       }
     } finally {
       completer.complete();
@@ -223,14 +248,36 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   void _onFinishWorkout() async {
-    // Collect all sets into a session
+    final sets = List<ExerciseSet>.from(_completedSets);
+    if (_currentRepCount > 0) {
+      final setPerformance = widget.exercise.analyzer.getPerformanceMetrics();
+      sets.add(
+        ExerciseSet(
+          reps: _currentRepCount,
+          timestamp: DateTime.now(),
+          rating: setPerformance.averageFormScore,
+          feedback: setPerformance.commonIssues,
+        ),
+      );
+    }
+    if (sets.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Complete at least one rep before finishing.'),
+          ),
+        );
+      }
+      return;
+    }
+
     final performance = widget.exercise.analyzer.getPerformanceMetrics();
 
     final session = WorkoutSession(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       date: DateTime.now(),
       exerciseType: widget.exercise.type,
-      sets: _completedSets,
+      sets: sets,
       overallRating: performance.averageFormScore,
       overallFeedback: performance.commonIssues,
     );
@@ -275,6 +322,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   void _startRest() {
+    _restTimer?.cancel();
     setState(() {
       _isResting = true;
       _restTimeRemaining = 30;
@@ -507,7 +555,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
             ),
             const SizedBox(height: 40),
             ElevatedButton(
-              onPressed: () => setState(() => _isResting = false),
+              onPressed: () {
+                _restTimer?.cancel();
+                setState(() => _isResting = false);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentCyan,
                 foregroundColor: Colors.black,
@@ -559,9 +610,53 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Widget _buildError() {
-    return Center(
-      child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.red, size: 56),
+              const SizedBox(height: 20),
+              Text(
+                'CAMERA UNAVAILABLE',
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: Colors.white70),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _initialize,
+                  child: const Text('RETRY CAMERA'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('GO BACK'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+  }
+
+  void _triggerHaptic(Future<void> Function() callback) {
+    if (!_hapticsEnabled) return;
+    callback();
   }
 
   Future<void> _disposeCameraController() async {

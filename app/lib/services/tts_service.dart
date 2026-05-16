@@ -62,4 +62,8 @@ class TTSService {
   void toggle() {
     isEnabled = !isEnabled;
   }
+
+  void setEnabled(bool value) {
+    isEnabled = value;
+  }
 }
