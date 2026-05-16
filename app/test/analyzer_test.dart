@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:form_analyzer/logic/exercise_analyzer.dart';
+import 'package:form_analyzer/core/app_constants.dart';
 
 void main() {
   group('SquatAnalyzer Tests', () {

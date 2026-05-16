@@ -17,7 +17,7 @@ class WorkoutSummaryDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rating = session.overallRating ?? 0.0;
-    final int stars = (rating * 5).round().clamp(1, 5);
+    final int stars = rating.round().clamp(0, 5);
 
     return Dialog(
       backgroundColor: Colors.transparent,
