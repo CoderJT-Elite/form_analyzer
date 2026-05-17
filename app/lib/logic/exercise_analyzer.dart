@@ -282,6 +282,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
   final MovingAverageFilter _angleFilter =
       MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
   double? _prevAngle;
+  bool _reachedDepth = false;
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -298,6 +299,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
     super.reset();
     _angleFilter.reset();
     _prevAngle = null;
+    _reachedDepth = false;
   }
 
   @override
@@ -333,6 +335,8 @@ class PushupAnalyzer extends ExerciseAnalyzer {
       case RepPhase.neutral:
         if (currentAngle < AppConstants.pushupNeutralThreshold - deadZone) {
           phase = RepPhase.eccentric;
+          currentRepIssues.clear();
+          _reachedDepth = false;
           statusMessage = 'Lower your chest';
         } else {
           statusMessage = 'Lower with control';
@@ -341,10 +345,12 @@ class PushupAnalyzer extends ExerciseAnalyzer {
 
       case RepPhase.eccentric:
         if (currentAngle <= AppConstants.pushupDepthThreshold) {
+          _reachedDepth = true;
           phase = RepPhase.concentric;
           statusMessage = 'Push up';
         } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
             currentAngle > AppConstants.pushupDepthThreshold + deadZone) {
+          addIssue('Insufficient Depth');
           notifyCorrection('Lower');
         } else {
           statusMessage = 'Lower';
@@ -354,10 +360,22 @@ class PushupAnalyzer extends ExerciseAnalyzer {
       case RepPhase.concentric:
         if (currentAngle >= AppConstants.pushupNeutralThreshold) {
           repCount++;
+          double score = 1.0;
+          if (!_reachedDepth || currentRepIssues.contains('Insufficient Depth')) {
+            addIssue('Insufficient Depth');
+            score -= 0.35;
+          }
+          repScores.add(score.clamp(0.0, 1.0));
+          allRepIssues.add(List<String>.from(currentRepIssues));
+          currentRepIssues.clear();
+          _reachedDepth = false;
           phase = RepPhase.neutral;
           statusMessage = 'Rep $repCount';
           if (onRep != null) onRep!(repCount);
         } else {
+          if (currentAngle < AppConstants.pushupNeutralThreshold - deadZone) {
+            addIssue('Incomplete Lockout');
+          }
           statusMessage = 'Lock elbows at top';
         }
         break;
@@ -369,6 +387,7 @@ class LungeAnalyzer extends ExerciseAnalyzer {
   final MovingAverageFilter _angleFilter =
       MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
   double? _prevAngle;
+  bool _reachedDepth = false;
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -385,6 +404,7 @@ class LungeAnalyzer extends ExerciseAnalyzer {
     super.reset();
     _angleFilter.reset();
     _prevAngle = null;
+    _reachedDepth = false;
   }
 
   @override
@@ -420,6 +440,8 @@ class LungeAnalyzer extends ExerciseAnalyzer {
       case RepPhase.neutral:
         if (currentAngle < AppConstants.lungeNeutralThreshold - deadZone) {
           phase = RepPhase.eccentric;
+          currentRepIssues.clear();
+          _reachedDepth = false;
           statusMessage = 'Lower into lunge';
         } else {
           statusMessage = 'Step forward and lower';
@@ -428,10 +450,12 @@ class LungeAnalyzer extends ExerciseAnalyzer {
 
       case RepPhase.eccentric:
         if (currentAngle <= AppConstants.lungeDepthThreshold) {
+          _reachedDepth = true;
           phase = RepPhase.concentric;
           statusMessage = 'Drive up';
         } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
             currentAngle > AppConstants.lungeDepthThreshold + deadZone) {
+          addIssue('Insufficient Depth');
           notifyCorrection('Lower');
         } else {
           statusMessage = 'Lower';
@@ -441,6 +465,15 @@ class LungeAnalyzer extends ExerciseAnalyzer {
       case RepPhase.concentric:
         if (currentAngle >= AppConstants.lungeNeutralThreshold) {
           repCount++;
+          double score = 1.0;
+          if (!_reachedDepth || currentRepIssues.contains('Insufficient Depth')) {
+            addIssue('Insufficient Depth');
+            score -= 0.3;
+          }
+          repScores.add(score.clamp(0.0, 1.0));
+          allRepIssues.add(List<String>.from(currentRepIssues));
+          currentRepIssues.clear();
+          _reachedDepth = false;
           phase = RepPhase.neutral;
           statusMessage = 'Rep $repCount';
           if (onRep != null) onRep!(repCount);
@@ -456,6 +489,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
   final MovingAverageFilter _angleFilter =
       MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
   double? _prevAngle;
+  bool _reachedBottom = false;
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -472,6 +506,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
     super.reset();
     _angleFilter.reset();
     _prevAngle = null;
+    _reachedBottom = false;
   }
 
   @override
@@ -516,6 +551,8 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
       case RepPhase.neutral:
         if (currentAngle < AppConstants.overheadPressLockoutThreshold - deadZone) {
           phase = RepPhase.eccentric;
+          currentRepIssues.clear();
+          _reachedBottom = false;
           statusMessage = 'Lower to shoulder level';
         } else {
           statusMessage = 'Lower under control';
@@ -524,10 +561,12 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
 
       case RepPhase.eccentric:
         if (currentAngle <= AppConstants.overheadPressStartThreshold) {
+          _reachedBottom = true;
           phase = RepPhase.concentric;
           statusMessage = 'Press up';
         } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
             currentAngle > AppConstants.overheadPressStartThreshold + deadZone) {
+          addIssue('Insufficient Range');
           notifyCorrection('Lower');
         } else {
           statusMessage = 'Lower';
@@ -537,10 +576,22 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
       case RepPhase.concentric:
         if (currentAngle >= AppConstants.overheadPressLockoutThreshold) {
           repCount++;
+          double score = 1.0;
+          if (!_reachedBottom || currentRepIssues.contains('Insufficient Range')) {
+            addIssue('Insufficient Range');
+            score -= 0.3;
+          }
+          repScores.add(score.clamp(0.0, 1.0));
+          allRepIssues.add(List<String>.from(currentRepIssues));
+          currentRepIssues.clear();
+          _reachedBottom = false;
           phase = RepPhase.neutral;
           statusMessage = 'Rep $repCount';
           if (onRep != null) onRep!(repCount);
         } else {
+          if (currentAngle < AppConstants.overheadPressLockoutThreshold - deadZone) {
+            addIssue('No Full Lockout');
+          }
           statusMessage = 'Reach higher';
         }
         break;
@@ -551,6 +602,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
 class PlankAnalyzer extends ExerciseAnalyzer {
   final Stopwatch _timer = Stopwatch();
   bool _isHolding = false;
+  int _lastScoredSecond = 0;
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -588,13 +640,26 @@ class PlankAnalyzer extends ExerciseAnalyzer {
       if (!_isHolding) {
         _timer.start();
         _isHolding = true;
+        currentRepIssues.clear();
       }
       repCount = _timer.elapsed.inSeconds;
+      if (repCount > _lastScoredSecond) {
+        repScores.add(1.0);
+        allRepIssues.add(<String>[]);
+        _lastScoredSecond = repCount;
+      }
       statusMessage = 'Hold tight! Core engaged: ${repCount}s';
     } else {
       if (_isHolding) {
         _timer.stop();
         _isHolding = false;
+      }
+      addIssue('Form Break');
+      if (repCount > _lastScoredSecond) {
+        repScores.add(0.4);
+        allRepIssues.add(List<String>.from(currentRepIssues));
+        _lastScoredSecond = repCount;
+        currentRepIssues.clear();
       }
       if (backAngle <= AppConstants.plankBackAngleMin) {
         statusMessage = 'Hips too high! Lower them.';
@@ -609,5 +674,6 @@ class PlankAnalyzer extends ExerciseAnalyzer {
     super.reset();
     _timer.reset();
     _isHolding = false;
+    _lastScoredSecond = 0;
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:form_analyzer/logic/exercise_analyzer.dart';
+import 'package:form_analyzer/core/app_constants.dart';
 
 void main() {
   group('SquatAnalyzer Tests', () {
@@ -49,5 +50,15 @@ void main() {
       expect(metrics.commonIssues, contains('Insufficient Depth'));
       expect(metrics.perfectReps, 1);
     });
+  });
+
+  test('Performance metrics remain on 0-5 scale across analyzers', () {
+    final analyzer = PushupAnalyzer();
+    analyzer.repScores.addAll([1.0, 0.8, 0.6]);
+    analyzer.repCount = 3;
+
+    final metrics = analyzer.getPerformanceMetrics();
+    expect(metrics.averageFormScore, closeTo(4.0, 0.1));
+    expect(metrics.totalReps, 3);
   });
 }

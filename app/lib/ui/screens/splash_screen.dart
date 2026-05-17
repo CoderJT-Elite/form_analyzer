@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
@@ -52,10 +51,12 @@ class _SplashScreenState extends State<SplashScreen>
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             transitionDuration: const Duration(milliseconds: 600),
-            pageBuilder: (_, __, ___) => const MainNavigationWrapper(),
-            transitionsBuilder: (_, anim, __, child) {
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const MainNavigationWrapper(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
               return FadeTransition(
-                opacity: anim,
+                opacity: animation,
                 child: child,
               );
             },

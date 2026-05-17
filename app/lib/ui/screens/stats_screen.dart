@@ -65,6 +65,13 @@ class _StatsScreenState extends State<StatsScreen>
     return map;
   }
 
+  List<WorkoutSession> get _recentRatedSessions {
+    final rated = _sessions.where((s) => s.overallRating != null).toList();
+    rated.sort((a, b) => a.date.compareTo(b.date));
+    if (rated.length <= 7) return rated;
+    return rated.sublist(rated.length - 7);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -128,6 +135,8 @@ class _StatsScreenState extends State<StatsScreen>
                   const SizedBox(height: 16),
                   ..._buildDistributionList(),
                   const SizedBox(height: 32),
+                  _buildTrendCard(),
+                  const SizedBox(height: 24),
                   _buildFormRatingCard(),
                 ]),
               ),
@@ -345,6 +354,64 @@ class _StatsScreenState extends State<StatsScreen>
             Icons.star_rounded,
             color: color,
             size: 40,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrendCard() {
+    final points = _recentRatedSessions;
+    final improvement = points.length >= 2
+        ? (points.last.overallRating! - points.first.overallRating!)
+        : 0.0;
+    final trendColor = improvement >= 0 ? AppColors.goodGreen : AppColors.badRed;
+    final trendLabel = points.length < 2
+        ? 'Need more sessions'
+        : improvement >= 0
+        ? 'Trending up'
+        : 'Trending down';
+
+    return GlassContainer(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'RECENT FORM TREND',
+            style: GoogleFonts.outfit(
+              color: AppColors.textTertiary,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                improvement >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                color: trendColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                trendLabel,
+                style: GoogleFonts.outfit(
+                  color: trendColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                points.isEmpty ? 'N/A' : '${points.last.overallRating!.toStringAsFixed(1)} / 5.0',
+                style: GoogleFonts.outfit(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -31,7 +31,7 @@ class ExerciseSet {
   final int? targetReps;
   final bool isPR;
   final DateTime timestamp;
-  final double rating; // 0.0 to 1.0 or 1 to 5
+  final double rating; // 0.0 to 5.0
   final List<String> feedback;
 
   ExerciseSet({

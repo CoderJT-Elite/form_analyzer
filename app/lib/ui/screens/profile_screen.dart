@@ -18,6 +18,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<WorkoutSession>? _sessions;
   bool _isLoading = true;
   bool _isSyncing = false;
+  bool _voiceCoachingEnabled = true;
+  bool _hapticFeedbackEnabled = true;
 
   @override
   void initState() {
@@ -29,8 +31,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
     try {
       final data = await _storageService.loadSessions();
+      final voiceEnabled = await _storageService.isVoiceCoachingEnabled();
+      final hapticsEnabled = await _storageService.isHapticFeedbackEnabled();
       setState(() {
         _sessions = data;
+        _voiceCoachingEnabled = voiceEnabled;
+        _hapticFeedbackEnabled = hapticsEnabled;
         _isLoading = false;
       });
     } catch (e) {
@@ -377,7 +383,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSettingsList() {
     final items = [
       (Icons.person_outline_rounded, 'Personal Information'),
-      (Icons.notifications_none_rounded, 'Notifications'),
       (Icons.security_rounded, 'Privacy & Security'),
       (Icons.help_outline_rounded, 'Help Center'),
     ];
@@ -386,37 +391,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         const SectionLabel(text: 'SETTINGS'),
         const SizedBox(height: 16),
-        ...items.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: GlassContainer(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                onTap: () {},
-                child: Row(
-                  children: [
-                    Icon(item.$1, color: AppColors.textSecondary, size: 20),
-                    const SizedBox(width: 16),
-                    Text(
-                      item.$2,
-                      style: GoogleFonts.inter(
-                        color: AppColors.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
+        _buildToggleSetting(
+          icon: Icons.record_voice_over_rounded,
+          title: 'Voice Coaching',
+          value: _voiceCoachingEnabled,
+          onChanged: (value) async {
+            await _storageService.setVoiceCoachingEnabled(value);
+            if (mounted) setState(() => _voiceCoachingEnabled = value);
+          },
+        ),
+        _buildToggleSetting(
+          icon: Icons.vibration_rounded,
+          title: 'Haptic Feedback',
+          value: _hapticFeedbackEnabled,
+          onChanged: (value) async {
+            await _storageService.setHapticFeedbackEnabled(value);
+            if (mounted) setState(() => _hapticFeedbackEnabled = value);
+          },
+        ),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: GlassContainer(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              onTap: () {},
+              child: Row(
+                children: [
+                  Icon(item.$1, color: AppColors.textSecondary, size: 20),
+                  const SizedBox(width: 16),
+                  Text(
+                    item.$2,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
                     ),
-                    const Spacer(),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.textTertiary,
-                      size: 18,
-                    ),
-                  ],
-                ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textTertiary,
+                    size: 18,
+                  ),
+                ],
               ),
-            )),
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildToggleSetting({
+    required IconData icon,
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.textSecondary, size: 20),
+            const SizedBox(width: 16),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: AppColors.accentCyan,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
