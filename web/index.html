@@ -44,47 +44,6 @@
             color: #ffffff;
             -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
-            cursor: none;
-        }
-
-        /* Custom Cursor */
-        .cursor-dot,
-        .cursor-outline {
-            position: fixed;
-            top: 0;
-            left: 0;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            z-index: 9999;
-            pointer-events: none;
-        }
-
-        .cursor-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #06b6d4;
-        }
-
-        .cursor-outline {
-            width: 40px;
-            height: 40px;
-            border: 1px solid rgba(6, 182, 212, 0.5);
-            transition: width 0.2s, height 0.2s;
-        }
-
-        body:hover .cursor-dot {
-            opacity: 1;
-        }
-
-        body:hover .cursor-outline {
-            opacity: 1;
-        }
-
-        a:hover ~ .cursor-outline,
-        button:hover ~ .cursor-outline {
-            width: 60px;
-            height: 60px;
-            background-color: rgba(6, 182, 212, 0.1);
         }
 
         /* Ambient Grain Texture */
@@ -176,14 +135,9 @@
             box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
         }
 
-        /* Hide Scrollbar */
-        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="font-sans selection:bg-cyan-500/30">
-
-    <div class="cursor-dot"></div>
-    <div class="cursor-outline"></div>
 
     <!-- Sticky Navigation -->
     <nav class="fixed top-0 left-0 w-full z-50 p-6 md:p-8">
@@ -322,7 +276,7 @@
                 </div>
                 <div class="p-8 md:p-12">
                     <code class="font-mono text-sm md:text-lg leading-loose block selection:bg-cyan-500/40">
-                        <span class="text-cyan-600">const</span> calculation = (u, v) => {<br>
+                        <span class="text-cyan-600">const</span> calculation = (u, v) =&gt; {<br>
                         &nbsp;&nbsp;<span class="text-gray-600">// Normalize vectors in 3D projective space</span><br>
                         &nbsp;&nbsp;<span class="text-purple-500">const</span> dot_p = vec3.dot(u, v);<br>
                         &nbsp;&nbsp;<span class="text-purple-500">const</span> angles = Math.acos(dot_p / (vec3.len(u) * vec3.len(v)));<br>
@@ -413,7 +367,7 @@
 
 <span class="text-cyan-500">import</span> <span class="text-white">numpy as np</span>
 
-<span class="text-purple-400">def</span> <span class="text-cyan-400">joint_angle</span><span class="text-white">(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:</span>
+<span class="text-purple-400">def</span> <span class="text-cyan-400">joint_angle</span><span class="text-white">(a: np.ndarray, b: np.ndarray, c: np.ndarray) -&gt; float:</span>
     <span class="text-gray-500">"""Compute the angle (degrees) at joint B between limb segments BA and BC."""</span>
     u <span class="text-white">=</span> a <span class="text-white">-</span> b  <span class="text-gray-500"># vector B → A</span>
     v <span class="text-white">=</span> c <span class="text-white">-</span> b  <span class="text-gray-500"># vector B → C</span>
@@ -447,27 +401,28 @@
     </section>
 
     <!-- Waitlist Modal -->
-    <div id="waitlistModal" class="fixed inset-0 z-[100] modal-blur items-center justify-center hidden p-6">
-        <div class="max-w-lg w-full glass rounded-[3rem] p-12 border-white/15 relative transition-all duration-700 scale-90 opacity-0" id="modalContent">
-            <button onclick="closeModal()" class="absolute top-8 right-8 text-gray-500 hover:text-white transition-all transform hover:rotate-90">
+    <div id="waitlistModal" class="fixed inset-0 z-[100] modal-blur items-center justify-center hidden p-6" role="dialog" aria-modal="true" aria-labelledby="waitlistModalTitle" aria-describedby="waitlistModalDescription" aria-hidden="true">
+        <div class="max-w-lg w-full glass rounded-[3rem] p-12 border-white/15 relative transition-all duration-700 scale-90 opacity-0" id="modalContent" tabindex="-1">
+            <button id="waitlistModalClose" onclick="closeModal()" aria-label="Close waitlist modal" class="absolute top-8 right-8 text-gray-500 hover:text-white transition-all transform hover:rotate-90">
                 <svg class="w-8 h-8 font-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
-            <h2 class="text-5xl font-extrabold tracking-tighter mb-4">Secure Your Spot.</h2>
-            <p class="text-gray-400 mb-10 font-light text-xl leading-relaxed">Apply for the early-access beta and help us democratize sports science.</p>
+            <h2 id="waitlistModalTitle" class="text-5xl font-extrabold tracking-tighter mb-4">Secure Your Spot.</h2>
+            <p id="waitlistModalDescription" class="text-gray-400 mb-10 font-light text-xl leading-relaxed">Apply for the early-access beta and help us democratize sports science.</p>
             
-            <!-- GOOGLE FORM POST — replace FORM_ID and entry.XXXXXXXXXX with your form's values -->
-            <form id="waitlistForm" action="https://docs.google.com/forms/d/e/1FAIpQLSc8v_PLACEHOLDER_FORM_ID/formResponse" method="POST" target="hidden_iframe" class="space-y-8">
+            <form id="waitlistForm" action="https://formspree.io/f/mvzwveen" method="POST" class="space-y-8">
                 <div class="space-y-3">
-                    <label class="block ml-1 text-[11px] font-black text-gray-600 uppercase tracking-[4px]">Verified Email</label>
-                    <input type="email" name="entry.1045781291" required placeholder="athlete@domain.com" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
+                    <label for="waitlistEmail" class="block ml-1 text-[11px] font-black text-gray-600 uppercase tracking-[4px]">Verified Email</label>
+                    <input id="waitlistEmail" type="email" name="email" required placeholder="athlete@domain.com" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5" aria-label="Verified email">
                 </div>
                 <button type="submit" class="w-full py-6 rounded-3xl bg-cyan-500 text-white font-black text-xs uppercase tracking-[4px] hover:bg-cyan-400 transition-all shadow-stone-900 shadow-2xl active:scale-[0.98]">
                     Reserve Access &rarr;
                 </button>
                 <p class="text-center text-[9px] text-gray-500 uppercase tracking-[3px] font-bold">Encrypted &bull; No Tracking &bull; Strictly Private</p>
+                <p class="text-center text-[10px] text-gray-400">
+                    By joining, you agree to our
+                    <a href="privacy.html" class="underline hover:text-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/70 rounded-sm">Privacy Policy</a>.
+                </p>
             </form>
-            <!-- Hidden iframe absorbs the Google Forms redirect -->
-            <iframe name="hidden_iframe" class="hidden" aria-hidden="true"></iframe>
         </div>
     </div>
 
@@ -490,66 +445,89 @@
         // Modal Logic
         const modal = document.getElementById('waitlistModal');
         const content = document.getElementById('modalContent');
+        const modalCloseButton = document.getElementById('waitlistModalClose');
+        let lastFocusedElement = null;
+
+        function trapModalFocus(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+                return;
+            }
+
+            if (event.key !== 'Tab') return;
+
+            const focusableElements = content.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])');
+            if (!focusableElements.length) return;
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus();
+            } else if (!event.shiftKey && document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus();
+            }
+        }
 
         function openModal() {
+            lastFocusedElement = document.activeElement;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            modal.setAttribute('aria-hidden', 'false');
             setTimeout(() => {
                 content.classList.remove('scale-90', 'opacity-0');
+                modalCloseButton.focus();
             }, 10);
             document.body.style.overflow = 'hidden';
+            document.addEventListener('keydown', trapModalFocus);
         }
 
         function closeModal() {
             content.classList.add('scale-90', 'opacity-0');
+            modal.setAttribute('aria-hidden', 'true');
             setTimeout(() => {
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
             }, 500);
             document.body.style.overflow = 'auto';
+            document.removeEventListener('keydown', trapModalFocus);
+            if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+                lastFocusedElement.focus();
+            }
         }
 
-        // Escape to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
         });
 
-        // Form Submission — Google Form POST via hidden iframe
+        // Form Submission with Formspree
         const form = document.getElementById('waitlistForm');
-        const iframe = document.querySelector('iframe[name="hidden_iframe"]');
-        let iframeReady = false;
-
-        // First load of the iframe is the blank initial state; mark it as ready after that.
-        iframe.addEventListener('load', function onFirstLoad() {
-            iframeReady = true;
-            iframe.removeEventListener('load', onFirstLoad);
-        });
-
-        form.onsubmit = () => {
+        form.onsubmit = async (e) => {
+            e.preventDefault();
             const btn = form.querySelector('button[type="submit"]');
             const originalText = btn.innerText;
 
             btn.innerText = "Sending...";
             btn.disabled = true;
+            const data = new FormData(form);
 
-            // The form POSTs to Google Forms; the hidden iframe absorbs the redirect.
-            // Listen for the iframe reload (Google's "Thank you" confirmation page) to
-            // confirm delivery, with a 10-second fallback that resets the button.
-            let confirmed = false;
-            const fallback = setTimeout(() => {
-                if (!confirmed) {
-                    btn.innerText = "Check your inbox.";
-                    btn.disabled = false;
-                    iframe.removeEventListener('load', onConfirm);
-                    setTimeout(() => { btn.innerText = originalText; }, 3000);
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: data,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Submission failed');
                 }
-            }, 10000);
 
-            function onConfirm() {
-                if (!iframeReady) { iframeReady = true; return; }
-                confirmed = true;
-                clearTimeout(fallback);
-                iframe.removeEventListener('load', onConfirm);
                 btn.innerText = "Applied Successfully.";
                 btn.classList.add('!bg-emerald-600');
                 setTimeout(() => {
@@ -561,8 +539,15 @@
                         btn.classList.remove('!bg-emerald-600');
                     }, 1000);
                 }, 1500);
+            } catch (error) {
+                btn.innerText = "Error. Try again.";
+                btn.classList.add('!bg-red-600');
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    btn.classList.remove('!bg-red-600');
+                }, 2000);
             }
-            iframe.addEventListener('load', onConfirm);
         };
 
         // Production Beta Counter Logic
@@ -629,22 +614,6 @@
             });
         });
 
-        // Custom Cursor Logic
-        const cursorDot = document.querySelector('.cursor-dot');
-        const cursorOutline = document.querySelector('.cursor-outline');
-
-        window.addEventListener('mousemove', (e) => {
-            const posX = e.clientX;
-            const posY = e.clientY;
-
-            cursorDot.style.left = `${posX}px`;
-            cursorDot.style.top = `${posY}px`;
-
-            cursorOutline.animate({
-                left: `${posX}px`,
-                top: `${posY}px`
-            }, { duration: 500, fill: 'forwards' });
-        });
     </script>
 </body>
 </html>
