@@ -1,638 +1,365 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth dark">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FormAnalyzer | Coaching for the Next Generation</title>
-    <meta name="description" content="Hardware-agnostic, edge-AI powered biomechanics for elite performance and injury prevention. 98.2% Pose accuracy on-device.">
-    
-    <!-- Design Tokens & Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'monospace'],
-                    },
-                    colors: {
-                        brand: {
-                            cyan: '#06b6d4', // cyan-500
-                            dark: '#050505',
-                            accent: '#22d3ee',
-                        },
-                    },
-                },
-            },
-        }
-    </script>
-    
-    <style>
-        :root {
-            --brand-color: #06b6d4;
-        }
-        
-        body {
-            background-color: #050505;
-            color: #ffffff;
-            -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FormAnalyzer</title>
+  <meta name="description" content="FormAnalyzer helps athletes track movement form with on-device analysis.">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --surface: #0f1115;
+      --border: #20232a;
+      --text: #f5f7fa;
+      --muted: #a3acb9;
+      --accent: #22d3ee;
+      --accent-2: #06b6d4;
+    }
 
-        /* Ambient Grain Texture */
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-            opacity: 0.03;
-            pointer-events: none;
-            z-index: 100;
-        }
-        
-        .glass {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        
-        .glass-cyan {
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(0, 0, 0, 0));
-            backdrop-filter: blur(25px);
-            border: 1px solid rgba(6, 182, 212, 0.15);
-        }
+    * { box-sizing: border-box; }
 
-        .cyan-glow {
-            box-shadow: 0 0 50px -15px rgba(6, 182, 212, 0.3);
-        }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
 
-        .hero-title {
-            background: linear-gradient(180deg, #fff 30%, rgba(255,255,255,0.4) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    .container {
+      width: min(980px, 92vw);
+      margin: 0 auto;
+    }
 
-        .floating {
-            animation: float 8s ease-in-out infinite;
-        }
+    header {
+      padding: 1.2rem 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(5, 5, 5, 0.9);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(8px);
+    }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.02); }
-        }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
 
-        .reveal {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: all 1s cubic-bezier(0.2, 0, 0, 1);
-        }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
 
-        .reveal.active {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .button {
+      border: 0;
+      border-radius: 999px;
+      padding: 0.72rem 1.1rem;
+      cursor: pointer;
+      font-weight: 600;
+      background: var(--accent-2);
+      color: #021014;
+    }
 
-        .tilt-card {
-            transition: transform 0.1s ease;
-            transform-style: preserve-3d;
-            will-change: transform;
-        }
+    .hero {
+      padding: 4.5rem 0 2.5rem;
+      display: grid;
+      gap: 1.5rem;
+    }
 
-        .magnetic-btn {
-            transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s, box-shadow 0.2s;
-            will-change: transform;
-        }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 1.15;
+    }
 
-        .scanning-line {
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #06b6d4, transparent);
-            position: absolute;
-            top: 0;
-            animation: scan 4s linear infinite;
-            box-shadow: 0 0 15px #06b6d4;
-        }
+    p {
+      margin: 0;
+      color: var(--muted);
+    }
 
-        @keyframes scan {
-            0% { top: 0; opacity: 0; }
-            5% { opacity: 1; }
-            95% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.8rem;
+      margin-top: 0.4rem;
+    }
 
-        .code-window {
-            background: #09090b;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
-        }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      padding: 1rem;
+    }
 
-        html {
-            scrollbar-width: thin;
-        }
+    .card strong {
+      display: block;
+      font-size: 1.3rem;
+      margin-top: 0.15rem;
+      color: var(--text);
+    }
 
-        ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
-        }
+    .preview {
+      margin: 1.2rem 0 2rem;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--surface);
+    }
 
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 999px;
-        }
-    </style>
+    .preview img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .section {
+      padding: 1rem 0 3.5rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 1rem;
+      color: var(--muted);
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 0 2.3rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 100;
+    }
+
+    .modal[aria-hidden="false"] {
+      display: flex;
+    }
+
+    .modal-content {
+      width: min(520px, 100%);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 1.2rem;
+      position: relative;
+    }
+
+    .close {
+      position: absolute;
+      right: 0.8rem;
+      top: 0.8rem;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    input {
+      width: 100%;
+      margin-top: 0.4rem;
+      margin-bottom: 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0b0d10;
+      color: var(--text);
+      padding: 0.72rem;
+      font-size: 1rem;
+    }
+
+    a {
+      color: var(--accent);
+    }
+  </style>
 </head>
-<body class="font-sans selection:bg-cyan-500/30">
-
-    <!-- Sticky Navigation -->
-    <nav class="fixed top-0 left-0 w-full z-50 p-6 md:p-8">
-        <div class="max-w-7xl mx-auto flex items-center justify-between glass h-16 px-8 rounded-full border border-white/10">
-            <div class="flex items-center gap-3">
-                <div class="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_#06b6d4]"></div>
-                <span class="text-xl font-extrabold tracking-tighter">FormAnalyzer</span>
-            </div>
-            
-            <div class="hidden lg:flex gap-10 text-[11px] font-bold uppercase tracking-[2px] text-gray-400">
-                <a href="#engine" class="hover:text-white transition-all magnetic-btn">The Engine</a>
-                <a href="#demo" class="hover:text-white transition-all magnetic-btn">Live Scan</a>
-                <a href="#impact" class="hover:text-white transition-all magnetic-btn">Impact</a>
-                <a href="#validation" class="hover:text-white transition-all magnetic-btn">Validation</a>
-                <a href="#research" class="hover:text-white transition-all magnetic-btn">Research</a>
-            </div>
-
-            <button onclick="openModal()" class="magnetic-btn px-6 py-2.5 rounded-full bg-white text-black text-[11px] font-extrabold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl">
-                Get Access
-            </button>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="relative pt-48 pb-32 px-6 overflow-hidden min-h-screen flex flex-col items-center justify-center">
-        <!-- Radial Gradients -->
-        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[80vw] h-[40vh] bg-cyan-500/5 blur-[160px] rounded-full -z-10"></div>
-        
-        <div class="max-w-5xl mx-auto text-center space-y-10 reveal">
-            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/15 text-cyan-400 text-[9px] font-black uppercase tracking-[3px]">
-                <span class="relative flex h-1.5 w-1.5">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500"></span>
-                </span>
-                Edge Computing &bull; 98.2% Accuracy
-            </div>
-            
-            <h1 class="text-7xl md:text-[7rem] lg:text-[10rem] font-extrabold tracking-tighter leading-[0.9] hero-title py-1">
-                Move.<br>
-                <span class="text-cyan-500 shadow-cyan-500/20">Optimally.</span>
-            </h1>
-            
-            <p class="text-xl md:text-3xl text-gray-500 font-light max-w-3xl mx-auto leading-relaxed tracking-tight">
-                Elite biomechanics labs require $50k in hardware. <br class="hidden md:block">
-                <span class="text-gray-300 font-medium">FormAnalyzer requires your pocket.</span>
-            </p>
-            
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-6 pt-10">
-                <button onclick="openModal()" class="magnetic-btn w-full sm:w-auto px-12 py-5 rounded-full bg-cyan-500 text-white font-black text-xs uppercase tracking-[3px] hover:bg-cyan-400 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all active:scale-95">
-                    Start Your Beta
-                </button>
-                <a href="#demo" class="magnetic-btn text-gray-400 text-[11px] font-bold uppercase tracking-[2px] hover:text-white transition-colors">
-                    Watch the engine &rarr;
-                </a>
-            </div>
-        </div>
-
-        <div class="mt-32 relative w-full max-w-6xl px-4 floating reveal pointer-events-none tilt-card">
-            <div class="rounded-[3rem] overflow-hidden glass p-3 border border-white/10 shadow-2xl cyan-glow tilt-card">
-                <img src="mockup.png" alt="Form Analyzer UI" class="w-full h-auto rounded-[2.5rem] grayscale-[0.2] brightness-110">
-                
-                <!-- dynamic overlays -->
-                <div class="absolute top-1/3 right-12 glass p-4 rounded-2xl border-cyan-500/30 hidden md:block">
-                    <div class="text-[8px] font-black uppercase text-cyan-500 tracking-[1px] mb-1">Stability index</div>
-                    <div class="text-2xl font-mono text-white">94.8%</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Interactive Scan Section -->
-    <section id="demo" class="py-32 px-6 bg-brand-dark/50">
-        <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-24 items-center">
-            <div class="relative reveal order-2 md:order-1">
-                <div class="absolute -inset-10 bg-cyan-500/10 blur-[100px] -z-10"></div>
-                <div class="rounded-[2.5rem] overflow-hidden glass border-white/10 relative">
-                    <img src="scan.png" alt="Bio-Mechanical Scan" class="w-full h-auto">
-                    <div class="scanning-line"></div>
-                    
-                    <!-- floating badges -->
-                    <div class="absolute bottom-10 left-10 glass px-6 py-4 rounded-2xl border-emerald-500/20">
-                        <div class="flex items-center gap-2">
-                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                            <span class="text-xs font-bold font-mono text-emerald-400 uppercase tracking-widest">Alignment Correct</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="space-y-10 reveal order-1 md:order-2">
-                <h2 class="text-5xl md:text-6xl font-extrabold tracking-tighter leading-tight">
-                    Real-time <br><span class="text-cyan-500">Heuristics.</span>
-                </h2>
-                <p class="text-xl text-gray-400 leading-relaxed font-light">
-                    Our on-device engine doesn't just "guess" your posture. It solves 3D projective geometry in <span class="text-white font-medium">12ms per frame</span>, pinpointing inefficiencies before they become injuries.
-                </p>
-                
-                <ul class="space-y-6">
-                    <li class="flex items-start gap-4">
-                        <div class="mt-1 w-5 h-5 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 text-cyan-500">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <span class="text-gray-300 font-medium">Sub-millimeter joint tracking precision.</span>
-                    </li>
-                    <li class="flex items-start gap-4">
-                        <div class="mt-1 w-5 h-5 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 text-cyan-500">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <span class="text-gray-300 font-medium">Zero data leaves your device. Total Privacy.</span>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </section>
-
-    <!-- The Technical Core -->
-    <section id="engine" class="py-48 px-6 relative overflow-hidden">
-        <!-- Geometric Grid background -->
-        <div class="absolute inset-0 bg-[radial-gradient(#ffffff10_0.5px,transparent_0.5px)] [background-size:40px_40px] opacity-10 -z-10"></div>
-        
-        <div class="max-w-4xl mx-auto text-center space-y-16 reveal">
-            <div class="space-y-4">
-                <h2 class="text-4xl md:text-5xl font-extrabold tracking-tight">The Open Source Logic.</h2>
-                <p class="text-gray-500 text-lg font-light tracking-tight italic uppercase tracking-[0.2em] font-mono">Rotation Invariance &bull; L2 Norm</p>
-            </div>
-            
-            <div class="code-window rounded-[2rem] overflow-hidden text-left relative group">
-                <div class="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/20 blur-[60px] rounded-full group-hover:bg-cyan-500/40 transition-all duration-700"></div>
-                <div class="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                    <div class="flex gap-2">
-                        <div class="w-2.5 h-2.5 rounded-full bg-red-800"></div>
-                        <div class="w-2.5 h-2.5 rounded-full bg-yellow-800"></div>
-                        <div class="w-2.5 h-2.5 rounded-full bg-green-800"></div>
-                    </div>
-                    <span class="text-[9px] font-mono text-gray-600 uppercase tracking-widest">VectorMath.cl</span>
-                </div>
-                <div class="p-8 md:p-12">
-                    <code class="font-mono text-sm md:text-lg leading-loose block selection:bg-cyan-500/40">
-                        <span class="text-cyan-600">const</span> calculation = (u, v) => {<br>
-                        &nbsp;&nbsp;<span class="text-gray-600">// Normalize vectors in 3D projective space</span><br>
-                        &nbsp;&nbsp;<span class="text-purple-500">const</span> dot_p = vec3.dot(u, v);<br>
-                        &nbsp;&nbsp;<span class="text-purple-500">const</span> angles = Math.acos(dot_p / (vec3.len(u) * vec3.len(v)));<br>
-                        <br>
-                        &nbsp;&nbsp;<span class="text-gray-600">// Return rotational invariant stability score</span><br>
-                        &nbsp;&nbsp;<span class="text-cyan-500">return</span> (angles * 180 / Math.PI).toFixed(2);<br>
-                        }
-                    </code>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Impact & Proof -->
-    <section id="impact" class="py-32 px-6">
-        <div class="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 grid sm:grid-cols-2 gap-8">
-                <div class="p-10 rounded-[3rem] glass-cyan reveal group cursor-default tilt-card">
-                    <h3 class="text-2xl font-bold mb-4 group-hover:text-cyan-400 transition-colors tracking-tight">Student-Athletes</h3>
-                    <p class="text-gray-400 font-light leading-relaxed">
-                        Democratic access to coaching. For the high-schooler in an under-resourced weight room, we provide the Olympian's advantage.
-                    </p>
-                </div>
-                <div class="p-10 rounded-[3rem] glass reveal delay-100 group cursor-default tilt-card">
-                    <h3 class="text-2xl font-bold mb-4 group-hover:text-emerald-400 transition-colors tracking-tight">Injury Prevention</h3>
-                    <p class="text-gray-400 font-light leading-relaxed">
-                        Identify chronic stress patterns in your gait before they become sidelined seasons. Move longer, move better.
-                    </p>
-                </div>
-            </div>
-            <div class="p-10 rounded-[3rem] bg-cyan-600/5 border border-cyan-500/20 reveal flex flex-col justify-between tilt-card">
-                <div>
-                    <div class="text-[10px] font-black uppercase text-cyan-500 tracking-[3px] mb-4">Beta Roadmap</div>
-                    <h3 class="text-4xl font-extrabold tracking-tighter mb-6">Phase 1 <br>Live Now.</h3>
-                </div>
-                <div class="space-y-4">
-                    <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                        <div id="roadmapProgress" class="h-full bg-cyan-500 transition-all duration-1000" style="width: 85%"></div>
-                    </div>
-                    <div class="flex justify-between items-end">
-                      <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Global Network Active</p>
-                      <p class="text-[11px] text-cyan-500 font-black uppercase tracking-widest"><span id="testerCount">--</span> spots remaining</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Technical Validation Section -->
-    <section id="validation" class="py-32 px-6 relative overflow-hidden">
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[50vh] bg-cyan-500/5 blur-[140px] rounded-full -z-10"></div>
-
-        <div class="max-w-5xl mx-auto reveal">
-            <!-- High-visibility card -->
-            <div class="rounded-[3rem] border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent p-12 md:p-16 relative overflow-hidden">
-                <div class="absolute -top-24 -right-24 w-72 h-72 bg-cyan-500/15 blur-[90px] rounded-full pointer-events-none"></div>
-
-                <!-- Badge -->
-                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[9px] font-black uppercase tracking-[3px] mb-10">
-                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
-                    </svg>
-                    Academic Recognition
-                </div>
-
-                <h2 class="text-4xl md:text-6xl font-extrabold tracking-tighter mb-6 leading-tight">
-                    Scientifically <br><span class="text-cyan-500">Validated Depth.</span>
-                </h2>
-
-                <p class="text-xl text-gray-400 leading-relaxed font-light max-w-3xl mb-12">
-                    Our joint-angle modeling and real-time inference methods have been recognized for their technical depth by academic leads at the <span class="text-white font-medium">BYU Data-Driven Engineering Lab.</span>
-                </p>
-
-                <!-- 3D Vector Dot Product formula code block -->
-                <div class="code-window rounded-[1.5rem] overflow-hidden">
-                    <div class="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                        <div class="flex gap-2">
-                            <div class="w-2.5 h-2.5 rounded-full bg-red-800"></div>
-                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-800"></div>
-                            <div class="w-2.5 h-2.5 rounded-full bg-green-800"></div>
-                        </div>
-                        <span class="text-[9px] font-mono text-gray-600 uppercase tracking-widest">joint_angle.py &bull; 3D Vector Dot Product</span>
-                    </div>
-                    <div class="p-8 md:p-10 overflow-x-auto">
-                        <code class="font-mono text-sm md:text-base leading-loose block selection:bg-cyan-500/40 whitespace-pre">
-<span class="text-gray-500"># 3D Vector Dot Product — Joint Angle Calculation</span>
-<span class="text-gray-500"># θ = arccos( (u · v) / (|u| × |v|) )</span>
-
-<span class="text-cyan-500">import</span> <span class="text-white">numpy as np</span>
-
-<span class="text-purple-400">def</span> <span class="text-cyan-400">joint_angle</span><span class="text-white">(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:</span>
-    <span class="text-gray-500">"""Compute the angle (degrees) at joint B between limb segments BA and BC."""</span>
-    u <span class="text-white">=</span> a <span class="text-white">-</span> b  <span class="text-gray-500"># vector B → A</span>
-    v <span class="text-white">=</span> c <span class="text-white">-</span> b  <span class="text-gray-500"># vector B → C</span>
-    cos_theta <span class="text-white">=</span> <span class="text-cyan-500">np.dot</span><span class="text-white">(u, v)</span> / <span class="text-white">(</span><span class="text-cyan-500">np.linalg.norm</span><span class="text-white">(u)</span> * <span class="text-cyan-500">np.linalg.norm</span><span class="text-white">(v))</span>
-    <span class="text-purple-400">return</span> <span class="text-cyan-500">np.degrees</span><span class="text-white">(</span><span class="text-cyan-500">np.arccos</span><span class="text-white">(</span><span class="text-cyan-500">np.clip</span><span class="text-white">(cos_theta,</span> <span class="text-amber-400">-1.0</span><span class="text-white">,</span> <span class="text-amber-400">1.0</span><span class="text-white">)))</span>
-                        </code>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Research Footer -->
-    <section id="research" class="py-32 px-6 border-t border-white/5 bg-[#030303]">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-20">
-            <div class="space-y-6 text-center md:text-left">
-                <p class="text-xs font-black uppercase tracking-[5px] text-gray-600">Institutional validation</p>
-                <div class="flex flex-wrap items-center justify-center md:justify-start gap-12 opacity-50 contrast-50 hover:opacity-100 transition-all">
-                    <span class="text-2xl font-black italic tracking-tighter">IEEE ISEC 2026</span>
-                    <span class="text-2xl font-black italic tracking-tighter">US PATENT PENDING</span>
-                </div>
-            </div>
-            
-            <div class="text-center md:text-right space-y-4">
-                <div class="text-2xl font-black tracking-tighter">FormAnalyzer.</div>
-                <p class="text-gray-600 text-[10px] leading-relaxed max-w-[200px] uppercase font-bold tracking-[2px]">
-                    Proactive Biomechanics Lab &bull; Grand Blanc, Michigan &copy; 2026
-                </p>
-                <a href="privacy.html" class="text-cyan-400 text-xs hover:text-cyan-300 underline">Privacy Policy</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- Waitlist Modal -->
-    <div id="waitlistModal" class="fixed inset-0 z-[100] modal-blur items-center justify-center hidden p-6" aria-hidden="true">
-        <div class="max-w-lg w-full glass rounded-[3rem] p-12 border-white/15 relative transition-all duration-700 scale-90 opacity-0" id="modalContent" role="dialog" aria-modal="true" aria-labelledby="waitlistTitle" aria-describedby="waitlistDescription">
-            <button onclick="closeModal()" class="absolute top-8 right-8 text-gray-500 hover:text-white transition-all transform hover:rotate-90" aria-label="Close waitlist modal">
-                <svg class="w-8 h-8 font-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-            <h2 id="waitlistTitle" class="text-5xl font-extrabold tracking-tighter mb-4">Secure Your Spot.</h2>
-            <p id="waitlistDescription" class="text-gray-400 mb-10 font-light text-xl leading-relaxed">Apply for the early-access beta and help us democratize sports science.</p>
-            
-            <form id="waitlistForm" action="https://formspree.io/f/mvzwveen" method="POST" class="space-y-8">
-                <div class="space-y-3">
-                    <label for="waitlistEmail" class="block ml-1 text-[11px] font-black text-gray-600 uppercase tracking-[4px]">Verified Email</label>
-                    <input id="waitlistEmail" type="email" name="email" required placeholder="athlete@domain.com" autocomplete="email" aria-label="Verified email address" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
-                </div>
-                <button type="submit" class="w-full py-6 rounded-3xl bg-cyan-500 text-white font-black text-xs uppercase tracking-[4px] hover:bg-cyan-400 transition-all shadow-stone-900 shadow-2xl active:scale-[0.98]">
-                    Reserve Access &rarr;
-                </button>
-                <p class="text-center text-[9px] text-gray-500 uppercase tracking-[3px] font-bold">Encrypted &bull; No Tracking &bull; Strictly Private &bull; <a href="privacy.html" class="text-cyan-400 hover:text-cyan-300 underline">Privacy Policy</a></p>
-            </form>
-        </div>
+<body>
+  <header>
+    <div class="container header-row">
+      <div class="brand">FormAnalyzer</div>
+      <button class="button" type="button" onclick="openModal()">Join Waitlist</button>
     </div>
+  </header>
 
-    <script>
-        // Reveal on Scroll
-        const observerOptions = {
-            threshold: 0.1
-        };
+  <main class="container">
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title">Movement feedback for athletes and coaches.</h1>
+      <p>FormAnalyzer provides camera-based form feedback and local workout tracking in a mobile app.</p>
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('active');
-                }
-            });
-        }, observerOptions);
+      <div class="stats" aria-label="Current beta status">
+        <article class="card">
+          <span>Beta signups</span>
+          <strong id="testerCount">--</strong>
+        </article>
+        <article class="card">
+          <span>Data source</span>
+          <strong>Formspree</strong>
+        </article>
+      </div>
+    </section>
 
-        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    <figure class="preview">
+      <img src="mockup.png" alt="FormAnalyzer app preview">
+    </figure>
 
-        // Modal Logic
-        const modal = document.getElementById('waitlistModal');
-        const content = document.getElementById('modalContent');
-        const form = document.getElementById('waitlistForm');
-        const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-        let lastFocusedElement = null;
-        let keyboardMode = false;
+    <section class="section" aria-labelledby="what-you-get">
+      <h2 id="what-you-get">What you get in beta</h2>
+      <ul class="list">
+        <li>Basic workout flow with guided exercise routines.</li>
+        <li>On-device pose estimation during form sessions.</li>
+        <li>A direct channel for feature feedback from early users.</li>
+      </ul>
+      <p>
+        We only use your submitted email for beta updates.
+        <a href="privacy.html">Privacy policy</a>
+      </p>
+    </section>
+  </main>
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Tab') {
-                keyboardMode = true;
-            }
+  <footer>
+    <div class="container">© 2026 FormAnalyzer</div>
+  </footer>
+
+  <div id="waitlistModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="waitlistModalTitle" aria-describedby="waitlistModalDescription" aria-hidden="true">
+    <div class="modal-content" id="modalContent" tabindex="-1">
+      <button id="waitlistModalClose" class="close" type="button" onclick="closeModal()" aria-label="Close waitlist modal">×</button>
+      <h2 id="waitlistModalTitle">Join the waitlist</h2>
+      <p id="waitlistModalDescription">Add your email and we’ll contact you about beta access.</p>
+      <form id="waitlistForm" action="https://formspree.io/f/mvzwveen" method="POST">
+        <label for="waitlistEmail">Email</label>
+        <input id="waitlistEmail" type="email" name="email" required autocomplete="email" placeholder="you@example.com">
+        <button class="button" type="submit">Submit</button>
+      </form>
+      <p style="margin-top: 0.8rem; font-size: 0.9rem;">By joining, you agree to our <a href="privacy.html">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
+  <script>
+    const modal = document.getElementById('waitlistModal');
+    const content = document.getElementById('modalContent');
+    const form = document.getElementById('waitlistForm');
+    let lastFocusedElement = null;
+
+    function getFocusableElements() {
+      return content.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])');
+    }
+
+    function trapModalFocus(event) {
+      if (event.key === 'Escape') {
+        closeModal();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const focusableElements = getFocusableElements();
+      if (!focusableElements.length) return;
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function openModal() {
+      lastFocusedElement = document.activeElement;
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      document.addEventListener('keydown', trapModalFocus);
+      const focusable = getFocusableElements();
+      if (focusable.length) focusable[0].focus();
+    }
+
+    function closeModal() {
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = 'auto';
+      document.removeEventListener('keydown', trapModalFocus);
+      if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+        lastFocusedElement.focus();
+      }
+    }
+
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) closeModal();
+    });
+
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const submitButton = form.querySelector('button[type="submit"]');
+      const originalText = submitButton.innerText;
+      submitButton.innerText = 'Sending...';
+      submitButton.disabled = true;
+
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' }
         });
 
-        document.addEventListener('mousedown', () => {
-            keyboardMode = false;
-        });
-
-        function trapFocus(e) {
-            if (e.key !== 'Tab' || modal.classList.contains('hidden')) return;
-
-            const focusableElements = content.querySelectorAll(focusableSelector);
-            if (!focusableElements.length) return;
-
-            const first = focusableElements[0];
-            const last = focusableElements[focusableElements.length - 1];
-
-            if (e.shiftKey && document.activeElement === first) {
-                e.preventDefault();
-                last.focus();
-            } else if (!e.shiftKey && document.activeElement === last) {
-                e.preventDefault();
-                first.focus();
-            }
+        if (!response.ok) {
+          throw new Error('Submission failed');
         }
 
-        function openModal() {
-            lastFocusedElement = document.activeElement;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            setTimeout(() => {
-                content.classList.remove('scale-90', 'opacity-0');
-            }, 10);
-            document.body.style.overflow = 'hidden';
-            modal.setAttribute('aria-hidden', 'false');
-            document.addEventListener('keydown', trapFocus);
-            const firstInput = content.querySelector('input, button');
-            if (firstInput) firstInput.focus();
-        }
+        submitButton.innerText = 'Submitted';
+        form.reset();
+        setTimeout(() => {
+          closeModal();
+          submitButton.innerText = originalText;
+          submitButton.disabled = false;
+        }, 1200);
+      } catch (error) {
+        submitButton.innerText = 'Try again';
+        setTimeout(() => {
+          submitButton.innerText = originalText;
+          submitButton.disabled = false;
+        }, 1800);
+      }
+    };
 
-        function closeModal() {
-            content.classList.add('scale-90', 'opacity-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            }, 500);
-            document.body.style.overflow = 'auto';
-            modal.setAttribute('aria-hidden', 'true');
-            document.removeEventListener('keydown', trapFocus);
-            if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
-                lastFocusedElement.focus();
-            }
-        }
+    async function updateBetaCounter() {
+      const counterEl = document.getElementById('testerCount');
+      if (!counterEl) return;
 
-        // Escape to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
-        });
+      try {
+        const response = await fetch('data/beta-count.json', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Could not load beta count');
+        const payload = await response.json();
+        const total = Number(payload.total_submissions);
+        if (!Number.isFinite(total) || total < 0) throw new Error('Invalid beta count payload');
+        counterEl.textContent = total.toLocaleString();
+      } catch (_error) {
+        counterEl.textContent = 'N/A';
+      }
+    }
 
-        // Form Submission with Formspree
-        form.onsubmit = async (event) => {
-            event.preventDefault();
-            const btn = form.querySelector('button[type="submit"]');
-            const originalText = btn.innerText;
-
-            btn.innerText = "Sending...";
-            btn.disabled = true;
-
-            const data = new FormData(form);
-
-            try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    body: data,
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('Submission failed');
-                }
-
-                btn.innerText = "Applied Successfully.";
-                btn.classList.add('!bg-emerald-600');
-                setTimeout(() => {
-                    closeModal();
-                    form.reset();
-                    setTimeout(() => {
-                        btn.innerText = originalText;
-                        btn.disabled = false;
-                        btn.classList.remove('!bg-emerald-600');
-                    }, 1000);
-                }, 1500);
-            } catch (error) {
-                btn.innerText = "Error. Try again.";
-                btn.classList.add('!bg-red-600');
-                setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                    btn.classList.remove('!bg-red-600');
-                }, 2000);
-            }
-        };
-
-        // Production Beta Counter Logic
-        function updateBetaCounter() {
-            let count = localStorage.getItem('formAnalyzerBetaCount');
-            if (!count) {
-                count = Math.floor(Math.random() * (95 - 75 + 1)) + 75;
-            } else {
-                count = parseInt(count);
-                // Simulate occasional signups
-                if (Math.random() > 0.95 && count > 7) {
-                    count--;
-                }
-            }
-            localStorage.setItem('formAnalyzerBetaCount', count);
-            
-            const testerEl = document.getElementById('testerCount');
-            const progressEl = document.getElementById('roadmapProgress');
-            
-            if (testerEl) testerEl.innerText = count;
-            if (progressEl) {
-                const percentage = Math.max(50, 100 - (count / 150 * 100));
-                progressEl.style.width = percentage + '%';
-            }
-        }
-
-        setInterval(updateBetaCounter, 15000); // Check/Update every 15s
-        updateBetaCounter(); // Initial call
-        
-        // 3D Tilt Effect
-        document.querySelectorAll('.tilt-card').forEach(card => {
-            card.addEventListener('mousemove', e => {
-                if (keyboardMode) return;
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                const rotateX = ((y - centerY) / centerY) * -8;
-                const rotateY = ((x - centerX) / centerX) * 8;
-                
-                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
-            });
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
-                setTimeout(() => {
-                    card.style.transition = 'transform 0.1s ease';
-                }, 300);
-            });
-            card.addEventListener('mouseenter', () => {
-                card.style.transition = 'none';
-            });
-        });
-
-        // Magnetic Buttons
-        document.querySelectorAll('.magnetic-btn').forEach(btn => {
-            btn.addEventListener('mousemove', (e) => {
-                if (keyboardMode) return;
-                const rect = btn.getBoundingClientRect();
-                const x = e.clientX - rect.left - rect.width / 2;
-                const y = e.clientY - rect.top - rect.height / 2;
-                btn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
-            });
-            btn.addEventListener('mouseleave', () => {
-                btn.style.transform = `translate(0px, 0px)`;
-            });
-        });
-
-    </script>
+    updateBetaCounter();
+  </script>
 </body>
 </html>

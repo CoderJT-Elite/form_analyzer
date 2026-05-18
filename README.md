@@ -1,12 +1,11 @@
-# Form Analyzer | Elite Biomechanics for All
+# Form Analyzer
 
-Democratizing sports science for under-resourced communities with 3D vector-based biomechanics.
-Powered by Flutter, Google ML Kit (BlazePose), and high-fidelity 3D Vector Math.
+Flutter-based form analysis app with a GitHub Pages landing site.
 
 ## 📁 Repository Structure
 
 - **/app**: The core Flutter mobile application source code.
-- **/web**: High-conversion landing page and marketing site (Deployment source).
+- **/web**: Canonical high-conversion landing page and marketing site (GitHub Pages deployment source).
 
 ## 🚀 Deployment Guide
 
@@ -31,6 +30,13 @@ git push -u origin main
 5. Save and wait for the deployment to finish.
 6. Your landing page will be available at `https://YOUR_USERNAME.github.io/form_analyzer/`.
 
+### 3. Enable live Formspree beta count on landing page
+To keep `web/data/beta-count.json` synced from Formspree, add repository secrets:
+- `FORMSPREE_API_TOKEN` (Formspree API token with access to your form)
+- `FORMSPREE_FORM_ID` (your form id, e.g. `mvzwveen`)
+
+The workflow `.github/workflows/update_formspree_beta_count.yml` updates this file on a schedule and via manual dispatch.
+
 ## 🔒 Privacy & Release Readiness
 
 - Camera frames are processed on-device for live form analysis.
@@ -47,5 +53,4 @@ flutter test
 ```
 
 ---
-&copy; 2026 Form Analyzer Biomechanics Lab.
-Validation: IEEE ISEC 2026 Submission Peer-Review.
+&copy; 2026 Form Analyzer.
