@@ -284,7 +284,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
     // Save standalone session if not in routine mode
     if (!widget.isRoutineMode) {
-      await StorageService().saveSession(session);
+      await _storage.saveSession(session);
     }
 
     if (mounted) {
@@ -344,13 +344,15 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    final controller = _cameraController;
-    _cameraController = null;
-    controller?.dispose();
+    unawaited(_disposeCameraController());
     _poseDetector.dispose();
     _calibrationTimer?.cancel();
     _restTimer?.cancel();
     widget.exercise.analyzer.reset();
+    widget.exercise.analyzer.onRep = null;
+    widget.exercise.analyzer.onFeedback = null;
+    widget.exercise.analyzer.onCorrection = null;
+    widget.exercise.analyzer.onSafetyAlert = null;
     super.dispose();
   }
 
@@ -362,9 +364,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
       if (mounted) {
         setState(() => _isCameraInitialized = false);
       }
-      final controller = _cameraController;
-      _cameraController = null;
-      controller?.dispose();
+      unawaited(_disposeCameraController());
     } else if (state == AppLifecycleState.resumed &&
         _cameraController == null &&
         mounted) {
