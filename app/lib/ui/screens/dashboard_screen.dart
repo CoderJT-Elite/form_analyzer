@@ -44,10 +44,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final routines = await _storageService.loadRoutines();
       final sessions = await _storageService.loadSessions();
+      if (!mounted) return;
       setState(() {
         _routines = routines;
         _sessions = sessions;
@@ -56,6 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       _headerAnimController.forward();
     } catch (e) {
       debugPrint('Error loading data: $e');
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }

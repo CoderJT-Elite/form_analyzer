@@ -25,10 +25,10 @@ git push -u origin main
 ### 2. Enable GitHub Pages
 1. Navigate to your repository on **GitHub.com**.
 2. Go to **Settings** > **Pages**.
-3. Under **Build and deployment** > **Source**, select **GitHub Actions**.
-4. Push to `main` to trigger `.github/workflows/static.yml`, which deploys the `web/` directory.
-5. Your landing page will be available at `https://YOUR_USERNAME.github.io/form_analyzer/`.
-6. The repository root `index.html` redirects to `/web/` to keep one canonical landing implementation.
+3. Under **Build and deployment** choose **GitHub Actions** as the source.
+4. The included workflow (`.github/workflows/static.yml`) deploys `./web` as the site root.
+5. Save and wait for the deployment to finish.
+6. Your landing page will be available at `https://YOUR_USERNAME.github.io/form_analyzer/`.
 
 ### 3. Enable live Formspree beta count on landing page
 To keep `web/data/beta-count.json` synced from Formspree, add repository secrets:

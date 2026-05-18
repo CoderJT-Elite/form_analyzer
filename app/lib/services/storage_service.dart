@@ -74,7 +74,7 @@ class StorageService {
 
     try {
       final List<dynamic> jsonList = jsonDecode(jsonString);
-      return jsonList.map((j) => WorkoutSession.fromJson(j)).toList();
+      return _decodeList(jsonList, WorkoutSession.fromJson);
     } catch (e) {
       debugPrint('Error loading sessions: $e');
       return [];
@@ -111,7 +111,7 @@ class StorageService {
 
     try {
       final List<dynamic> jsonList = jsonDecode(jsonString);
-      return jsonList.map((j) => WorkoutRoutine.fromJson(j)).toList();
+      return _decodeList(jsonList, WorkoutRoutine.fromJson);
     } catch (e) {
       debugPrint('Error loading routines: $e');
       return [];
@@ -149,7 +149,7 @@ class StorageService {
 
     try {
       final List<dynamic> jsonList = jsonDecode(jsonString);
-      return jsonList.map((j) => RoutineSession.fromJson(j)).toList();
+      return _decodeList(jsonList, RoutineSession.fromJson);
     } catch (e) {
       debugPrint('Error loading routine sessions: $e');
       return [];
@@ -185,5 +185,24 @@ class StorageService {
   Future<bool> isHapticFeedbackEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_hapticFeedbackEnabledKey) ?? true;
+  }
+
+  List<T> _decodeList<T>(
+    List<dynamic> rawList,
+    T Function(Map<String, dynamic>) factory,
+  ) {
+    final decoded = <T>[];
+    for (final item in rawList) {
+      if (item is! Map<String, dynamic>) {
+        debugPrint('Skipping malformed persisted item: unexpected type.');
+        continue;
+      }
+      try {
+        decoded.add(factory(item));
+      } catch (e) {
+        debugPrint('Skipping malformed persisted item: $e');
+      }
+    }
+    return decoded;
   }
 }
