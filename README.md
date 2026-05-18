@@ -19,18 +19,17 @@ git init
 git add .
 git commit -m "chore: initial structural reorganization + landing page"
 # Replace with your actual repository URL
-git remote add origin https://github.com/YOUR_USERNAME/form-analyzer.git
+git remote add origin https://github.com/YOUR_USERNAME/form_analyzer.git
 git push -u origin main
 ```
 
 ### 2. Enable GitHub Pages
 1. Navigate to your repository on **GitHub.com**.
 2. Go to **Settings** > **Pages**.
-3. Under **Build and deployment** > **Branch**:
-   - Select `main`.
-   - Select `/ (root)` for the directory (or change it to `/web` if supported by your GitHub setup, but standard Pages uses root or docs).
-4. Save and wait for the deployment to finish.
-5. Your landing page will be available at `https://YOUR_USERNAME.github.io/form-analyzer/web/`.
+3. Under **Build and deployment** choose **GitHub Actions** as the source.
+4. The included workflow (`.github/workflows/static.yml`) deploys `./web` as the site root.
+5. Save and wait for the deployment to finish.
+6. Your landing page will be available at `https://YOUR_USERNAME.github.io/form_analyzer/`.
 
 ## 🔒 Privacy & Release Readiness
 

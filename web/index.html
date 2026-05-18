@@ -44,47 +44,6 @@
             color: #ffffff;
             -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
-            cursor: none;
-        }
-
-        /* Custom Cursor */
-        .cursor-dot,
-        .cursor-outline {
-            position: fixed;
-            top: 0;
-            left: 0;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            z-index: 9999;
-            pointer-events: none;
-        }
-
-        .cursor-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #06b6d4;
-        }
-
-        .cursor-outline {
-            width: 40px;
-            height: 40px;
-            border: 1px solid rgba(6, 182, 212, 0.5);
-            transition: width 0.2s, height 0.2s;
-        }
-
-        body:hover .cursor-dot {
-            opacity: 1;
-        }
-
-        body:hover .cursor-outline {
-            opacity: 1;
-        }
-
-        a:hover ~ .cursor-outline,
-        button:hover ~ .cursor-outline {
-            width: 60px;
-            height: 60px;
-            background-color: rgba(6, 182, 212, 0.1);
         }
 
         /* Ambient Grain Texture */
@@ -176,14 +135,22 @@
             box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
         }
 
-        /* Hide Scrollbar */
-        ::-webkit-scrollbar { display: none; }
+        html {
+            scrollbar-width: thin;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+        }
     </style>
 </head>
 <body class="font-sans selection:bg-cyan-500/30">
-
-    <div class="cursor-dot"></div>
-    <div class="cursor-outline"></div>
 
     <!-- Sticky Navigation -->
     <nav class="fixed top-0 left-0 w-full z-50 p-6 md:p-8">
@@ -442,32 +409,30 @@
                 <p class="text-gray-600 text-[10px] leading-relaxed max-w-[200px] uppercase font-bold tracking-[2px]">
                     Proactive Biomechanics Lab &bull; Grand Blanc, Michigan &copy; 2026
                 </p>
+                <a href="privacy.html" class="text-cyan-400 text-xs hover:text-cyan-300 underline">Privacy Policy</a>
             </div>
         </div>
     </section>
 
     <!-- Waitlist Modal -->
-    <div id="waitlistModal" class="fixed inset-0 z-[100] modal-blur items-center justify-center hidden p-6">
-        <div class="max-w-lg w-full glass rounded-[3rem] p-12 border-white/15 relative transition-all duration-700 scale-90 opacity-0" id="modalContent">
-            <button onclick="closeModal()" class="absolute top-8 right-8 text-gray-500 hover:text-white transition-all transform hover:rotate-90">
+    <div id="waitlistModal" class="fixed inset-0 z-[100] modal-blur items-center justify-center hidden p-6" aria-hidden="true">
+        <div class="max-w-lg w-full glass rounded-[3rem] p-12 border-white/15 relative transition-all duration-700 scale-90 opacity-0" id="modalContent" role="dialog" aria-modal="true" aria-labelledby="waitlistTitle" aria-describedby="waitlistDescription">
+            <button onclick="closeModal()" class="absolute top-8 right-8 text-gray-500 hover:text-white transition-all transform hover:rotate-90" aria-label="Close waitlist modal">
                 <svg class="w-8 h-8 font-light" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
-            <h2 class="text-5xl font-extrabold tracking-tighter mb-4">Secure Your Spot.</h2>
-            <p class="text-gray-400 mb-10 font-light text-xl leading-relaxed">Apply for the early-access beta and help us democratize sports science.</p>
+            <h2 id="waitlistTitle" class="text-5xl font-extrabold tracking-tighter mb-4">Secure Your Spot.</h2>
+            <p id="waitlistDescription" class="text-gray-400 mb-10 font-light text-xl leading-relaxed">Apply for the early-access beta and help us democratize sports science.</p>
             
-            <!-- GOOGLE FORM POST — replace FORM_ID and entry.XXXXXXXXXX with your form's values -->
-            <form id="waitlistForm" action="https://docs.google.com/forms/d/e/1FAIpQLSc8v_PLACEHOLDER_FORM_ID/formResponse" method="POST" target="hidden_iframe" class="space-y-8">
+            <form id="waitlistForm" action="https://formspree.io/f/mvzwveen" method="POST" class="space-y-8">
                 <div class="space-y-3">
-                    <label class="block ml-1 text-[11px] font-black text-gray-600 uppercase tracking-[4px]">Verified Email</label>
-                    <input type="email" name="entry.1045781291" required placeholder="athlete@domain.com" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
+                    <label for="waitlistEmail" class="block ml-1 text-[11px] font-black text-gray-600 uppercase tracking-[4px]">Verified Email</label>
+                    <input id="waitlistEmail" type="email" name="email" required placeholder="athlete@domain.com" autocomplete="email" aria-label="Verified email address" class="w-full bg-white/5 border border-white/15 rounded-3xl p-6 text-xl text-white focus:outline-none focus:border-cyan-500 transition-all focus:ring-8 focus:ring-cyan-500/5">
                 </div>
                 <button type="submit" class="w-full py-6 rounded-3xl bg-cyan-500 text-white font-black text-xs uppercase tracking-[4px] hover:bg-cyan-400 transition-all shadow-stone-900 shadow-2xl active:scale-[0.98]">
                     Reserve Access &rarr;
                 </button>
-                <p class="text-center text-[9px] text-gray-500 uppercase tracking-[3px] font-bold">Encrypted &bull; No Tracking &bull; Strictly Private</p>
+                <p class="text-center text-[9px] text-gray-500 uppercase tracking-[3px] font-bold">Encrypted &bull; No Tracking &bull; Strictly Private &bull; <a href="privacy.html" class="text-cyan-400 hover:text-cyan-300 underline">Privacy Policy</a></p>
             </form>
-            <!-- Hidden iframe absorbs the Google Forms redirect -->
-            <iframe name="hidden_iframe" class="hidden" aria-hidden="true"></iframe>
         </div>
     </div>
 
@@ -490,14 +455,51 @@
         // Modal Logic
         const modal = document.getElementById('waitlistModal');
         const content = document.getElementById('modalContent');
+        const form = document.getElementById('waitlistForm');
+        const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        let lastFocusedElement = null;
+        let keyboardMode = false;
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Tab') {
+                keyboardMode = true;
+            }
+        });
+
+        document.addEventListener('mousedown', () => {
+            keyboardMode = false;
+        });
+
+        function trapFocus(e) {
+            if (e.key !== 'Tab' || modal.classList.contains('hidden')) return;
+
+            const focusableElements = content.querySelectorAll(focusableSelector);
+            if (!focusableElements.length) return;
+
+            const first = focusableElements[0];
+            const last = focusableElements[focusableElements.length - 1];
+
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        }
 
         function openModal() {
+            lastFocusedElement = document.activeElement;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             setTimeout(() => {
                 content.classList.remove('scale-90', 'opacity-0');
             }, 10);
             document.body.style.overflow = 'hidden';
+            modal.setAttribute('aria-hidden', 'false');
+            document.addEventListener('keydown', trapFocus);
+            const firstInput = content.querySelector('input, button');
+            if (firstInput) firstInput.focus();
         }
 
         function closeModal() {
@@ -507,6 +509,11 @@
                 modal.classList.remove('flex');
             }, 500);
             document.body.style.overflow = 'auto';
+            modal.setAttribute('aria-hidden', 'true');
+            document.removeEventListener('keydown', trapFocus);
+            if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+                lastFocusedElement.focus();
+            }
         }
 
         // Escape to close
@@ -514,42 +521,30 @@
             if (e.key === 'Escape') closeModal();
         });
 
-        // Form Submission — Google Form POST via hidden iframe
-        const form = document.getElementById('waitlistForm');
-        const iframe = document.querySelector('iframe[name="hidden_iframe"]');
-        let iframeReady = false;
-
-        // First load of the iframe is the blank initial state; mark it as ready after that.
-        iframe.addEventListener('load', function onFirstLoad() {
-            iframeReady = true;
-            iframe.removeEventListener('load', onFirstLoad);
-        });
-
-        form.onsubmit = () => {
+        // Form Submission with Formspree
+        form.onsubmit = async (event) => {
+            event.preventDefault();
             const btn = form.querySelector('button[type="submit"]');
             const originalText = btn.innerText;
 
             btn.innerText = "Sending...";
             btn.disabled = true;
 
-            // The form POSTs to Google Forms; the hidden iframe absorbs the redirect.
-            // Listen for the iframe reload (Google's "Thank you" confirmation page) to
-            // confirm delivery, with a 10-second fallback that resets the button.
-            let confirmed = false;
-            const fallback = setTimeout(() => {
-                if (!confirmed) {
-                    btn.innerText = "Check your inbox.";
-                    btn.disabled = false;
-                    iframe.removeEventListener('load', onConfirm);
-                    setTimeout(() => { btn.innerText = originalText; }, 3000);
-                }
-            }, 10000);
+            const data = new FormData(form);
 
-            function onConfirm() {
-                if (!iframeReady) { iframeReady = true; return; }
-                confirmed = true;
-                clearTimeout(fallback);
-                iframe.removeEventListener('load', onConfirm);
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: data,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Submission failed');
+                }
+
                 btn.innerText = "Applied Successfully.";
                 btn.classList.add('!bg-emerald-600');
                 setTimeout(() => {
@@ -561,8 +556,15 @@
                         btn.classList.remove('!bg-emerald-600');
                     }, 1000);
                 }, 1500);
+            } catch (error) {
+                btn.innerText = "Error. Try again.";
+                btn.classList.add('!bg-red-600');
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    btn.classList.remove('!bg-red-600');
+                }, 2000);
             }
-            iframe.addEventListener('load', onConfirm);
         };
 
         // Production Beta Counter Logic
@@ -595,6 +597,7 @@
         // 3D Tilt Effect
         document.querySelectorAll('.tilt-card').forEach(card => {
             card.addEventListener('mousemove', e => {
+                if (keyboardMode) return;
                 const rect = card.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
@@ -619,6 +622,7 @@
         // Magnetic Buttons
         document.querySelectorAll('.magnetic-btn').forEach(btn => {
             btn.addEventListener('mousemove', (e) => {
+                if (keyboardMode) return;
                 const rect = btn.getBoundingClientRect();
                 const x = e.clientX - rect.left - rect.width / 2;
                 const y = e.clientY - rect.top - rect.height / 2;
@@ -629,22 +633,6 @@
             });
         });
 
-        // Custom Cursor Logic
-        const cursorDot = document.querySelector('.cursor-dot');
-        const cursorOutline = document.querySelector('.cursor-outline');
-
-        window.addEventListener('mousemove', (e) => {
-            const posX = e.clientX;
-            const posY = e.clientY;
-
-            cursorDot.style.left = `${posX}px`;
-            cursorDot.style.top = `${posY}px`;
-
-            cursorOutline.animate({
-                left: `${posX}px`,
-                top: `${posY}px`
-            }, { duration: 500, fill: 'forwards' });
-        });
     </script>
 </body>
 </html>
