@@ -5,6 +5,14 @@ on:
   # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
+    paths:
+      - "web/**"
+      - ".github/workflows/static.yml"
+
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/static.yml"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -22,8 +30,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
+  web-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Lint HTML
+        run: npx --yes htmlhint --rules spec-char-escape:false "web/**/*.html"
+
+      - name: Validate waitlist form configuration
+        run: |
+          if grep -R "PLACEHOLDER_FORM_ID" web; then
+            echo "Found placeholder form ID in web assets."
+            exit 1
+          fi
+          grep -q "https://formspree.io/f/mvzwveen" web/index.html
+
   deploy:
+    if: github.event_name != 'pull_request'
+    needs: web-lint
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
