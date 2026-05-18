@@ -6,3 +6,5 @@
 - Improved landing-page accessibility with modal ARIA attributes, keyboard focus trapping, overlay click-to-close, and privacy disclosure link.
 - Added `web/privacy.html` and updated deployment guidance in root `README.md`.
 - Added a web CI workflow to detect placeholder form IDs and validate static HTML files.
+- Rebuilt the landing page into a minimal/lightweight single-page layout with one image and removed unsupported marketing claims.
+- Replaced synthetic beta counter behavior with `web/data/beta-count.json` consumption and added scheduled Formspree sync workflow (`update_formspree_beta_count.yml`).

@@ -37,3 +37,14 @@ jobs:
 
       - name: Lint HTML
         run: npx --yes htmlhint "web/**/*.html" "index.html"
+
+      - name: Validate beta count payload
+        run: |
+          jq -e '
+            has("total_submissions")
+            and (.total_submissions | type == "number")
+            and (.total_submissions >= 0)
+            and has("source")
+            and (.source == "formspree")
+            and has("last_updated")
+          ' web/data/beta-count.json > /dev/null
