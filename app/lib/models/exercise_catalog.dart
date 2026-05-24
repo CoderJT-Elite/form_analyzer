@@ -26,39 +26,6 @@ class ExerciseCatalog {
       type: ExerciseType.pushup,
       analyzer: PushupAnalyzer(),
     ),
-    Exercise(
-      name: 'LUNGES',
-      description: 'Improves balance and leg strength',
-      instructions:
-          'Step forward and lower your back knee until it nearly touches the ground.',
-      muscleGroup: 'Hamstrings, Glutes',
-      difficulty: 'Beginner',
-      icon: Icons.directions_walk_rounded,
-      type: ExerciseType.lunge,
-      analyzer: LungeAnalyzer(),
-    ),
-    Exercise(
-      name: 'OVERHEAD PRESS',
-      description: 'Build powerful shoulders',
-      instructions:
-          'Press the weights directly overhead while keeping your core tight.',
-      muscleGroup: 'Shoulders, Triceps',
-      difficulty: 'Intermediate',
-      icon: Icons.upload_rounded,
-      type: ExerciseType.overheadPress,
-      analyzer: OverheadPressAnalyzer(),
-    ),
-    Exercise(
-      name: 'PLANK',
-      description: 'The ultimate core endurance test',
-      instructions:
-          'Hold a straight body position resting on your forearms and toes.',
-      muscleGroup: 'Core, Abs',
-      difficulty: 'Advanced',
-      icon: Icons.view_headline_rounded,
-      type: ExerciseType.plank,
-      analyzer: PlankAnalyzer(),
-    ),
   ];
 
   static Exercise exerciseForType(ExerciseType type) {
@@ -76,7 +43,10 @@ class ExerciseCatalog {
   }
 
   static Exercise templateForType(ExerciseType type) {
-    return all.firstWhere((exercise) => exercise.type == type);
+    return all.firstWhere(
+      (exercise) => exercise.type == type,
+      orElse: () => all.first,
+    );
   }
 
   static ExerciseAnalyzer _newAnalyzer(ExerciseType type) {
@@ -86,11 +56,9 @@ class ExerciseCatalog {
       case ExerciseType.pushup:
         return PushupAnalyzer();
       case ExerciseType.lunge:
-        return LungeAnalyzer();
       case ExerciseType.plank:
-        return PlankAnalyzer();
       case ExerciseType.overheadPress:
-        return OverheadPressAnalyzer();
+        return SquatAnalyzer();
     }
   }
 }

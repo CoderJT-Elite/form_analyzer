@@ -51,16 +51,8 @@ class StorageService {
 
     for (var session in exerciseSessions) {
       for (var set in session.sets) {
-        if (type == ExerciseType.plank) {
-          if (set.duration != null &&
-              newSet.duration != null &&
-              set.duration!.inMilliseconds >= newSet.duration!.inMilliseconds) {
-            return false;
-          }
-        } else {
-          if (set.reps >= newSet.reps) {
-            return false;
-          }
+        if (set.reps >= newSet.reps) {
+          return false;
         }
       }
     }

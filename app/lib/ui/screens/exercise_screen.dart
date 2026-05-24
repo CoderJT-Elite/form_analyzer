@@ -217,14 +217,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         );
         return;
       }
-      final inputImage = InputImage.fromBytes(
-        bytes: image.planes[0].bytes,
-        metadata: InputImageMetadata(
-          size: Size(image.width.toDouble(), image.height.toDouble()),
-          rotation: _imageRotation,
-          format: _inputImageFormat,
-          bytesPerRow: image.planes[0].bytesPerRow,
-        ),
+      final inputImage = _poseDetector.buildInputImage(
+        image: image,
+        rotation: _imageRotation,
+        format: _inputImageFormat,
       );
 
       final poses = await _poseDetector.processImage(inputImage);
