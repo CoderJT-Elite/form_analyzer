@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FormAnalyzer — Master Your Movement</title>
-  <!-- Build Trigger: 2026-06-10 17:35 -->
   <meta name="description" content="Cinematic real-time movement feedback for elite athletes. On-device AI analysis with zero latency.">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,10 +39,13 @@
       color: var(--text);
       overflow-x: hidden;
       line-height: 1.6;
-      contain: layout;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center; /* Global Centering */
     }
 
-    /* Premium Visual Anchors */
+    /* Background Visuals */
     .bg-layers {
       position: fixed;
       inset: 0;
@@ -52,17 +54,28 @@
     }
     .radial-glow {
       position: absolute;
-      width: 80vw;
-      height: 80vw;
-      background: radial-gradient(circle, rgba(124, 242, 228, 0.05) 0%, transparent 70%);
-      top: -20%;
-      left: -10%;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at 50% 50%, rgba(124, 242, 228, 0.04) 0%, transparent 70%);
       filter: blur(80px);
     }
 
     .container {
       width: min(1200px, 90vw);
       margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center; /* Force horizontal center for children */
+    }
+
+    /* Universal Center Utility */
+    .centered-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
     }
 
     header {
@@ -78,6 +91,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      width: 100%;
     }
 
     /* Kinetic Typography */
@@ -87,10 +101,11 @@
       padding-bottom: 0.15em;
       line-height: 1.1;
       vertical-align: top;
+      text-align: center;
     }
     .split-char {
       display: inline-block;
-      transform: translateY(110%);
+      transform: translate3d(0, 110%, 0);
       will-change: transform;
     }
 
@@ -102,30 +117,31 @@
       gap: 4rem;
       align-items: center;
       padding-top: 4rem;
+      text-align: left; /* Text alignment only for grid */
     }
 
     h1 {
-      font-size: clamp(3.5rem, 8vw, 5.5rem);
+      font-size: clamp(3rem, 8vw, 5rem);
       font-weight: 800;
-      line-height: 1.05;
-      letter-spacing: -0.05em;
+      line-height: 1.1;
+      letter-spacing: -0.04em;
       margin-bottom: 2rem;
     }
 
     .hero-summary {
-      font-size: 1.35rem;
+      font-size: 1.25rem;
       color: var(--muted);
       max-width: 45ch;
-      margin-bottom: 3.5rem;
+      margin-bottom: 3rem;
       opacity: 0;
-      transform: translateY(20px);
+      transform: translate3d(0, 20px, 0);
     }
 
     .button {
       position: relative;
       background: #fff;
       color: #000;
-      padding: 1.2rem 2.5rem;
+      padding: 1.1rem 2.2rem;
       border-radius: 100px;
       font-weight: 700;
       border: none;
@@ -137,112 +153,106 @@
     }
     .button:hover { transform: scale(1.05); background: var(--accent); }
 
-    /* Centered Bento Grid */
+    /* Centered Feature Bento Grid */
     .feature-grid {
+      width: 100%;
       display: flex;
       flex-direction: column;
-      align-items: center; /* Force Center */
-      gap: 3rem;
+      align-items: center;
+      gap: 4rem;
       margin: 10rem 0;
     }
 
     .feature-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 32px;
+      border-radius: 40px;
       padding: 4rem;
       width: 100%;
-      max-width: 1000px; /* Expansive layout */
+      max-width: 1100px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 3rem;
+      gap: 4rem;
       align-items: center;
-      transition: border-color 0.4s ease;
+      text-align: left;
       position: relative;
       overflow: hidden;
-      contain: content;
     }
-    .feature-card:hover { border-color: var(--accent); }
-    
+
     .feature-copy h3 {
-      font-size: 2rem;
+      font-size: 2.5rem;
       font-weight: 800;
       letter-spacing: -0.04em;
       margin-bottom: 1.5rem;
-      color: var(--text);
     }
 
     .feature-specs {
       display: grid;
       gap: 1rem;
-      margin-top: 1.5rem;
-      padding-top: 1.5rem;
+      margin-top: 2rem;
+      padding-top: 2rem;
       border-top: 1px solid var(--border);
     }
 
     .spec-item {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      font-size: 0.9rem;
+      gap: 1rem;
       color: var(--muted);
+      font-weight: 500;
     }
     .spec-item::before {
       content: "";
-      width: 4px;
-      height: 4px;
+      width: 6px;
+      height: 6px;
       background: var(--accent);
       border-radius: 50%;
     }
 
-    /* GPU Optimized Reveal Animation */
+    /* Fixed Reveal Engine */
     .reveal-image {
       opacity: 0;
-      transform: scale(0.95) translate3d(0, 30px, 0);
+      transform: scale(0.98) translate3d(0, 40px, 0);
       will-change: transform, opacity;
-      transition: transform 1.2s var(--ease-premium), opacity 1.2s var(--ease-premium);
+      transition: transform 1.4s var(--ease-premium), opacity 1.4s var(--ease-premium);
+      display: block; /* Ensure visibility */
     }
     .reveal-image.active {
       opacity: 1;
       transform: scale(1) translate3d(0, 0, 0);
     }
 
-    .hero-image-wrap {
-      perspective: 1000px;
-    }
-    .hero-image-wrap img {
-      width: 100%;
-      border-radius: 40px;
-      box-shadow: 0 40px 100px rgba(0,0,0,0.8);
-      transform: rotateY(-5deg);
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
     }
 
-    /* Grand Finale Expansion */
+    /* Grand Finale Alignment */
     .grand-finale {
       padding: 12rem 0;
-      background: linear-gradient(to bottom, #050810, #000);
+      width: 100%;
+      background: linear-gradient(to bottom, transparent, #050810, #000);
       text-align: center;
-      position: relative;
-    }
-    .finale-glow {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 50%, rgba(124, 242, 228, 0.03) 0%, transparent 60%);
-      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     footer {
+      width: 100%;
       padding: 4rem 0;
       text-align: center;
       color: var(--muted);
-      background: #000;
       border-top: 1px solid var(--border);
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
       .hero { grid-template-columns: 1fr; text-align: center; }
-      .feature-card { grid-template-columns: 1fr; text-align: center; padding: 2.5rem; }
+      .hero-summary { margin: 0 auto 3rem; }
+      .feature-card { grid-template-columns: 1fr; text-align: center; padding: 3rem 2rem; }
       .feature-specs { justify-items: center; }
+      .reveal-image { order: -1; } /* Image always on top on mobile */
     }
   </style>
 </head>
@@ -258,75 +268,72 @@
     </div>
   </header>
 
-  <main>
-    <section class="container hero">
+  <main class="container">
+    <section class="hero centered-section">
       <div class="hero-copy">
         <h1 class="kinetic-text">Precision Over<br>Everything.</h1>
-        <p class="hero-summary">The ultimate biomechanical feedback loop for elite athletes. Experience real-time pose estimation with zero latency, built for the next generation of performance.</p>
+        <p class="hero-summary">Experience the next generation of performance feedback. Native-code pose estimation with zero cloud latency.</p>
         <button class="button" onclick="openModal()">ENTER THE WAITLIST</button>
       </div>
-      <div class="hero-image-wrap reveal-image">
-        <img src="mockup.png" alt="FormAnalyzer Dashboard" loading="lazy">
+      <div class="reveal-image">
+        <img src="mockup.png" alt="App Dashboard" loading="lazy" style="border-radius:32px; box-shadow: 0 50px 100px rgba(0,0,0,0.8);">
       </div>
     </section>
 
-    <section class="container feature-grid">
-      <!-- Feature 1: Fluid Logic -->
+    <section class="feature-grid">
+      <!-- Fluid Logic -->
       <article class="feature-card">
         <div class="feature-copy">
           <h3>Fluid Logic</h3>
-          <p>Native-code pose estimation that synchronizes with your movement. We don't just track; we predict, analyze, and refine your movement in milliseconds.</p>
+          <p>Native-code pose estimation that synchronizes with your movement. Predictive analysis refined in milliseconds.</p>
           <div class="feature-specs">
             <div class="spec-item">60fps Real-time Inference</div>
-            <div class="spec-item">Multi-joint Angle Analysis</div>
-            <div class="spec-item">Biomechanical Deviation Alerts</div>
+            <div class="spec-item">Multi-joint Angle Tracking</div>
           </div>
         </div>
         <div class="reveal-image">
-          <img src="scan.png" alt="Biomechanical Scanning" style="width:100%; border-radius:20px; filter: contrast(1.1) saturate(0.8);">
+          <!-- Recovery: Asset is in root, referencing correctly from /web/ -->
+          <img src="../dashboard.png" alt="Biomechanical View" style="border-radius:20px;">
         </div>
       </article>
 
-      <!-- Feature 2: Private Core -->
+      <!-- Private Core -->
       <article class="feature-card">
-        <div class="reveal-image" style="order: -1;">
-          <img src="stats.png" alt="Privacy First Processing" style="width:100%; border-radius:20px;">
+        <div class="reveal-image">
+          <!-- Recovery: Asset is in root -->
+          <img src="../stats.png" alt="Privacy Shield" style="border-radius:20px;">
         </div>
         <div class="feature-copy">
           <h3>Private Core</h3>
-          <p>Elite performance requires absolute privacy. FormAnalyzer processes all camera data on-device using a custom ML Kit pipeline. Your data never leaves the hardware.</p>
+          <p>Absolute privacy for elite athletes. All data processes locally on your hardware. Zero cloud footprint.</p>
           <div class="feature-specs">
             <div class="spec-item">Zero Cloud Dependency</div>
-            <div class="spec-item">Local SQLite Encryption</div>
-            <div class="spec-item">Biometric-Safe Processing</div>
+            <div class="spec-item">On-device SQLite Encryption</div>
           </div>
         </div>
       </article>
 
-      <!-- Feature 3: Visual Pulse -->
+      <!-- Visual Pulse -->
       <article class="feature-card">
         <div class="feature-copy">
           <h3>Visual Pulse</h3>
-          <p>A reactive HUD that visualizes your movement intensity. Every rep is a lesson in perfection through high-fidelity visual and haptic feedback loops.</p>
+          <p>A reactive HUD visualizing intensity. Every rep is a masterclass in form through high-fidelity visual feedback.</p>
           <div class="feature-specs">
             <div class="spec-item">Dynamic HUD Overlays</div>
             <div class="spec-item">Kinetic Rep Scoring</div>
-            <div class="spec-item">Pro-Coach Audio Cues</div>
           </div>
         </div>
         <div class="reveal-image">
-          <img src="dashboard.png" alt="Visual HUD" style="width:100%; border-radius:20px;">
+          <!-- Recovery: Asset is in web folder -->
+          <img src="scan.png" alt="Visual HUD" style="border-radius:20px;">
         </div>
       </article>
     </section>
 
     <section class="grand-finale">
-      <div class="finale-glow"></div>
-      <div class="container">
-        <h2 class="finale-title kinetic-text">MASTER YOUR<br>MOVEMENT.</h2>
-        <p style="font-size: 1.25rem; color: var(--muted); max-width: 45ch; margin: 0 auto 3rem;">Join the elite tier of athletes who rely on precision. The waitlist is now open for our v1.0 release.</p>
-        <button class="button" onclick="openModal()" style="font-size: 1.2rem; padding: 1.4rem 3.5rem;">SECURE EARLY ACCESS</button>
-      </div>
+      <h2 class="finale-title kinetic-text">MASTER YOUR<br>MOVEMENT.</h2>
+      <p style="font-size: 1.25rem; color: var(--muted); max-width: 40ch; margin-bottom: 3.5rem;">Join the elite tier of athletes. The waitlist is now open.</p>
+      <button class="button" onclick="openModal()" style="font-size: 1.3rem; padding: 1.5rem 4rem;">SECURE ACCESS</button>
     </section>
   </main>
 
@@ -338,7 +345,7 @@
   </footer>
 
   <div id="waitlistModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.95); backdrop-filter:blur(30px); display:none; align-items:center; justify-content:center; z-index:2000; opacity:0;">
-    <div style="background:#0d1117; padding:4rem; border-radius:48px; border:1px solid var(--border-bright); width:min(520px, 90%); position:relative;">
+    <div style="background:#0d1117; padding:4rem; border-radius:48px; border:1px solid var(--border-bright); width:min(520px, 90%); position:relative; text-align:center;">
       <button onclick="closeModal()" style="position:absolute; top:2rem; right:2rem; background:none; border:none; color:#fff; font-size:2rem; cursor:pointer;">&times;</button>
       <h2 style="font-size:2.5rem; letter-spacing:-0.05em; margin-bottom:1rem;">JOIN THE BETA</h2>
       <form id="waitlistForm" action="https://formspree.io/f/mvzwveen" method="POST">
@@ -357,7 +364,7 @@
       }
       requestAnimationFrame(raf);
 
-      // Kinetic Typography
+      // Kinetic Typography Engine
       const targets = document.querySelectorAll('.kinetic-text');
       targets.forEach(el => {
         const textLines = el.innerHTML.split('<br>');
@@ -365,7 +372,12 @@
         textLines.forEach((line, i) => {
           const lineWrapper = document.createElement('span');
           lineWrapper.className = 'split-text';
-          line.split('').forEach(char => {
+          
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = line;
+          const lineText = tempDiv.textContent || tempDiv.innerText;
+          
+          lineText.split('').forEach(char => {
             const charSpan = document.createElement('span');
             charSpan.className = 'split-char';
             charSpan.innerText = char === ' ' ? '\u00A0' : char;
@@ -378,26 +390,33 @@
 
       gsap.to('.split-char', {
         y: "0%",
-        duration: 1.2,
-        stagger: 0.015,
+        duration: 1.4,
+        stagger: 0.012,
         ease: "expo.out",
         scrollTrigger: {
           trigger: '.kinetic-text',
-          start: "top 90%"
+          start: "top 95%"
         }
       });
 
-      // GPU Accelerated Image Reveals
-      const observerOptions = { threshold: 0.1 };
+      // Fixed Reveal Engine
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             entry.target.classList.add('active');
           }
         });
-      }, observerOptions);
+      }, { threshold: 0.05 });
 
       document.querySelectorAll('.reveal-image').forEach(el => observer.observe(el));
+
+      // Fallback: Trigger reveals for already visible elements
+      setTimeout(() => {
+        document.querySelectorAll('.reveal-image').forEach(el => {
+          const rect = el.getBoundingClientRect();
+          if (rect.top < window.innerHeight) el.classList.add('active');
+        });
+      }, 500);
 
       gsap.to(".hero-summary", {
         y: 0, opacity: 1, duration: 1.2, delay: 0.4, ease: "power3.out"
