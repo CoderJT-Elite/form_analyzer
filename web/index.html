@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,9 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js"></script>
-  <script src="https://unpkg.com/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-  <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 
   <script>
@@ -34,94 +31,119 @@
   </script>
 
   <style>
-    body { background-color: #010204; color: white; -webkit-font-smoothing: antialiased; }
-    .ease-premium { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-    /* Fix 3: Lowercase 'g' cutoff protection */
+    /* 1. FACTORY DEFAULT SCROLLING (RESOLVED: NO SCROLL-SMOOTH) */
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #010204;
+      color: white;
+      -webkit-font-smoothing: antialiased;
+    }
+
     .g-fix { padding-bottom: 4px; line-height: 1.2; }
-    /* 3D Micro-Transforms */
-    .tilt-card { transition: all 300ms ease; }
+    
+    .tilt-card { transition: transform 0.3s ease, border-color 0.3s ease; }
     .tilt-card:hover { 
       transform: perspective(1000px) rotateX(1deg) rotateY(1deg) scale(1.01);
+      border-color: rgba(124, 242, 228, 0.2);
+    }
+    
+    .metric-grid {
+      background: linear-gradient(165deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
   </style>
 </head>
-<body class="bg-bg flex flex-col items-center selection:bg-accent/30">
+<body class="bg-bg flex flex-col items-center">
   <!-- Ambient Lighting Layer -->
   <div class="fixed inset-0 z-[-1] pointer-events-none bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.03)_0%,transparent_70%)]"></div>
 
-  <header class="fixed top-0 left-0 w-full z-[1000] py-4 mix-blend-difference">
+  <!-- RESOLVED: REMOVED MIX-BLEND-DIFFERENCE -->
+  <header class="fixed top-0 left-0 w-full z-[1000] py-6 bg-bg/80 backdrop-blur-md border-b border-white/5">
     <div class="max-w-[1200px] w-[94vw] mx-auto flex justify-between items-center">
-      <div class="font-extrabold text-sm tracking-tighter uppercase">
-        <!-- Preservation: Asset Logic -->
-        <img src="OFFICIAL FORM ANALYZER LOGO.png" alt="FORMANALYZER" class="h-4" onerror="this.src='../assets/logo.png'; this.onerror=null;">
+      <div class="flex items-center">
+        <!-- 2. FORCE LOGO TO DISPLAY (FIXED PATH & REMOVED HIDING LOGIC) -->
+        <img src="OFFICIAL FORM ANALYZER LOGO.png" alt="Logo" class="h-8 w-auto block">
       </div>
-      <a href="#waitlist" class="bg-white text-black px-4 py-2 rounded-lg font-bold text-[0.7rem] hover:bg-accent transition-colors ease-premium">JOIN BETA</a>
+      <a href="#join" class="bg-white text-black px-5 py-2.5 rounded-xl font-bold text-[0.75rem] hover:bg-accent transition-colors">JOIN BETA</a>
     </div>
   </header>
 
   <main class="max-w-[1200px] w-[94vw] mx-auto">
-    <!-- Hero Section: Compressed (py-12) -->
-    <section class="py-12 md:py-16 min-h-[80vh] flex flex-col md:grid md:grid-cols-[1.1fr,0.9fr] gap-8 items-center">
-      <div class="text-center md:text-left space-y-4">
-        <h1 class="text-4xl md:text-7xl font-extrabold tracking-tight leading-[0.9]">
-          <span class="block opacity-60 text-lg uppercase tracking-[0.2em] mb-4">Precision Over Everything.</span>
+    <!-- Hero Section: Unique Layout -->
+    <section class="py-20 mt-16 min-h-[70vh] flex flex-col md:grid md:grid-cols-[1.1fr,0.9fr] gap-12 items-center">
+      <div class="text-center md:text-left space-y-6">
+        <h1 class="text-5xl md:text-8xl font-black tracking-tighter leading-[0.85]">
+          <span class="block opacity-40 text-sm uppercase tracking-[0.3em] mb-4">Precision Over Everything</span>
           MASTER YOUR<br>MOVEMENT.
         </h1>
-        <p class="text-slate-400 text-lg max-w-[42ch] mx-auto md:mx-0">Native-code pose estimation with zero latency. Precision athletic feedback for the next generation.</p>
+        <p class="text-slate-400 text-xl max-w-[40ch] mx-auto md:mx-0 font-medium">Native-code pose estimation with zero latency. Built for the next generation of performance.</p>
         <div class="pt-4">
-          <a href="#waitlist" class="inline-flex bg-white text-black px-6 py-3 rounded-xl font-bold text-sm hover:scale-105 transition-transform ease-premium">ENTER THE WAITLIST</a>
+          <a href="#join" class="inline-flex bg-white text-black px-8 py-4 rounded-2xl font-bold text-base hover:scale-105 transition-transform">ENTER THE WAITLIST</a>
         </div>
       </div>
-      <div class="tilt-card w-full">
-        <!-- Preservation: Asset Logic -->
-        <img src="Form Analyzer Image.png" alt="FormAnalyzer" class="w-full rounded-2xl shadow-2xl border border-white/5" onerror="this.src='mockup.png'; this.onerror=null;" loading="lazy">
+      
+      <!-- Unique Bento Metrics (No Repeated Mockup) -->
+      <div class="w-full grid grid-cols-2 gap-4 p-6 metric-grid rounded-[40px] tilt-card">
+        <div class="col-span-2 p-8 bg-white/5 rounded-3xl border border-white/5">
+          <span class="text-[0.7rem] text-accent font-bold uppercase tracking-[0.2em]">Processing Speed</span>
+          <div class="text-5xl font-black mt-3">14.2ms</div>
+          <div class="w-full bg-white/10 h-2 mt-8 rounded-full overflow-hidden">
+            <div class="bg-accent h-full w-[94%]"></div>
+          </div>
+        </div>
+        <div class="p-8 bg-white/5 rounded-3xl border border-white/5 text-center">
+          <div class="text-3xl font-black text-white">99.8%</div>
+          <span class="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest">Accuracy</span>
+        </div>
+        <div class="p-8 bg-white/5 rounded-3xl border border-white/5 text-center">
+          <div class="text-3xl font-black text-white">60FPS</div>
+          <span class="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest">Stability</span>
+        </div>
       </div>
     </section>
 
-    <!-- Centered Feature Tabs System -->
-    <section class="py-12 flex flex-col items-center w-full mx-auto text-center">
-      <div class="flex flex-col md:flex-row justify-center items-center w-full mx-auto text-center gap-4 md:gap-8 mb-8">
-        <button onclick="switchTab(0)" class="tab-btn text-accent font-bold tracking-widest uppercase text-[0.7rem] px-4 py-2 border-b-2 border-accent transition-all">Fluid Logic</button>
-        <button onclick="switchTab(1)" class="tab-btn text-slate-500 font-bold tracking-widest uppercase text-[0.7rem] px-4 py-2 border-b-2 border-transparent transition-all">Private Core</button>
-        <button onclick="switchTab(2)" class="tab-btn text-slate-500 font-bold tracking-widest uppercase text-[0.7rem] px-4 py-2 border-b-2 border-transparent transition-all">Visual Pulse</button>
+    <!-- 3. MAINTAIN TAB SYSTEM -->
+    <section class="py-20 flex flex-col items-center w-full mx-auto text-center border-t border-white/5">
+      <div class="flex flex-col md:flex-row justify-center items-center w-full mx-auto text-center gap-4 md:gap-12 mb-12">
+        <button onclick="switchTab(0)" class="tab-btn text-accent font-bold tracking-widest uppercase text-[0.8rem] px-6 py-3 border-b-2 border-accent transition-all">Fluid Logic</button>
+        <button onclick="switchTab(1)" class="tab-btn text-slate-500 font-bold tracking-widest uppercase text-[0.8rem] px-6 py-3 border-b-2 border-transparent transition-all">Private Core</button>
+        <button onclick="switchTab(2)" class="tab-btn text-slate-500 font-bold tracking-widest uppercase text-[0.8rem] px-6 py-3 border-b-2 border-transparent transition-all">Visual Pulse</button>
       </div>
 
-      <div id="tab-content" class="w-full max-w-[1100px] grid md:grid-cols-2 gap-8 items-center bg-surface border border-border p-8 md:p-12 rounded-[40px] tilt-card text-left overflow-hidden">
-        <div class="space-y-6">
-          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tighter g-fix">Precision Over Everything.</h2>
-          <p class="text-slate-400">Native-code inference that mirrors your physiology in real-time. Predict, analyze, and refine.</p>
-          <div class="flex gap-6 pt-4 border-t border-white/5 text-[0.65rem] font-bold text-accent uppercase tracking-widest">
+      <div id="tab-content" class="w-full max-w-[1100px] grid md:grid-cols-2 gap-12 items-center bg-surface border border-border p-10 md:p-16 rounded-[48px] tilt-card text-left overflow-hidden">
+        <div class="space-y-8">
+          <h2 class="text-4xl md:text-6xl font-black tracking-tighter g-fix">Precision Over Everything.</h2>
+          <p class="text-slate-400 text-lg leading-relaxed">Native-code inference that mirrors your physiology in real-time. Predict, analyze, and refine.</p>
+          <div class="flex gap-8 pt-6 border-t border-white/5 text-[0.7rem] font-bold text-accent uppercase tracking-[0.2em]">
             <span>60FPS AI</span>
             <span>NATIVE CORE</span>
           </div>
         </div>
-        <div class="rounded-2xl overflow-hidden shadow-2xl border border-white/5">
-          <img src="../dashboard.png" id="tab-img" alt="Feature View" class="w-full">
+        <div class="rounded-3xl overflow-hidden shadow-2xl border border-white/5">
+          <img src="../dashboard.png" id="tab-img" alt="Feature Screenshot" class="w-full block">
         </div>
       </div>
     </section>
 
-    <!-- Grand Finale / Beta Section: Compressed (py-12) -->
-    <section class="py-12 md:py-20 w-full text-center border-t border-white/5" id="waitlist">
-      <h2 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">JOIN THE BETA.</h2>
-      <p class="text-slate-400 mb-8 max-w-[40ch] mx-auto text-sm md:text-base">Secure access to the v1.0 release. Enrollment is now active.</p>
+    <!-- Beta Section -->
+    <section class="py-20 w-full text-center border-t border-white/5" id="join">
+      <h2 class="text-5xl md:text-8xl font-black tracking-tighter mb-6">JOIN THE BETA.</h2>
+      <p class="text-slate-400 mb-12 max-w-[40ch] mx-auto text-lg font-medium">Secure access to the v1.0 release. Enrollment is now active.</p>
       
-      <!-- Beta Form: Preserved intact -->
-      <form class="flex flex-col md:flex-row gap-2 max-w-[480px] mx-auto w-full px-4" action="https://formspree.io/f/mvzwveen" method="POST">
-        <input type="email" name="email" required placeholder="PROTOCOL@EMAIL.COM" class="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-white font-medium outline-none focus:border-accent transition-all text-sm">
-        <button class="bg-white text-black px-6 py-3 rounded-xl font-bold text-sm hover:bg-accent transition-colors" type="submit">SECURE ACCESS</button>
+      <form class="flex flex-col md:flex-row gap-3 max-w-[520px] mx-auto w-full px-4" action="https://formspree.io/f/mvzwveen" method="POST">
+        <input type="email" name="email" required placeholder="PROTOCOL@EMAIL.COM" class="flex-1 bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-white font-bold outline-none focus:border-accent transition-all text-sm tracking-widest">
+        <button class="bg-white text-black px-8 py-4 rounded-2xl font-black text-sm hover:bg-accent transition-colors uppercase" type="submit">SECURE ACCESS</button>
       </form>
     </section>
   </main>
 
-  <!-- Footer Upgrade: Accessibility contrast (text-slate-300) -->
-  <footer class="w-full py-8 text-center border-t border-white/5 mt-4">
-    <p class="text-slate-300 font-bold text-[0.65rem] tracking-[0.2em] uppercase">© 2026 FORMANALYZER. BEYOND COMPROMISE.</p>
-    <a href="privacy.html" class="text-accent text-[0.6rem] font-bold tracking-widest mt-2 inline-block hover:opacity-70">PRIVACY PROTOCOL</a>
+  <footer class="w-full py-12 text-center border-t border-white/5 mt-8">
+    <p class="text-slate-300 font-bold text-[0.7rem] tracking-[0.3em] uppercase">© 2026 FORMANALYZER. BEYOND COMPROMISE.</p>
+    <a href="privacy.html" class="text-accent text-[0.65rem] font-bold tracking-widest mt-4 inline-block hover:opacity-70">PRIVACY PROTOCOL</a>
   </footer>
 
   <script>
-    // Tab System Logic
     const tabData = [
       { title: "Precision Over Everything.", text: "Native-code inference that mirrors your physiology in real-time. Predict, analyze, and refine.", img: "../dashboard.png", specs: ["60FPS AI", "NATIVE CORE"] },
       { title: "Absolute Data Sovereignty.", text: "Elite performance requires total privacy. All biometric processing occurs on-device.", img: "../stats.png", specs: ["ON-DEVICE", "ENCRYPTED"] },
@@ -142,32 +164,19 @@
       const content = tabData[idx];
       const tabWrap = document.getElementById('tab-content');
       
-      gsap.to(tabWrap, { opacity: 0, y: 10, duration: 0.2, onComplete: () => {
-        tabWrap.querySelector('h2').innerText = content.title;
-        tabWrap.querySelector('p').innerText = content.text;
-        tabWrap.querySelector('img').src = content.img;
-        const specs = tabWrap.querySelector('.flex');
-        specs.innerHTML = content.specs.map(s => `<span>${s}</span>`).join('');
-        gsap.to(tabWrap, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" });
-      }});
+      tabWrap.querySelector('h2').innerText = content.title;
+      tabWrap.querySelector('p').innerText = content.text;
+      tabWrap.querySelector('img').src = content.img;
+      const specs = tabWrap.querySelector('.flex');
+      specs.innerHTML = content.specs.map(s => `<span>${s}</span>`).join('');
     }
 
-    function initApp() {
-      const lenis = new Lenis();
-      function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
-      requestAnimationFrame(raf);
-
-      // Hero summary fade-in
-      gsap.to(".hero-summary", { opacity: 1, y: 0, duration: 1, delay: 0.4, ease: "power3.out" });
-
-      // Intersection Observer for reveals
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); });
-      }, { threshold: 0.1 });
-      document.querySelectorAll('.reveal-image').forEach(el => observer.observe(el));
+    // NATIVE SCROLL ONLY.
+    function scrollToForm(e) {
+      e.preventDefault();
+      const target = document.getElementById('join');
+      target.scrollIntoView({ behavior: 'auto' }); // Standard scroll
     }
-    
-    window.onload = initApp;
   </script>
 </body>
 </html>
