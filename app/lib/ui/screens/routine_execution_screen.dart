@@ -144,7 +144,7 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Exercise ${_currentIndex + 1} of ${widget.routine.exercises.length}',
+                    'Exercise ${_currentIndex < widget.routine.exercises.length ? _currentIndex + 1 : widget.routine.exercises.length} of ${widget.routine.exercises.length}',
                     style: GoogleFonts.inter(
                       color: Colors.white54,
                       fontSize: 13,

@@ -20,6 +20,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _pulseAnim;
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
+  Timer? _holdTimer;
 
   @override
   void initState() {
@@ -46,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _fadeController.forward();
 
-    Timer(kSplashScreenHoldDuration, () {
+    _holdTimer = Timer(kSplashScreenHoldDuration, () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
@@ -70,6 +71,7 @@ class _SplashScreenState extends State<SplashScreen>
   void dispose() {
     _pulseController.dispose();
     _fadeController.dispose();
+    _holdTimer?.cancel();
     super.dispose();
   }
 

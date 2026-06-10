@@ -3,46 +3,125 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FormAnalyzer Privacy Policy</title>
+  <title>Privacy Policy — FormAnalyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #03050a;
+      --surface: rgba(15, 19, 31, 0.45);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f7f9ff;
+      --muted: #94a3b8;
+      --accent: #7cf2e4;
+      --font-main: 'Plus+Jakarta+Sans', system-ui, sans-serif;
+    }
+
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: #050505;
-      color: #f3f4f6;
-      line-height: 1.6;
+      font-family: var(--font-main);
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
     }
+
+    .glow {
+      position: fixed;
+      top: -10%;
+      left: -5%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, rgba(45, 212, 191, 0.05) 0%, transparent 70%);
+      filter: blur(80px);
+      z-index: -1;
+    }
+
     main {
-      max-width: 760px;
+      max-width: 800px;
       margin: 0 auto;
-      padding: 48px 20px 72px;
+      padding: 8rem 2rem 6rem;
     }
-    h1, h2 {
-      color: #22d3ee;
+
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 3rem;
+      box-shadow: 0 40px 100px -40px rgba(0,0,0,0.5);
     }
+
+    h1 {
+      font-size: 3rem;
+      letter-spacing: -0.04em;
+      margin-bottom: 0.5rem;
+      font-weight: 800;
+    }
+
+    .last-updated {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 3rem;
+      display: block;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      color: var(--accent);
+      margin-top: 2.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    p {
+      color: #cbd5e1;
+    }
+
     a {
-      color: #22d3ee;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      transition: opacity 0.2s ease;
+    }
+
+    a:hover {
+      opacity: 0.8;
+    }
+
+    .back-link {
+      margin-top: 4rem;
+      display: inline-block;
+    }
+
+    @media (max-width: 640px) {
+      main { padding-top: 4rem; }
+      .card { padding: 2rem; }
+      h1 { font-size: 2.2rem; }
     }
   </style>
 </head>
 <body>
+  <div class="glow"></div>
   <main>
-    <h1>Privacy Policy</h1>
-    <p>Last updated: 2026-05-18</p>
+    <div class="card">
+      <h1>Privacy Policy</h1>
+      <span class="last-updated">Last updated: 2026-05-18</span>
 
-    <h2>Waitlist Data</h2>
-    <p>When you submit the waitlist form, we collect your email address so we can contact you about beta access and product updates.</p>
+      <h2>Waitlist Data</h2>
+      <p>When you submit the waitlist form, we collect your email address so we can contact you about beta access and product updates. We value your inbox and will never spam you.</p>
 
-    <h2>How Data Is Processed</h2>
-    <p>Waitlist submissions are processed by Formspree. Please review Formspree’s privacy policy for details on their data handling.</p>
+      <h2>How Data Is Processed</h2>
+      <p>Waitlist submissions are processed securely by Formspree. Please review <a href="https://formspree.io/privacy" target="_blank">Formspree’s privacy policy</a> for details on their industry-standard data handling.</p>
 
-    <h2>App Privacy</h2>
-    <p>The mobile app processes pose/camera data on-device for form analysis. Workout history is stored locally on your device.</p>
+      <h2>App Privacy</h2>
+      <p>The FormAnalyzer mobile app processes pose and camera data entirely on-device. No video or biometric data is ever uploaded to our servers. Your workout history remains private, stored locally on your device.</p>
 
-    <h2>Contact</h2>
-    <p>For privacy requests, contact the project maintainers through this repository.</p>
+      <h2>Contact</h2>
+      <p>For privacy requests or questions, please contact the project maintainers through our official channels.</p>
 
-    <p><a href="index.html">Back to landing page</a></p>
+      <a href="index.html" class="back-link">← Back to landing page</a>
+    </div>
   </main>
 </body>
 </html>

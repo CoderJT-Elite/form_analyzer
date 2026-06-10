@@ -13,7 +13,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify that we are on the main dashboard section.
-    expect(find.text('TRAIN'), findsOneWidget);
+    expect(find.text('TRAIN'), findsNWidgets(2));
     expect(find.text('MY ROUTINES'), findsOneWidget);
   });
 }
