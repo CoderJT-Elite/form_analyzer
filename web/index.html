@@ -58,12 +58,13 @@
   <!-- Ambient Lighting Layer -->
   <div class="fixed inset-0 z-[-1] pointer-events-none bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.03)_0%,transparent_70%)]"></div>
 
-  <!-- RESOLVED: REMOVED MIX-BLEND-DIFFERENCE -->
   <header class="fixed top-0 left-0 w-full z-[1000] py-6 bg-bg/80 backdrop-blur-md border-b border-white/5">
     <div class="max-w-[1200px] w-[94vw] mx-auto flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <!-- Fix: Added text branding as the image asset is currently missing -->
-        <img src="OFFICIAL FORM ANALYZER LOGO.png" alt="Logo" class="h-6 w-auto block" onerror="this.style.display='none'">
+      <div class="flex items-center gap-4">
+        <!-- Fix: Premium SVG Logo Mark (Image asset missing in repo) -->
+        <div class="w-8 h-8 bg-accent rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(124,242,228,0.3)]">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 text-black" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
         <span class="text-xl font-black tracking-tighter uppercase text-white">FORM ANALYZER</span>
       </div>
       <a href="#join" class="bg-white text-black px-5 py-2.5 rounded-xl font-bold text-[0.75rem] hover:bg-accent transition-colors">JOIN BETA</a>
@@ -73,11 +74,17 @@
   <main class="max-w-[1200px] w-[94vw] mx-auto">
     <!-- Hero Section: Unique Layout -->
     <section class="py-20 mt-16 min-h-[70vh] flex flex-col md:grid md:grid-cols-[1.1fr,0.9fr] gap-12 items-center">
-      <div class="text-center md:text-left space-y-6">
-        <h1 class="text-5xl md:text-8xl font-black tracking-tighter leading-[0.85]">
-          <span class="block text-accent text-sm uppercase tracking-[0.3em] mb-4">Precision Over Everything</span>
-          FORM ANALYZER<br><span class="opacity-60">MASTER YOUR</span><br>MOVEMENT.
-        </h1>
+      <div class="text-center md:text-left space-y-12">
+        <div>
+          <h1 class="text-5xl md:text-8xl font-black tracking-tighter leading-none mb-10">
+            FORM ANALYZER
+          </h1>
+          <div class="h-8"></div> <!-- Fix: Explicit space between Brand and Precision line -->
+          <span class="block text-accent text-sm uppercase tracking-[0.4em] font-bold mb-10">Precision Over Everything</span>
+          <h2 class="text-4xl md:text-7xl font-black tracking-tighter leading-[0.9] opacity-60">
+            MASTER YOUR<br>MOVEMENT.
+          </h2>
+        </div>
         <p class="text-slate-400 text-xl max-w-[40ch] mx-auto md:mx-0 font-medium">Native-code pose estimation with zero latency. Built for the next generation of performance.</p>
         <div class="pt-4">
           <a href="#join" class="inline-flex bg-white text-black px-8 py-4 rounded-2xl font-bold text-base hover:scale-105 transition-transform">ENTER THE WAITLIST</a>
