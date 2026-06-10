@@ -61,9 +61,10 @@
   <!-- RESOLVED: REMOVED MIX-BLEND-DIFFERENCE -->
   <header class="fixed top-0 left-0 w-full z-[1000] py-6 bg-bg/80 backdrop-blur-md border-b border-white/5">
     <div class="max-w-[1200px] w-[94vw] mx-auto flex justify-between items-center">
-      <div class="flex items-center">
-        <!-- 2. FORCE LOGO TO DISPLAY (FIXED PATH & REMOVED HIDING LOGIC) -->
-        <img src="OFFICIAL FORM ANALYZER LOGO.png" alt="Logo" class="h-8 w-auto block">
+      <div class="flex items-center gap-3">
+        <!-- Fix: Added text branding as the image asset is currently missing -->
+        <img src="OFFICIAL FORM ANALYZER LOGO.png" alt="Logo" class="h-6 w-auto block" onerror="this.style.display='none'">
+        <span class="text-xl font-black tracking-tighter uppercase text-white">FORM ANALYZER</span>
       </div>
       <a href="#join" class="bg-white text-black px-5 py-2.5 rounded-xl font-bold text-[0.75rem] hover:bg-accent transition-colors">JOIN BETA</a>
     </div>
@@ -74,8 +75,8 @@
     <section class="py-20 mt-16 min-h-[70vh] flex flex-col md:grid md:grid-cols-[1.1fr,0.9fr] gap-12 items-center">
       <div class="text-center md:text-left space-y-6">
         <h1 class="text-5xl md:text-8xl font-black tracking-tighter leading-[0.85]">
-          <span class="block opacity-40 text-sm uppercase tracking-[0.3em] mb-4">Precision Over Everything</span>
-          MASTER YOUR<br>MOVEMENT.
+          <span class="block text-accent text-sm uppercase tracking-[0.3em] mb-4">Precision Over Everything</span>
+          FORM ANALYZER<br><span class="opacity-60">MASTER YOUR</span><br>MOVEMENT.
         </h1>
         <p class="text-slate-400 text-xl max-w-[40ch] mx-auto md:mx-0 font-medium">Native-code pose estimation with zero latency. Built for the next generation of performance.</p>
         <div class="pt-4">
