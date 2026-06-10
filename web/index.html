@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="scroll-behavior: smooth;">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,234 +18,144 @@
     :root {
       --bg: #010204;
       --surface: rgba(15, 19, 31, 0.4);
-      --surface-hover: rgba(30, 35, 50, 0.6);
-      --border: rgba(255, 255, 255, 0.05);
-      --border-bright: rgba(255, 255, 255, 0.12);
+      --border: rgba(255, 255, 255, 0.04);
       --text: #ffffff;
       --muted: #8e9bb3;
       --accent: #7cf2e4;
       --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+      /* Volumetric Shadows */
+      --shadow-premium: 0 10px 30px -10px rgba(0,0,0,0.5), 0 20px 40px -15px rgba(0,0,0,0.6), 0 40px 80px -20px rgba(0,0,0,0.8);
     }
 
-    * { 
-      box-sizing: border-box; 
-      margin: 0; padding: 0;
-      -webkit-font-smoothing: antialiased;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
 
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: var(--bg);
       color: var(--text);
       overflow-x: hidden;
-      line-height: 1.6;
-      width: 100%;
+      line-height: 1.4;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
 
-    /* Ambient Depth Layers */
-    .bg-layers {
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-    }
-    .halo-1 {
-      position: absolute;
-      width: 100vw;
-      height: 100vh;
-      background: radial-gradient(circle at 0% 0%, rgba(124, 242, 228, 0.03) 0%, transparent 70%);
-    }
-    .halo-2 {
-      position: absolute;
-      width: 100vw;
-      height: 100vh;
-      background: radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.02) 0%, transparent 70%);
-    }
+    .bg-layers { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+    .glow { position: absolute; width: 100vw; height: 100vw; background: radial-gradient(circle, rgba(124, 242, 228, 0.03) 0%, transparent 70%); top: -50%; left: -20%; filter: blur(120px); }
 
-    .container {
-      width: min(1200px, 92vw);
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+    .container { width: min(1200px, 94vw); margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
 
     header {
-      padding: 1.2rem 0;
+      padding: 0.8rem 0;
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
+      top: 0; left: 0; width: 100%;
       z-index: 1000;
       mix-blend-mode: difference;
     }
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-    }
-    .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.04em; }
+    .header-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .brand { font-weight: 800; font-size: 0.9rem; letter-spacing: -0.04em; }
 
-    /* Tightened Hero */
+    /* Ultra-Compressed Sections */
     .hero {
-      padding: 8rem 0 4rem;
+      padding: 4rem 0 2rem;
       display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 3rem;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 2rem;
       align-items: center;
     }
 
-    h1 {
-      font-size: clamp(3rem, 7vw, 4.5rem);
-      font-weight: 800;
-      line-height: 1;
-      letter-spacing: -0.05em;
-      margin-bottom: 1.5rem;
-    }
+    h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); font-weight: 800; line-height: 0.9; letter-spacing: -0.06em; margin-bottom: 1rem; }
+    .hero-summary { font-size: 1.1rem; color: var(--muted); max-width: 42ch; margin-bottom: 1.5rem; opacity: 0; transform: translate3d(0, 10px, 0); }
 
-    .hero-summary {
-      font-size: 1.2rem;
-      color: var(--muted);
-      max-width: 42ch;
-      margin-bottom: 2.5rem;
-      opacity: 0;
-      transform: translate3d(0, 15px, 0);
-    }
-
-    /* Integrated Button */
     .button {
       background: #fff;
       color: #000;
-      padding: 1rem 2rem;
-      border-radius: 12px;
+      padding: 0.8rem 1.6rem;
+      border-radius: 10px;
       font-weight: 700;
       border: none;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      transition: all 0.3s var(--ease-premium);
-      font-size: 0.95rem;
+      transition: all 0.4s var(--ease-premium);
+      font-size: 0.85rem;
       text-decoration: none;
     }
-    .button:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); background: var(--accent); }
+    .button:hover { transform: translateY(-2px) scale(1.02); background: var(--accent); box-shadow: var(--shadow-premium); }
 
-    /* Tightened Feature Grid */
-    .feature-grid {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1.5rem; 
-      margin-bottom: 5rem;
-    }
+    .feature-grid { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; margin-bottom: 2rem; }
 
     .feature-card {
-      background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+      background: linear-gradient(165deg, rgba(255,255,255,0.03) 0%, transparent 100%);
       border: 1px solid var(--border);
       border-radius: 24px;
-      padding: 3rem;
+      padding: 2.5rem;
       width: 100%;
       max-width: 1100px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 3rem;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 2.5rem;
       align-items: center;
+      will-change: transform;
+      box-shadow: var(--shadow-premium);
     }
 
-    .feature-copy h3 {
-      font-size: 1.75rem;
-      font-weight: 800;
-      margin-bottom: 1rem;
-    }
+    .feature-copy h3 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.04em; }
+    .feature-copy p { color: var(--muted); font-size: 0.95rem; }
 
-    .feature-specs {
-      display: flex;
-      gap: 1.5rem;
-      margin-top: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid var(--border);
-    }
-    .spec-item { font-size: 0.85rem; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
-    .spec-item::before { content: ""; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; }
+    .feature-specs { display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .spec-item { font-size: 0.7rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
 
+    /* 3D Reveal Engine */
+    .reveal-wrap { perspective: 1000px; width: 100%; }
     .reveal-image {
       opacity: 0;
-      transform: translate3d(0, 30px, 0);
-      transition: all 1s var(--ease-premium);
+      transform: translate3d(0, 20px, 0) rotateX(15deg);
+      transition: all 1.2s var(--ease-premium);
     }
-    .reveal-image.active { opacity: 1; transform: translate3d(0, 0, 0); }
+    .reveal-image.active { opacity: 1; transform: translate3d(0, 0, 0) rotateX(0); }
 
-    img { max-width: 100%; height: auto; display: block; }
+    img { border-radius: 12px; box-shadow: var(--shadow-premium); width: 100%; display: block; }
 
-    /* Inline Beta Section */
+    /* Grand Finale Compression */
     .grand-finale {
       width: 100%;
-      padding: 6rem 0;
+      padding: 4rem 0;
       border-top: 1px solid var(--border);
-      background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.02) 0%, transparent 60%);
+      background: radial-gradient(circle at 50% 0%, rgba(124, 242, 228, 0.02) 0%, transparent 80%);
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
+    .finale-title { font-size: clamp(2rem, 9vw, 3.5rem); font-weight: 800; letter-spacing: -0.06em; margin-bottom: 0.5rem; }
 
-    .inline-form {
-      display: flex;
-      gap: 0.75rem;
-      width: 100%;
-      max-width: 480px;
-      margin-top: 2.5rem;
-    }
+    .inline-form { display: flex; gap: 0.5rem; width: 100%; max-width: 420px; margin: 1.5rem auto 0; }
     .inline-input {
-      flex: 1;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 0 1.2rem;
-      color: #fff;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.3s ease;
+      flex: 1; background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0 1rem; color: #fff; font-family: inherit;
+      outline: none; transition: all 0.3s ease; font-size: 0.9rem;
     }
     .inline-input:focus { border-color: var(--accent); }
 
-    footer {
-      width: 100%;
-      padding: 3rem 0;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.85rem;
-      border-top: 1px solid var(--border);
-    }
+    footer { width: 100%; padding: 2rem 0; text-align: center; color: rgba(255,255,255,0.2); font-size: 0.7rem; border-top: 1px solid var(--border); }
 
     @media (max-width: 900px) {
-      .hero { grid-template-columns: 1fr; text-align: center; padding-top: 6rem; }
-      .hero-summary { margin: 0 auto 2.5rem; }
-      .feature-card { grid-template-columns: 1fr; text-align: center; padding: 2.5rem 1.5rem; }
-      .feature-specs { flex-direction: column; align-items: center; gap: 0.75rem; }
-      .inline-form { flex-direction: column; padding: 0 1rem; }
+      .hero { grid-template-columns: 1fr; text-align: center; padding-top: 4rem; }
+      .feature-card { grid-template-columns: 1fr; text-align: center; padding: 2rem 1.2rem; }
+      .feature-specs { justify-content: center; }
       .reveal-image { order: -1; }
     }
 
-    /* Kinetic Typography Styles */
-    .split-text { display: inline-block; vertical-align: top; overflow: visible; padding-bottom: 0.1em; line-height: 1; }
-    .split-char { display: inline-block; transform: translate3d(0, 110%, 0); will-change: transform; }
+    /* Kinetic Typography */
+    .split-text { display: inline-block; vertical-align: top; overflow: visible; line-height: 1; }
+    .split-char { display: inline-block; transform: translate3d(0, 100%, 0); will-change: transform; }
   </style>
 </head>
 <body>
-  <div class="bg-layers">
-    <div class="halo-1"></div>
-    <div class="halo-2"></div>
-  </div>
+  <div class="bg-layers"><div class="glow"></div></div>
 
   <header>
     <div class="container header-row">
       <div class="brand">FORMANALYZER</div>
-      <a href="#join" class="button" style="padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 8px;">JOIN BETA</a>
+      <button class="button" onclick="scrollToForm()" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 6px;">JOIN BETA</button>
     </div>
   </header>
 
@@ -253,68 +163,53 @@
     <section class="hero">
       <div class="hero-copy">
         <h1 class="kinetic-text">Precision Over<br>Everything.</h1>
-        <p class="hero-summary">The ultimate biomechanical feedback loop for elite athletes. Native-code pose estimation with zero cloud latency.</p>
-        <a href="#join" class="button">ENTER THE WAITLIST</a>
+        <p class="hero-summary">Elite feedback for elite performance. Zero-latency pose estimation for the next generation.</p>
+        <button class="button" onclick="scrollToForm()">ENTER THE WAITLIST</button>
       </div>
-      <div class="reveal-image">
-        <img src="mockup.png" alt="App Dashboard" style="border-radius:20px; box-shadow: 0 30px 60px rgba(0,0,0,0.5);">
+      <div class="reveal-wrap">
+        <div class="reveal-image">
+          <img src="mockup.png" alt="Dashboard" style="transform: rotateY(-10deg) rotateX(5deg);">
+        </div>
       </div>
     </section>
 
     <section class="feature-grid">
-      <!-- Fluid Logic -->
-      <article class="feature-card">
+      <!-- Unique Image 1: Dashboard -->
+      <article class="feature-card tilt-item">
         <div class="feature-copy">
           <h3>Fluid Logic</h3>
-          <p>Native-code pose estimation that synchronizes with your movement in milliseconds.</p>
-          <div class="feature-specs">
-            <div class="spec-item">60fps Inference</div>
-            <div class="spec-item">Multi-joint Tracking</div>
-          </div>
+          <p>Native-code inference that mirrors your physiology in real-time.</p>
+          <div class="feature-specs"><div class="spec-item">60fps AI</div><div class="spec-item">Native C++</div></div>
         </div>
-        <div class="reveal-image">
-          <img src="../dashboard.png" alt="Biomechanical View" style="border-radius:12px;">
-        </div>
+        <div class="reveal-wrap"><div class="reveal-image"><img src="../dashboard.png" alt="Inference Engine"></div></div>
       </article>
 
-      <!-- Private Core -->
-      <article class="feature-card">
-        <div class="reveal-image">
-          <img src="../stats.png" alt="Privacy Shield" style="border-radius:12px;">
-        </div>
+      <!-- Unique Image 2: Stats -->
+      <article class="feature-card tilt-item">
+        <div class="reveal-wrap" style="order: -1;"><div class="reveal-image"><img src="../stats.png" alt="On-device Processing"></div></div>
         <div class="feature-copy">
           <h3>Private Core</h3>
-          <p>Absolute privacy for elite performance. All data processes locally on hardware. Zero cloud footprint.</p>
-          <div class="feature-specs">
-            <div class="spec-item">Zero Cloud</div>
-            <div class="spec-item">On-device Encryption</div>
-          </div>
+          <p>Absolute data sovereignty. Processing occurs entirely on-device.</p>
+          <div class="feature-specs"><div class="spec-item">On-Device</div><div class="spec-item">Encrypted</div></div>
         </div>
       </article>
 
-      <!-- Visual Pulse -->
-      <article class="feature-card">
+      <!-- Unique Image 3: Scan -->
+      <article class="feature-card tilt-item">
         <div class="feature-copy">
           <h3>Visual Pulse</h3>
-          <p>A reactive HUD visualizing intensity. Every rep is a masterclass in form through high-fidelity feedback.</p>
-          <div class="feature-specs">
-            <div class="spec-item">Dynamic Overlays</div>
-            <div class="spec-item">Kinetic Scoring</div>
-          </div>
+          <p>Dynamic visual cues that guide form toward biomechanical perfection.</p>
+          <div class="feature-specs"><div class="spec-item">HUD Overlay</div><div class="spec-item">Audio Cues</div></div>
         </div>
-        <div class="reveal-image">
-          <img src="scan.png" alt="Visual HUD" style="border-radius:12px;">
-        </div>
+        <div class="reveal-wrap"><div class="reveal-image"><img src="scan.png" alt="Visual HUD"></div></div>
       </article>
     </section>
 
     <section class="grand-finale" id="join">
       <h2 class="finale-title kinetic-text">MASTER YOUR MOVEMENT.</h2>
-      <p style="font-size: 1.15rem; color: var(--muted); max-width: 42ch;">The waitlist is now open for our v1.0 release.</p>
-      
-      <!-- Native Inline Beta Signup -->
+      <p style="font-size: 1rem; color: var(--muted);">v1.0 enrollment is currently active.</p>
       <form class="inline-form" action="https://formspree.io/f/mvzwveen" method="POST">
-        <input type="email" name="email" required placeholder="YOUR@EMAIL.COM" class="inline-input">
+        <input type="email" name="email" required placeholder="PROTOCOL@EMAIL.COM" class="inline-input">
         <button class="button" type="submit">SECURE ACCESS</button>
       </form>
     </section>
@@ -323,17 +218,20 @@
   <footer>
     <div class="container">
       <p>© 2026 FORMANALYZER. BEYOND COMPROMISE.</p>
-      <a href="privacy.html" style="color:var(--accent); text-decoration:none; font-size: 0.8rem; margin-top: 0.5rem; display:block;">PRIVACY PROTOCOL</a>
+      <a href="privacy.html" style="color:var(--accent); text-decoration:none; font-size: 0.75rem; margin-top: 0.5rem; display:block;">PRIVACY PROTOCOL</a>
     </div>
   </footer>
 
   <script>
+    function scrollToForm() {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
     function initApp() {
       const lenis = new Lenis();
       function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
       requestAnimationFrame(raf);
 
-      // Kinetic Typography Engine
       document.querySelectorAll('.kinetic-text').forEach(el => {
         const textLines = el.innerHTML.split('<br>');
         el.innerHTML = '';
@@ -352,17 +250,28 @@
       });
 
       gsap.to('.split-char', {
-        y: "0%", duration: 1.2, stagger: 0.01, ease: "expo.out",
+        y: "0%", duration: 1.2, stagger: 0.008, ease: "expo.out",
         scrollTrigger: { trigger: '.kinetic-text', start: "top 95%" }
       });
 
-      // Reveal Engine
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); });
       }, { threshold: 0.1 });
       document.querySelectorAll('.reveal-image').forEach(el => observer.observe(el));
 
-      gsap.to(".hero-summary", { y: 0, opacity: 1, duration: 1, delay: 0.3, ease: "power3.out" });
+      gsap.to(".hero-summary", { y: 0, opacity: 1, duration: 1, delay: 0.2, ease: "power3.out" });
+
+      document.querySelectorAll('.tilt-item').forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+          const { left, top, width, height } = card.getBoundingClientRect();
+          const x = (e.clientX - left) / width - 0.5;
+          const y = (e.clientY - top) / height - 0.5;
+          gsap.to(card, { rotationY: x * 10, rotationX: -y * 10, transformPerspective: 1000, duration: 0.6, ease: "power2.out" });
+        });
+        card.addEventListener('mouseleave', () => {
+          gsap.to(card, { rotationY: 0, rotationX: 0, transformPerspective: 1000, duration: 0.8 });
+        });
+      });
     }
     window.onload = initApp;
   </script>
