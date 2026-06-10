@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" style="scroll-behavior: smooth;">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FormAnalyzer — Master Your Movement</title>
-  <meta name="description" content="Cinematic real-time movement feedback for elite athletes. On-device AI analysis with zero latency.">
+  <meta name="description" content="Cinematic real-time movement feedback for athletes. On-device AI analysis with zero latency.">
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,218 +13,143 @@
   <script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://unpkg.com/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
   <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#010204',
+            accent: '#7cf2e4',
+            surface: 'rgba(15, 19, 31, 0.4)',
+            border: 'rgba(255, 255, 255, 0.05)',
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
 
   <style>
-    :root {
-      --bg: #010204;
-      --surface: rgba(15, 19, 31, 0.4);
-      --border: rgba(255, 255, 255, 0.04);
-      --text: #ffffff;
-      --muted: #8e9bb3;
-      --accent: #7cf2e4;
-      --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
-      /* Volumetric Shadows */
-      --shadow-premium: 0 10px 30px -10px rgba(0,0,0,0.5), 0 20px 40px -15px rgba(0,0,0,0.6), 0 40px 80px -20px rgba(0,0,0,0.8);
+    body { background-color: #010204; color: white; -webkit-font-smoothing: antialiased; }
+    .ease-premium { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+    /* Fix 3: Lowercase 'g' cutoff protection */
+    .g-fix { padding-bottom: 4px; line-height: 1.2; }
+    /* 3D Micro-Transforms */
+    .tilt-card { transition: all 300ms ease; }
+    .tilt-card:hover { 
+      transform: perspective(1000px) rotateX(1deg) rotateY(1deg) scale(1.01);
     }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      overflow-x: hidden;
-      line-height: 1.4;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .bg-layers { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-    .glow { position: absolute; width: 100vw; height: 100vw; background: radial-gradient(circle, rgba(124, 242, 228, 0.03) 0%, transparent 70%); top: -50%; left: -20%; filter: blur(120px); }
-
-    .container { width: min(1200px, 94vw); margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
-
-    header {
-      padding: 0.8rem 0;
-      position: fixed;
-      top: 0; left: 0; width: 100%;
-      z-index: 1000;
-      mix-blend-mode: difference;
-    }
-    .header-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-    .brand { font-weight: 800; font-size: 0.9rem; letter-spacing: -0.04em; }
-
-    /* Ultra-Compressed Sections */
-    .hero {
-      padding: 4rem 0 2rem;
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 2rem;
-      align-items: center;
-    }
-
-    h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); font-weight: 800; line-height: 0.9; letter-spacing: -0.06em; margin-bottom: 1rem; }
-    .hero-summary { font-size: 1.1rem; color: var(--muted); max-width: 42ch; margin-bottom: 1.5rem; opacity: 0; transform: translate3d(0, 10px, 0); }
-
-    .button {
-      background: #fff;
-      color: #000;
-      padding: 0.8rem 1.6rem;
-      border-radius: 10px;
-      font-weight: 700;
-      border: none;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      transition: all 0.4s var(--ease-premium);
-      font-size: 0.85rem;
-      text-decoration: none;
-    }
-    .button:hover { transform: translateY(-2px) scale(1.02); background: var(--accent); box-shadow: var(--shadow-premium); }
-
-    .feature-grid { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; margin-bottom: 2rem; }
-
-    .feature-card {
-      background: linear-gradient(165deg, rgba(255,255,255,0.03) 0%, transparent 100%);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 2.5rem;
-      width: 100%;
-      max-width: 1100px;
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 2.5rem;
-      align-items: center;
-      will-change: transform;
-      box-shadow: var(--shadow-premium);
-    }
-
-    .feature-copy h3 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.04em; }
-    .feature-copy p { color: var(--muted); font-size: 0.95rem; }
-
-    .feature-specs { display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-    .spec-item { font-size: 0.7rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
-
-    /* 3D Reveal Engine */
-    .reveal-wrap { perspective: 1000px; width: 100%; }
-    .reveal-image {
-      opacity: 0;
-      transform: translate3d(0, 20px, 0) rotateX(15deg);
-      transition: all 1.2s var(--ease-premium);
-    }
-    .reveal-image.active { opacity: 1; transform: translate3d(0, 0, 0) rotateX(0); }
-
-    img { border-radius: 12px; box-shadow: var(--shadow-premium); width: 100%; display: block; }
-
-    /* Grand Finale Compression */
-    .grand-finale {
-      width: 100%;
-      padding: 4rem 0;
-      border-top: 1px solid var(--border);
-      background: radial-gradient(circle at 50% 0%, rgba(124, 242, 228, 0.02) 0%, transparent 80%);
-      text-align: center;
-    }
-    .finale-title { font-size: clamp(2rem, 9vw, 3.5rem); font-weight: 800; letter-spacing: -0.06em; margin-bottom: 0.5rem; }
-
-    .inline-form { display: flex; gap: 0.5rem; width: 100%; max-width: 420px; margin: 1.5rem auto 0; }
-    .inline-input {
-      flex: 1; background: rgba(255,255,255,0.02); border: 1px solid var(--border);
-      border-radius: 10px; padding: 0 1rem; color: #fff; font-family: inherit;
-      outline: none; transition: all 0.3s ease; font-size: 0.9rem;
-    }
-    .inline-input:focus { border-color: var(--accent); }
-
-    footer { width: 100%; padding: 2rem 0; text-align: center; color: rgba(255,255,255,0.2); font-size: 0.7rem; border-top: 1px solid var(--border); }
-
-    @media (max-width: 900px) {
-      .hero { grid-template-columns: 1fr; text-align: center; padding-top: 4rem; }
-      .feature-card { grid-template-columns: 1fr; text-align: center; padding: 2rem 1.2rem; }
-      .feature-specs { justify-content: center; }
-      .reveal-image { order: -1; }
-    }
-
-    /* Kinetic Typography */
-    .split-text { display: inline-block; vertical-align: top; overflow: visible; line-height: 1; }
-    .split-char { display: inline-block; transform: translate3d(0, 100%, 0); will-change: transform; }
   </style>
 </head>
-<body>
-  <div class="bg-layers"><div class="glow"></div></div>
+<body class="bg-bg flex flex-col items-center selection:bg-accent/30">
+  <!-- Ambient Lighting Layer -->
+  <div class="fixed inset-0 z-[-1] pointer-events-none bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.03)_0%,transparent_70%)]"></div>
 
-  <header>
-    <div class="container header-row">
-      <div class="brand">FORMANALYZER</div>
-      <button class="button" onclick="scrollToForm()" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 6px;">JOIN BETA</button>
+  <header class="fixed top-0 left-0 w-full z-[1000] py-4 mix-blend-difference">
+    <div class="max-w-[1200px] w-[94vw] mx-auto flex justify-between items-center">
+      <div class="font-extrabold text-sm tracking-tighter uppercase">
+        <!-- Preservation: Asset Logic -->
+        <img src="OFFICIAL FORM ANALYZER LOGO.png" alt="FORMANALYZER" class="h-4" onerror="this.src='../assets/logo.png'; this.onerror=null;">
+      </div>
+      <a href="#waitlist" class="bg-white text-black px-4 py-2 rounded-lg font-bold text-[0.7rem] hover:bg-accent transition-colors ease-premium">JOIN BETA</a>
     </div>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <div class="hero-copy">
-        <h1 class="kinetic-text">Precision Over<br>Everything.</h1>
-        <p class="hero-summary">Elite feedback for elite performance. Zero-latency pose estimation for the next generation.</p>
-        <button class="button" onclick="scrollToForm()">ENTER THE WAITLIST</button>
+  <main class="max-w-[1200px] w-[94vw] mx-auto">
+    <!-- Hero Section: Compressed (py-12) -->
+    <section class="py-12 md:py-16 min-h-[80vh] flex flex-col md:grid md:grid-cols-[1.1fr,0.9fr] gap-8 items-center">
+      <div class="text-center md:text-left space-y-4">
+        <h1 class="text-4xl md:text-7xl font-extrabold tracking-tight leading-[0.9]">
+          <span class="block opacity-60 text-lg uppercase tracking-[0.2em] mb-4">Precision Over Everything.</span>
+          MASTER YOUR<br>MOVEMENT.
+        </h1>
+        <p class="text-slate-400 text-lg max-w-[42ch] mx-auto md:mx-0">Native-code pose estimation with zero latency. Precision athletic feedback for the next generation.</p>
+        <div class="pt-4">
+          <a href="#waitlist" class="inline-flex bg-white text-black px-6 py-3 rounded-xl font-bold text-sm hover:scale-105 transition-transform ease-premium">ENTER THE WAITLIST</a>
+        </div>
       </div>
-      <div class="reveal-wrap">
-        <div class="reveal-image">
-          <img src="mockup.png" alt="Dashboard" style="transform: rotateY(-10deg) rotateX(5deg);">
+      <div class="tilt-card w-full">
+        <!-- Preservation: Asset Logic -->
+        <img src="Form Analyzer Image.png" alt="FormAnalyzer" class="w-full rounded-2xl shadow-2xl border border-white/5" onerror="this.src='mockup.png'; this.onerror=null;" loading="lazy">
+      </div>
+    </section>
+
+    <!-- Centered Feature Tabs System -->
+    <section class="py-12 flex flex-col items-center w-full mx-auto text-center">
+      <div class="flex flex-col md:flex-row justify-center items-center w-full mx-auto text-center gap-4 md:gap-8 mb-8">
+        <button onclick="switchTab(0)" class="tab-btn text-accent font-bold tracking-widest uppercase text-[0.7rem] px-4 py-2 border-b-2 border-accent transition-all">Fluid Logic</button>
+        <button onclick="switchTab(1)" class="tab-btn text-slate-500 font-bold tracking-widest uppercase text-[0.7rem] px-4 py-2 border-b-2 border-transparent transition-all">Private Core</button>
+        <button onclick="switchTab(2)" class="tab-btn text-slate-500 font-bold tracking-widest uppercase text-[0.7rem] px-4 py-2 border-b-2 border-transparent transition-all">Visual Pulse</button>
+      </div>
+
+      <div id="tab-content" class="w-full max-w-[1100px] grid md:grid-cols-2 gap-8 items-center bg-surface border border-border p-8 md:p-12 rounded-[40px] tilt-card text-left overflow-hidden">
+        <div class="space-y-6">
+          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tighter g-fix">Precision Over Everything.</h2>
+          <p class="text-slate-400">Native-code inference that mirrors your physiology in real-time. Predict, analyze, and refine.</p>
+          <div class="flex gap-6 pt-4 border-t border-white/5 text-[0.65rem] font-bold text-accent uppercase tracking-widest">
+            <span>60FPS AI</span>
+            <span>NATIVE CORE</span>
+          </div>
+        </div>
+        <div class="rounded-2xl overflow-hidden shadow-2xl border border-white/5">
+          <img src="../dashboard.png" id="tab-img" alt="Feature View" class="w-full">
         </div>
       </div>
     </section>
 
-    <section class="feature-grid">
-      <!-- Unique Image 1: Dashboard -->
-      <article class="feature-card tilt-item">
-        <div class="feature-copy">
-          <h3>Fluid Logic</h3>
-          <p>Native-code inference that mirrors your physiology in real-time.</p>
-          <div class="feature-specs"><div class="spec-item">60fps AI</div><div class="spec-item">Native C++</div></div>
-        </div>
-        <div class="reveal-wrap"><div class="reveal-image"><img src="../dashboard.png" alt="Inference Engine"></div></div>
-      </article>
-
-      <!-- Unique Image 2: Stats -->
-      <article class="feature-card tilt-item">
-        <div class="reveal-wrap" style="order: -1;"><div class="reveal-image"><img src="../stats.png" alt="On-device Processing"></div></div>
-        <div class="feature-copy">
-          <h3>Private Core</h3>
-          <p>Absolute data sovereignty. Processing occurs entirely on-device.</p>
-          <div class="feature-specs"><div class="spec-item">On-Device</div><div class="spec-item">Encrypted</div></div>
-        </div>
-      </article>
-
-      <!-- Unique Image 3: Scan -->
-      <article class="feature-card tilt-item">
-        <div class="feature-copy">
-          <h3>Visual Pulse</h3>
-          <p>Dynamic visual cues that guide form toward biomechanical perfection.</p>
-          <div class="feature-specs"><div class="spec-item">HUD Overlay</div><div class="spec-item">Audio Cues</div></div>
-        </div>
-        <div class="reveal-wrap"><div class="reveal-image"><img src="scan.png" alt="Visual HUD"></div></div>
-      </article>
-    </section>
-
-    <section class="grand-finale" id="join">
-      <h2 class="finale-title kinetic-text">MASTER YOUR MOVEMENT.</h2>
-      <p style="font-size: 1rem; color: var(--muted);">v1.0 enrollment is currently active.</p>
-      <form class="inline-form" action="https://formspree.io/f/mvzwveen" method="POST">
-        <input type="email" name="email" required placeholder="PROTOCOL@EMAIL.COM" class="inline-input">
-        <button class="button" type="submit">SECURE ACCESS</button>
+    <!-- Grand Finale / Beta Section: Compressed (py-12) -->
+    <section class="py-12 md:py-20 w-full text-center border-t border-white/5" id="waitlist">
+      <h2 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">JOIN THE BETA.</h2>
+      <p class="text-slate-400 mb-8 max-w-[40ch] mx-auto text-sm md:text-base">Secure access to the v1.0 release. Enrollment is now active.</p>
+      
+      <!-- Beta Form: Preserved intact -->
+      <form class="flex flex-col md:flex-row gap-2 max-w-[480px] mx-auto w-full px-4" action="https://formspree.io/f/mvzwveen" method="POST">
+        <input type="email" name="email" required placeholder="PROTOCOL@EMAIL.COM" class="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-white font-medium outline-none focus:border-accent transition-all text-sm">
+        <button class="bg-white text-black px-6 py-3 rounded-xl font-bold text-sm hover:bg-accent transition-colors" type="submit">SECURE ACCESS</button>
       </form>
     </section>
   </main>
 
-  <footer>
-    <div class="container">
-      <p>© 2026 FORMANALYZER. BEYOND COMPROMISE.</p>
-      <a href="privacy.html" style="color:var(--accent); text-decoration:none; font-size: 0.75rem; margin-top: 0.5rem; display:block;">PRIVACY PROTOCOL</a>
-    </div>
+  <!-- Footer Upgrade: Accessibility contrast (text-slate-300) -->
+  <footer class="w-full py-8 text-center border-t border-white/5 mt-4">
+    <p class="text-slate-300 font-bold text-[0.65rem] tracking-[0.2em] uppercase">© 2026 FORMANALYZER. BEYOND COMPROMISE.</p>
+    <a href="privacy.html" class="text-accent text-[0.6rem] font-bold tracking-widest mt-2 inline-block hover:opacity-70">PRIVACY PROTOCOL</a>
   </footer>
 
   <script>
-    function scrollToForm() {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    // Tab System Logic
+    const tabData = [
+      { title: "Precision Over Everything.", text: "Native-code inference that mirrors your physiology in real-time. Predict, analyze, and refine.", img: "../dashboard.png", specs: ["60FPS AI", "NATIVE CORE"] },
+      { title: "Absolute Data Sovereignty.", text: "Elite performance requires total privacy. All biometric processing occurs on-device.", img: "../stats.png", specs: ["ON-DEVICE", "ENCRYPTED"] },
+      { title: "Biomechanical Perfection.", text: "Dynamic haptic and visual cues that guide your form toward its absolute potential.", img: "scan.png", specs: ["HUD OVERLAY", "AUDIO CUES"] }
+    ];
+
+    function switchTab(idx) {
+      const btns = document.querySelectorAll('.tab-btn');
+      btns.forEach((b, i) => {
+        b.classList.remove('text-accent', 'border-accent');
+        b.classList.add('text-slate-500', 'border-transparent');
+        if(i === idx) {
+          b.classList.add('text-accent', 'border-accent');
+          b.classList.remove('text-slate-500', 'border-transparent');
+        }
+      });
+      
+      const content = tabData[idx];
+      const tabWrap = document.getElementById('tab-content');
+      
+      gsap.to(tabWrap, { opacity: 0, y: 10, duration: 0.2, onComplete: () => {
+        tabWrap.querySelector('h2').innerText = content.title;
+        tabWrap.querySelector('p').innerText = content.text;
+        tabWrap.querySelector('img').src = content.img;
+        const specs = tabWrap.querySelector('.flex');
+        specs.innerHTML = content.specs.map(s => `<span>${s}</span>`).join('');
+        gsap.to(tabWrap, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" });
+      }});
     }
 
     function initApp() {
@@ -232,47 +157,16 @@
       function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
       requestAnimationFrame(raf);
 
-      document.querySelectorAll('.kinetic-text').forEach(el => {
-        const textLines = el.innerHTML.split('<br>');
-        el.innerHTML = '';
-        textLines.forEach((line, i) => {
-          const lineWrapper = document.createElement('span');
-          lineWrapper.className = 'split-text';
-          line.split('').forEach(char => {
-            const charSpan = document.createElement('span');
-            charSpan.className = 'split-char';
-            charSpan.innerText = char === ' ' ? '\u00A0' : char;
-            lineWrapper.appendChild(charSpan);
-          });
-          el.appendChild(lineWrapper);
-          if (i < textLines.length - 1) el.appendChild(document.createElement('br'));
-        });
-      });
+      // Hero summary fade-in
+      gsap.to(".hero-summary", { opacity: 1, y: 0, duration: 1, delay: 0.4, ease: "power3.out" });
 
-      gsap.to('.split-char', {
-        y: "0%", duration: 1.2, stagger: 0.008, ease: "expo.out",
-        scrollTrigger: { trigger: '.kinetic-text', start: "top 95%" }
-      });
-
+      // Intersection Observer for reveals
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); });
       }, { threshold: 0.1 });
       document.querySelectorAll('.reveal-image').forEach(el => observer.observe(el));
-
-      gsap.to(".hero-summary", { y: 0, opacity: 1, duration: 1, delay: 0.2, ease: "power3.out" });
-
-      document.querySelectorAll('.tilt-item').forEach(card => {
-        card.addEventListener('mousemove', (e) => {
-          const { left, top, width, height } = card.getBoundingClientRect();
-          const x = (e.clientX - left) / width - 0.5;
-          const y = (e.clientY - top) / height - 0.5;
-          gsap.to(card, { rotationY: x * 10, rotationX: -y * 10, transformPerspective: 1000, duration: 0.6, ease: "power2.out" });
-        });
-        card.addEventListener('mouseleave', () => {
-          gsap.to(card, { rotationY: 0, rotationX: 0, transformPerspective: 1000, duration: 0.8 });
-        });
-      });
     }
+    
     window.onload = initApp;
   </script>
 </body>
