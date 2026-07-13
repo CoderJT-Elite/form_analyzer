@@ -26,6 +26,39 @@ class ExerciseCatalog {
       type: ExerciseType.pushup,
       analyzer: PushupAnalyzer(),
     ),
+    Exercise(
+      name: 'LUNGES',
+      description: 'Build single-leg strength and balance',
+      instructions:
+          'Step forward and lower your hips until both knees are bent at about 90 degrees.',
+      muscleGroup: 'Quadriceps, Glutes, Hamstrings',
+      difficulty: 'Intermediate',
+      icon: Icons.directions_walk_rounded,
+      type: ExerciseType.lunge,
+      analyzer: LungeAnalyzer(),
+    ),
+    Exercise(
+      name: 'OVERHEAD PRESS',
+      description: 'Build shoulder and arm strength',
+      instructions:
+          'Press your arms straight overhead from shoulder height, then lower with control.',
+      muscleGroup: 'Shoulders, Triceps',
+      difficulty: 'Intermediate',
+      icon: Icons.arrow_upward_rounded,
+      type: ExerciseType.overheadPress,
+      analyzer: OverheadPressAnalyzer(),
+    ),
+    Exercise(
+      name: 'PLANK',
+      description: 'Build core stability and endurance',
+      instructions:
+          'Hold your body in a straight line from head to heels, supported on forearms and toes.',
+      muscleGroup: 'Core, Shoulders',
+      difficulty: 'Beginner',
+      icon: Icons.remove_rounded,
+      type: ExerciseType.plank,
+      analyzer: PlankAnalyzer(),
+    ),
   ];
 
   static Exercise exerciseForType(ExerciseType type) {
@@ -56,9 +89,11 @@ class ExerciseCatalog {
       case ExerciseType.pushup:
         return PushupAnalyzer();
       case ExerciseType.lunge:
+        return LungeAnalyzer();
       case ExerciseType.plank:
+        return PlankAnalyzer();
       case ExerciseType.overheadPress:
-        return SquatAnalyzer();
+        return OverheadPressAnalyzer();
     }
   }
 }

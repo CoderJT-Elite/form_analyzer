@@ -1,4 +1,4 @@
-package com.example.form_analyzer
+package com.formanalyzer.app
 
 import io.flutter.embedding.android.FlutterActivity
 
