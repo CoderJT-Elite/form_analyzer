@@ -6,6 +6,7 @@ import 'package:camera/camera.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_theme.dart';
 import '../../logic/exercise_analyzer.dart';
 import '../../models/exercise_model.dart';
 import '../../services/pose_detector_service.dart';
@@ -44,7 +45,16 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   static const int _frameSkipInterval = 2;
   int _frameCounter = 0;
   Timer? _calibrationTimer;
-  List<Pose> _poses = [];
+
+  // Per-frame state lives in notifiers rather than in setState. Calling
+  // setState here would rebuild the whole Stack — camera preview, badges and
+  // status panel — on every analysed frame. These let each piece repaint on
+  // its own.
+  final ValueNotifier<List<Pose>> _poses = ValueNotifier<List<Pose>>(const []);
+  final ValueNotifier<String> _statusMessage = ValueNotifier<String>('');
+  final ValueNotifier<int> _repCount = ValueNotifier<int>(0);
+  final ValueNotifier<int> _setCount = ValueNotifier<int>(0);
+
   Size? _imageSize;
   late InputImageRotation _imageRotation;
   late InputImageFormat _inputImageFormat;
@@ -53,7 +63,6 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
   // Workout State
   final List<ExerciseSet> _completedSets = [];
-  int _currentRepCount = 0;
   bool _isResting = false;
   int _restTimeRemaining = 30;
   Timer? _restTimer;
@@ -63,26 +72,24 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _statusMessage.value = widget.exercise.analyzer.statusMessage;
     _initialize();
     _loadFeedbackPreferences();
     widget.exercise.analyzer.onRep = (count) {
       if (mounted) {
-        if (count > _currentRepCount) {
+        if (count > _repCount.value) {
           _triggerHaptic(HapticFeedback.mediumImpact);
         }
-        setState(() => _currentRepCount = count);
-        _tts.speakSuccess('Rep $count');
+        _repCount.value = count;
       }
     };
-    widget.exercise.analyzer.onFeedback = (message) {
-      _tts.speakFeedback(message);
-    };
-    widget.exercise.analyzer.onCorrection = (message) {
-      _tts.speakCorrection(message);
-    };
+    // Cue delivery is already rate-limited, prioritised and varied by the
+    // analyzer's CueEngine, so these just hand the text straight to speech.
+    widget.exercise.analyzer.onFeedback = _tts.speak;
+    widget.exercise.analyzer.onCorrection = _tts.speak;
     widget.exercise.analyzer.onSafetyAlert = (message) {
       _triggerHaptic(HapticFeedback.heavyImpact);
-      _tts.speakSafety(message);
+      _tts.speak(message);
     };
   }
 
@@ -204,10 +211,12 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Future<void> _processImage(CameraImage image) async {
-    if (_isProcessingFrame || !_isCameraInitialized) return;
-    // Process every Nth frame to reduce UI isolate pressure.
+    // Count every delivered frame before any early return, so the skip
+    // interval stays a fixed 1-in-N. Incrementing after the busy check made
+    // the effective sample rate drift with detection latency.
     _frameCounter++;
     if (_frameCounter % _frameSkipInterval != 0) return;
+    if (_isProcessingFrame || !_isCameraInitialized) return;
     _isProcessingFrame = true;
 
     try {
@@ -225,17 +234,18 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
       final poses = await _poseDetector.processImage(inputImage);
 
-      if (mounted && _isCalibrated && !_isResting) {
+      if (!mounted) return;
+
+      if (_isCalibrated && !_isResting) {
         for (final pose in poses) {
           widget.exercise.analyzer.processPose(pose);
         }
+        _statusMessage.value = widget.exercise.analyzer.statusMessage;
       }
 
-      if (mounted) {
-        setState(() {
-          _poses = poses;
-        });
-      }
+      // Notifier assignment instead of setState: only the skeleton overlay
+      // repaints, leaving CameraPreview and the surrounding chrome alone.
+      _poses.value = poses;
     } catch (e) {
       debugPrint('Error processing image: $e');
     } finally {
@@ -245,14 +255,15 @@ class _ExerciseScreenState extends State<ExerciseScreen>
 
   void _onFinishWorkout() async {
     final sets = List<ExerciseSet>.from(_completedSets);
-    if (_currentRepCount > 0) {
+    if (_repCount.value > 0) {
       final setPerformance = widget.exercise.analyzer.getPerformanceMetrics();
       sets.add(
         ExerciseSet(
-          reps: _currentRepCount,
+          reps: _repCount.value,
           timestamp: DateTime.now(),
           rating: setPerformance.averageFormScore,
           feedback: setPerformance.commonIssues,
+          repRecords: List.of(widget.exercise.analyzer.repRecords),
         ),
       );
     }
@@ -278,6 +289,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
       overallFeedback: performance.commonIssues,
     );
 
+    // Read the previous rating for this exercise before saving, so the
+    // comparison is against the last session rather than this one.
+    final previousRating = await _previousRatingForExercise();
+
     // Save standalone session if not in routine mode
     if (!widget.isRoutineMode) {
       await _storage.saveSession(session);
@@ -289,6 +304,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         barrierDismissible: false,
         builder: (context) => WorkoutSummaryDialog(
           session: session,
+          previousRating: previousRating,
           onConfirm: () {
             Navigator.pop(context); // Close dialog
             Navigator.pop(context, session); // Return to dashboard/routine
@@ -298,23 +314,42 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     }
   }
 
-  void _finishSet() {
-    if (_currentRepCount > 0) {
-      final performance = widget.exercise.analyzer.getPerformanceMetrics();
-      setState(() {
-        _completedSets.add(
-          ExerciseSet(
-            reps: _currentRepCount,
-            timestamp: DateTime.now(),
-            rating: performance.averageFormScore,
-            feedback: performance.commonIssues,
-          ),
-        );
-        _currentRepCount = 0;
-        widget.exercise.analyzer.reset();
-        _startRest();
-      });
+  /// Overall rating of the most recent stored session for this exercise, or
+  /// null if this is the first one.
+  Future<double?> _previousRatingForExercise() async {
+    try {
+      final sessions = await _storage.loadSessions();
+      final sameExercise = sessions
+          .where((s) => s.exerciseType == widget.exercise.type)
+          .where((s) => s.overallRating != null)
+          .toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+      return sameExercise.isEmpty ? null : sameExercise.first.overallRating;
+    } catch (e) {
+      debugPrint('Could not load previous rating: $e');
+      return null;
     }
+  }
+
+  void _finishSet() {
+    if (_repCount.value == 0) return;
+
+    final performance = widget.exercise.analyzer.getPerformanceMetrics();
+    _completedSets.add(
+      ExerciseSet(
+        reps: _repCount.value,
+        timestamp: DateTime.now(),
+        rating: performance.averageFormScore,
+        feedback: performance.commonIssues,
+        repRecords: List.of(widget.exercise.analyzer.repRecords),
+      ),
+    );
+    _repCount.value = 0;
+    _setCount.value = _completedSets.length;
+    widget.exercise.analyzer.reset();
+    _statusMessage.value = widget.exercise.analyzer.statusMessage;
+    _startRest();
   }
 
   void _startRest() {
@@ -349,6 +384,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     widget.exercise.analyzer.onFeedback = null;
     widget.exercise.analyzer.onCorrection = null;
     widget.exercise.analyzer.onSafetyAlert = null;
+    _poses.dispose();
+    _statusMessage.dispose();
+    _repCount.dispose();
+    _setCount.dispose();
     super.dispose();
   }
 
@@ -385,19 +424,29 @@ class _ExerciseScreenState extends State<ExerciseScreen>
           // Camera Preview
           CameraPreview(_cameraController!),
 
-          // Pose Landmarks Overlay
-          if (_poses.isNotEmpty && _imageSize != null)
-            CustomPaint(
-              painter: PosePainter(
-                poses: _poses,
-                imageSize: _imageSize!,
-                rotation: _imageRotation,
-                lensDirection: _lensDirection,
-                squatState: widget.exercise.analyzer is SquatAnalyzer
-                    ? (widget.exercise.analyzer as SquatAnalyzer).squatState
-                    : null,
-                activeLandmarkTypes: widget.exercise.analyzer.activeLandmarkTypes,
-                isBusy: _isProcessingFrame,
+          // Pose Landmarks Overlay. RepaintBoundary keeps the per-frame
+          // skeleton repaint from dirtying the camera preview behind it.
+          if (_imageSize != null)
+            RepaintBoundary(
+              child: ValueListenableBuilder<List<Pose>>(
+                valueListenable: _poses,
+                builder: (context, poses, _) {
+                  if (poses.isEmpty) return const SizedBox.shrink();
+                  return CustomPaint(
+                    painter: PosePainter(
+                      poses: poses,
+                      imageSize: _imageSize!,
+                      rotation: _imageRotation,
+                      lensDirection: _lensDirection,
+                      squatState: widget.exercise.analyzer is SquatAnalyzer
+                          ? (widget.exercise.analyzer as SquatAnalyzer)
+                              .squatState
+                          : null,
+                      activeLandmarkTypes:
+                          widget.exercise.analyzer.activeLandmarkTypes,
+                    ),
+                  );
+                },
               ),
             ),
 
@@ -410,15 +459,21 @@ class _ExerciseScreenState extends State<ExerciseScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _StatBadge(
-                        label: 'REPS',
-                        value: '$_currentRepCount',
-                        isMain: true,
+                      ValueListenableBuilder<int>(
+                        valueListenable: _repCount,
+                        builder: (context, reps, _) => _StatBadge(
+                          label: 'REPS',
+                          value: '$reps',
+                          isMain: true,
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      _StatBadge(
-                        label: 'SETS',
-                        value: '${_completedSets.length}',
+                      ValueListenableBuilder<int>(
+                        valueListenable: _setCount,
+                        builder: (context, sets, _) => _StatBadge(
+                          label: 'SETS',
+                          value: '$sets',
+                        ),
                       ),
                     ],
                   ),
@@ -436,11 +491,7 @@ class _ExerciseScreenState extends State<ExerciseScreen>
               child: Center(
                 child: Text(
                   '$_calibrationCountdown',
-                  style: GoogleFonts.outfit(
-                    color: AppColors.accentCyan,
-                    fontSize: 80,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: AppTextStyles.calibrationCountdown,
                 ),
               ),
             ),
@@ -578,7 +629,6 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Widget _buildStatusFeedback() {
-    final msg = widget.exercise.analyzer.statusMessage;
     return _GlassContainer(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
@@ -589,12 +639,11 @@ class _ExerciseScreenState extends State<ExerciseScreen>
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 100),
               child: SingleChildScrollView(
-                child: Text(
-                  msg,
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                child: ValueListenableBuilder<String>(
+                  valueListenable: _statusMessage,
+                  builder: (context, message, _) => Text(
+                    message,
+                    style: AppTextStyles.statusMessage,
                   ),
                 ),
               ),
@@ -694,22 +743,12 @@ class _StatBadge extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              color: Colors.white38,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1,
-            ),
-          ),
+          Text(label, style: AppTextStyles.statBadgeLabel),
           Text(
             value,
-            style: GoogleFonts.outfit(
-              color: isMain ? AppColors.accentCyan : Colors.white,
-              fontSize: isMain ? 32 : 24,
-              fontWeight: FontWeight.w900,
-            ),
+            style: isMain
+                ? AppTextStyles.statBadgeValueMain
+                : AppTextStyles.statBadgeValue,
           ),
         ],
       ),
@@ -717,6 +756,11 @@ class _StatBadge extends StatelessWidget {
   }
 }
 
+/// Glass panel tuned for sitting on top of the live camera preview.
+///
+/// The backdrop blur is switched off here: three blurred panels over a moving
+/// video feed cost a full-screen GPU pass each, every frame. A darker fill
+/// keeps the text just as legible for a fraction of the cost.
 class _GlassContainer extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -725,6 +769,11 @@ class _GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(padding: padding, child: child);
+    return GlassContainer(
+      padding: padding,
+      blur: 0,
+      backgroundColor: AppColors.glassOverCamera,
+      child: child,
+    );
   }
 }

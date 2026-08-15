@@ -52,8 +52,19 @@ android {
 
     buildTypes {
         release {
+            // Without key.properties this config would be silently empty and
+            // produce an unsigned bundle that Play rejects on upload. Fail here
+            // instead, where the cause is obvious.
+            if (!keystorePropertiesFile.exists()) {
+                throw GradleException(
+                    "Missing android/key.properties — a release build cannot be signed. " +
+                    "Create it with storeFile, storePassword, keyAlias and keyPassword " +
+                    "pointing at the upload keystore. Debug builds are unaffected."
+                )
+            }
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

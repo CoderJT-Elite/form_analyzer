@@ -15,6 +15,14 @@ class GlassContainer extends StatelessWidget {
   final List<BoxShadow>? shadows;
   final VoidCallback? onTap;
 
+  /// Backdrop blur strength. Set to 0 to drop the `BackdropFilter` entirely.
+  ///
+  /// A backdrop blur has to re-sample everything painted beneath it, so over a
+  /// live camera preview it costs a full-screen GPU pass on every frame. Screens
+  /// that sit on top of moving video pass 0 here and rely on the translucent
+  /// fill alone; static screens keep the real glass.
+  final double blur;
+
   const GlassContainer({
     super.key,
     required this.child,
@@ -26,30 +34,35 @@ class GlassContainer extends StatelessWidget {
     this.backgroundColor,
     this.shadows,
     this.onTap,
+    this.blur = 24,
   });
 
   @override
   Widget build(BuildContext context) {
+    final surface = Container(
+      width: width,
+      height: height,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: backgroundColor ?? AppColors.glass,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: borderColor ?? AppColors.glassBorder,
+          width: 1,
+        ),
+        boxShadow: shadows,
+      ),
+      child: child,
+    );
+
     final content = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          width: width,
-          height: height,
-          padding: padding,
-          decoration: BoxDecoration(
-            color: backgroundColor ?? AppColors.glass,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: borderColor ?? AppColors.glassBorder,
-              width: 1,
+      child: blur <= 0
+          ? surface
+          : BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              child: surface,
             ),
-            boxShadow: shadows,
-          ),
-          child: child,
-        ),
-      ),
     );
 
     if (onTap != null) {

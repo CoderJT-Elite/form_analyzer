@@ -186,7 +186,7 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                       child: GlassContainer(
                         padding: const EdgeInsets.all(40),
                         child: Icon(
-                          ExerciseCatalog.templateForType(
+                          ExerciseCatalog.definitionForType(
                             widget.routine.exercises[_currentIndex],
                           ).icon,
                           color: AppColors.accentCyan,

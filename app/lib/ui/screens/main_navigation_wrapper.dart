@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,8 @@ import 'history_screen.dart';
 import 'stats_screen.dart';
 import 'profile_screen.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_constants.dart';
+import '../../services/storage_service.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -18,6 +21,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     with TickerProviderStateMixin {
   int _selectedIndex = 0;
   late List<AnimationController> _iconControllers;
+  final StorageService _storage = StorageService();
 
   final List<Widget> _screens = const [
     DashboardScreen(),
@@ -37,6 +41,48 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
       ),
     );
     _iconControllers[0].forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_showDisclaimerIfNeeded());
+    });
+  }
+
+  /// First-run acknowledgement that this is automated feedback, not medical
+  /// advice. Shown once and recorded, then always reachable from Profile.
+  Future<void> _showDisclaimerIfNeeded() async {
+    if (await _storage.hasAcceptedHealthDisclaimer()) return;
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: Text(
+          'Before you start',
+          style: GoogleFonts.outfit(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            AppConstants.healthDisclaimer,
+            style: GoogleFonts.inter(
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('I UNDERSTAND'),
+          ),
+        ],
+      ),
+    );
+
+    await _storage.setHealthDisclaimerAccepted();
   }
 
   @override

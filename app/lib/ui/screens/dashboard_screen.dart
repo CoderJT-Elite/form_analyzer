@@ -5,6 +5,7 @@ import '../../models/exercise_catalog.dart';
 import '../../models/exercise_model.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
+import 'exercise_screen.dart';
 import 'routine_execution_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -101,6 +102,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildStatsRow(),
+                        const SizedBox(height: 36),
+                        _buildQuickStartSection(),
                         const SizedBox(height: 36),
                         _buildRoutinesSection(),
                         const SizedBox(height: 24),
@@ -234,6 +237,117 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
+  /// Exercises ordered by how recently they were trained, most recent first,
+  /// with never-trained ones keeping their catalog order behind them. Quick
+  /// start is only quick if the thing you do every day is the first thing you
+  /// see.
+  List<ExerciseDefinition> get _quickStartOrder {
+    final lastTrained = <ExerciseType, DateTime>{};
+    for (final session in _sessions) {
+      final existing = lastTrained[session.exerciseType];
+      if (existing == null || session.date.isAfter(existing)) {
+        lastTrained[session.exerciseType] = session.date;
+      }
+    }
+
+    final ordered = List<ExerciseDefinition>.from(ExerciseCatalog.definitions);
+    ordered.sort((a, b) {
+      final aDate = lastTrained[a.type];
+      final bDate = lastTrained[b.type];
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return bDate.compareTo(aDate);
+    });
+    return ordered;
+  }
+
+  Future<void> _startExercise(ExerciseType type) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExerciseScreen(
+          // A fresh analyzer per workout — analyzers carry rep state.
+          exercise: ExerciseCatalog.exerciseForType(type),
+        ),
+      ),
+    );
+    _loadData();
+  }
+
+  Widget _buildQuickStartSection() {
+    final definitions = _quickStartOrder;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel(text: 'QUICK START'),
+        const SizedBox(height: 4),
+        Text(
+          'Train one exercise now — no routine needed.',
+          style: GoogleFonts.inter(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 116,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: definitions.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemBuilder: (context, index) =>
+                _buildQuickStartCard(definitions[index]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickStartCard(ExerciseDefinition definition) {
+    return GlassContainer(
+      width: 108,
+      radius: 18,
+      padding: const EdgeInsets.all(14),
+      onTap: () => _startExercise(definition.type),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.accentCyan.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.accentCyan.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Icon(
+              definition.icon,
+              color: AppColors.accentCyan,
+              size: 20,
+            ),
+          ),
+          Text(
+            definition.name,
+            style: GoogleFonts.outfit(
+              color: AppColors.textPrimary,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              height: 1.2,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRoutinesSection() {
     return Column(
       children: [
@@ -314,7 +428,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Create your first routine to start training.',
+            'Routines chain several exercises back to back. '
+            'To train just one, tap it under Quick Start above.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: AppColors.textTertiary,
@@ -495,13 +610,16 @@ class _DashboardScreenState extends State<DashboardScreen>
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: ExerciseCatalog.all.map((exercise) {
-                    final type = exercise.type;
+                  // `definitions` rather than `all`: this list rebuilds on
+                  // every chip tap, and `all` would construct ten analyzers
+                  // each time just to read their names.
+                  children: ExerciseCatalog.definitions.map((definition) {
+                    final type = definition.type;
                     final isSelected = selectedExercises.contains(type);
                     return FilterChip(
                       selected: isSelected,
                       label: Text(
-                        exercise.name,
+                        definition.name,
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,

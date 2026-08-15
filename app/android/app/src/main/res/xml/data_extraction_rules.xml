@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 and above (android:dataExtractionRules).
+
+  cloud-backup covers Google account backup; device-transfer covers a direct
+  phone-to-phone move. Both are limited to shared_preferences, which is where
+  sessions, routines and settings are stored. No camera or pose data is ever
+  written to disk, so there is nothing else to include.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

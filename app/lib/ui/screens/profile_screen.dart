@@ -1,7 +1,16 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_constants.dart';
 import '../../models/exercise_model.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
@@ -45,12 +54,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _handleRefresh() async {
+    // Everything is stored on-device, so this is a genuine local reload.
+    // It used to sit behind an 1800ms delay labelled "simulate secure network
+    // sync", which was theatre — there is no network and never was.
     HapticFeedback.mediumImpact();
     setState(() => _isSyncing = true);
-    // Simulate secure network sync
-    await Future.delayed(const Duration(milliseconds: 1800));
     await _loadData();
-    setState(() => _isSyncing = false);
+    if (mounted) setState(() => _isSyncing = false);
     HapticFeedback.lightImpact();
   }
 
@@ -381,10 +391,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSettingsList() {
-    final items = [
-      (Icons.person_outline_rounded, 'Personal Information'),
-      (Icons.security_rounded, 'Privacy & Security'),
-      (Icons.help_outline_rounded, 'Help Center'),
+    // Every row here does something. These used to be three decorative rows
+    // with an empty onTap, including a "Privacy & Security" entry that led
+    // nowhere even though a privacy policy was already published.
+    final items = <(IconData, String, Future<void> Function())>[
+      (Icons.ios_share_rounded, 'Back Up My Data', _exportData),
+      (Icons.download_rounded, 'Restore From Backup', _importData),
+      (Icons.security_rounded, 'Privacy Policy', _openPrivacyPolicy),
+      (Icons.health_and_safety_outlined, 'Health & Safety', _showDisclaimer),
     ];
 
     return Column(
@@ -414,7 +428,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.only(bottom: 10),
             child: GlassContainer(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              onTap: () {},
+              onTap: () => unawaited(item.$3()),
               child: Row(
                 children: [
                   Icon(item.$1, color: AppColors.textSecondary, size: 20),
@@ -440,6 +454,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ],
     );
+  }
+
+  /// Write the user's data to a file and hand it to the system share sheet.
+  Future<void> _exportData() async {
+    try {
+      final json = await _storageService.exportToJson();
+      final directory = await getTemporaryDirectory();
+      final stamp = DateTime.now().toIso8601String().split('T').first;
+      final file = File('${directory.path}/form-analyzer-backup-$stamp.json');
+      await file.writeAsString(json);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          fileNameOverrides: ['form-analyzer-backup-$stamp.json'],
+          subject: 'Form Analyzer backup',
+        ),
+      );
+    } catch (e) {
+      _showMessage('Could not create a backup: $e');
+    }
+  }
+
+  /// Pick a previously exported file and merge it back in.
+  Future<void> _importData() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        dialogTitle: 'Choose a Form Analyzer backup',
+        type: FileType.custom,
+        allowedExtensions: const ['json'],
+      );
+      if (picked.isEmpty) return;
+
+      final file = picked.first;
+      final contents = utf8.decode(await file.readAsBytes());
+
+      final result = await _storageService.importFromJson(contents);
+      await _loadData();
+      _showMessage(result.summary);
+    } on FormatException catch (e) {
+      _showMessage(e.message);
+    } catch (e) {
+      _showMessage('Could not restore that file: $e');
+    }
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    final uri = Uri.parse(AppConstants.privacyPolicyUrl);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened) {
+      _showMessage('Could not open ${AppConstants.privacyPolicyUrl}');
+    }
+  }
+
+  Future<void> _showDisclaimer() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: Text(
+          'Health & Safety',
+          style: GoogleFonts.outfit(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: Text(
+          AppConstants.healthDisclaimer,
+          style: GoogleFonts.inter(color: AppColors.textSecondary, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('GOT IT'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildToggleSetting({

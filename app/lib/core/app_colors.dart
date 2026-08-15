@@ -28,4 +28,10 @@ class AppColors {
   static Color glass = Colors.white.withValues(alpha: 0.04);
   static Color glassBorder = Colors.white.withValues(alpha: 0.08);
   static Color glassBorderBright = Colors.white.withValues(alpha: 0.15);
+
+  /// Panel fill for overlays sitting on the live camera preview, where the
+  /// backdrop blur is switched off for performance. A 4% white wash is only
+  /// legible because the blur flattens what is behind it; without the blur the
+  /// panel needs to darken the video itself to keep text readable.
+  static Color glassOverCamera = Colors.black.withValues(alpha: 0.55);
 }

@@ -3,6 +3,47 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
+/// Text styles resolved once at startup.
+///
+/// `GoogleFonts.x()` does a lookup and allocates a new `TextStyle` on every
+/// call. That is fine in a screen that builds occasionally, but the exercise
+/// screen rebuilds parts of itself on every analysed camera frame, so the
+/// styles it uses are hoisted here instead of being constructed inside `build`.
+class AppTextStyles {
+  const AppTextStyles._();
+
+  static final TextStyle statusMessage = GoogleFonts.inter(
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+  );
+
+  static final TextStyle statBadgeLabel = GoogleFonts.inter(
+    color: Colors.white38,
+    fontSize: 10,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 1,
+  );
+
+  static final TextStyle statBadgeValueMain = GoogleFonts.outfit(
+    color: AppColors.accentCyan,
+    fontSize: 32,
+    fontWeight: FontWeight.w900,
+  );
+
+  static final TextStyle statBadgeValue = GoogleFonts.outfit(
+    color: Colors.white,
+    fontSize: 24,
+    fontWeight: FontWeight.w900,
+  );
+
+  static final TextStyle calibrationCountdown = GoogleFonts.outfit(
+    color: AppColors.accentCyan,
+    fontSize: 80,
+    fontWeight: FontWeight.w900,
+  );
+}
+
 class AppTheme {
   static ThemeData get dark {
     final base = ThemeData.dark(useMaterial3: true);

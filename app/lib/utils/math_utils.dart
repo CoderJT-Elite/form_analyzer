@@ -17,6 +17,11 @@ class MovingAverageFilter {
     return _buffer.reduce((a, b) => a + b) / _buffer.length;
   }
 
+  /// Whether the window has filled up. Callers that only want to act on a
+  /// settled average check this first, so a couple of early frames can't
+  /// trigger a cue.
+  bool get isFull => _buffer.length >= windowSize;
+
   void reset() => _buffer.clear();
 }
 

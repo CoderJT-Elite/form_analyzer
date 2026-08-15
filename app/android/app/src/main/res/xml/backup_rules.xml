@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 and below (android:fullBackupContent).
+
+  Workout history lives in shared_preferences. Backing it up to the user's own
+  Google account is what stops a reinstall or a new phone wiping months of
+  training data, and it costs nothing to run — there is no server involved.
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="." />
+</full-backup-content>

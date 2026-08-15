@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
 import '../logic/exercise_analyzer.dart';
 
-enum ExerciseType { squat, pushup, lunge, plank, overheadPress }
+// Persisted by name in stored sessions, so existing values must keep their
+// spelling. New values may be appended freely.
+enum ExerciseType {
+  squat,
+  pushup,
+  lunge,
+  plank,
+  overheadPress,
+  gluteBridge,
+  situp,
+  jumpingJack,
+  wallSit,
+  sidePlank,
+}
 
 class Exercise {
   final String name;
@@ -34,6 +47,10 @@ class ExerciseSet {
   final double rating; // 0.0 to 5.0
   final List<String> feedback;
 
+  /// Per-rep detail backing the post-set report. Empty for sets recorded
+  /// before this was captured, so anything reading it must tolerate that.
+  final List<RepRecord> repRecords;
+
   ExerciseSet({
     required this.reps,
     this.duration,
@@ -42,7 +59,28 @@ class ExerciseSet {
     required this.timestamp,
     this.rating = 1.0,
     this.feedback = const [],
+    this.repRecords = const [],
   });
+
+  /// Average lowering time across reps that measured it, or null when unknown.
+  Duration? get averageEccentric {
+    final measured =
+        repRecords.where((record) => record.eccentricMs > 0).toList();
+    if (measured.isEmpty) return null;
+    final total =
+        measured.fold<int>(0, (sum, record) => sum + record.eccentricMs);
+    return Duration(milliseconds: total ~/ measured.length);
+  }
+
+  RepRecord? get bestRep {
+    if (repRecords.isEmpty) return null;
+    return repRecords.reduce((a, b) => b.score > a.score ? b : a);
+  }
+
+  RepRecord? get worstRep {
+    if (repRecords.isEmpty) return null;
+    return repRecords.reduce((a, b) => b.score < a.score ? b : a);
+  }
 
   Map<String, dynamic> toJson() => {
     'reps': reps,
@@ -52,6 +90,7 @@ class ExerciseSet {
     'timestamp': timestamp.toIso8601String(),
     'rating': rating,
     'feedback': feedback,
+    'repRecords': repRecords.map((record) => record.toJson()).toList(),
   };
 
   factory ExerciseSet.fromJson(Map<String, dynamic> json) => ExerciseSet(
@@ -64,6 +103,10 @@ class ExerciseSet {
     timestamp: DateTime.parse(json['timestamp']),
     rating: (json['rating'] ?? 1.0).toDouble(),
     feedback: List<String>.from(json['feedback'] ?? []),
+    repRecords: ((json['repRecords'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(RepRecord.fromJson)
+        .toList(),
   );
 }
 

@@ -13,7 +13,6 @@ class PosePainter extends CustomPainter {
     this.lastAngle,
     this.squatState,
     this.activeLandmarkTypes,
-    this.isBusy = false,
   });
 
   final List<Pose> poses;
@@ -25,9 +24,6 @@ class PosePainter extends CustomPainter {
   /// Current squat state used to conditionally colour the femur lines.
   final SquatState? squatState;
   final Set<PoseLandmarkType>? activeLandmarkTypes;
-
-  /// When [isBusy] is true the painter skips repaints to avoid frame stacking.
-  final bool isBusy;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -129,9 +125,10 @@ class PosePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant PosePainter oldDelegate) {
-    // isBusy guard: skip repaint while a new frame is being analyzed to
-    // prevent frame stacking and maintain high-speed UI responsiveness.
-    if (isBusy) return false;
+    // A new pose list means new landmarks to draw. There used to be an
+    // `isBusy` short-circuit here that returned false while a frame was in
+    // flight, which suppressed repaints carrying fresh data and left the
+    // skeleton visibly trailing the athlete.
     return oldDelegate.poses != poses ||
         oldDelegate.lastAngle != lastAngle ||
         oldDelegate.squatState != squatState ||

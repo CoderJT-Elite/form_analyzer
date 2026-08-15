@@ -41,6 +41,10 @@ dependencies:
   shared_preferences: ^2.5.4
   intl: ^0.20.2
   google_fonts: ^8.0.2
+  share_plus: ^13.3.0
+  file_picker: ^12.0.0
+  url_launcher: ^6.3.2
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -54,6 +58,21 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_driver:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+
+# Launcher icon generation. Source art is produced by tools/make_icons.py,
+# which crops the athlete out of the brand wordmark and recolours it for the
+# app's dark theme. Regenerate with:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  # Android 8+ masks the icon to the launcher's shape, so the figure is supplied
+  # separately on a solid background rather than baked into a square.
+  adaptive_icon_background: "#0B1220"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

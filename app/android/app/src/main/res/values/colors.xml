@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#0B1220</color>
+    <!-- AppColors.background. The Flutter UI is dark whatever the system
+         theme is, so the window behind it has to be too — otherwise a device
+         in light mode flashes white before the first frame. -->
+    <color name="launch_background">#050505</color>
+</resources>
