@@ -4,9 +4,12 @@ import '../../core/app_colors.dart';
 import '../../models/exercise_model.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/profile_avatar_button.dart';
 
 class StatsScreen extends StatefulWidget {
-  const StatsScreen({super.key});
+  final VoidCallback? onProfileTap;
+
+  const StatsScreen({super.key, this.onProfileTap});
 
   @override
   State<StatsScreen> createState() => _StatsScreenState();
@@ -94,29 +97,37 @@ class _StatsScreenState extends State<StatsScreen>
             flexibleSpace: FlexibleSpaceBar(
               background: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 80, 20, 0),
-                child: Column(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'YOUR METRICS',
-                      style: GoogleFonts.outfit(
-                        color: AppColors.textTertiary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 3,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'YOUR METRICS',
+                            style: GoogleFonts.outfit(
+                              color: AppColors.textTertiary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 3,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'STATS',
+                            style: GoogleFonts.outfit(
+                              color: AppColors.textPrimary,
+                              fontSize: 38,
+                              fontWeight: FontWeight.w900,
+                              height: 1,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'STATS',
-                      style: GoogleFonts.outfit(
-                        color: AppColors.textPrimary,
-                        fontSize: 38,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
+                    ProfileAvatarButton(onTap: widget.onProfileTap),
                   ],
                 ),
               ),
@@ -126,7 +137,12 @@ class _StatsScreenState extends State<StatsScreen>
             SliverFillRemaining(child: _buildEmpty())
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                4,
+                20,
+                MediaQuery.paddingOf(context).bottom + 100,
+              ),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _buildOverviewCards(),
@@ -432,10 +448,10 @@ class _StatsScreenState extends State<StatsScreen>
                 color: AppColors.accentCyan.withValues(alpha: 0.1),
               ),
             ),
-            child: const Icon(
-              Icons.bar_chart_rounded,
-              color: AppColors.accentCyan,
-              size: 36,
+            child: Image.asset(
+              'assets/icons/empty_stats.png',
+              width: 36,
+              height: 36,
             ),
           ),
           const SizedBox(height: 20),

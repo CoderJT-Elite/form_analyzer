@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import '../logic/exercise_analyzer.dart';
 
 // Persisted by name in stored sessions, so existing values must keep their
@@ -22,7 +21,7 @@ class Exercise {
   final String instructions;
   final String muscleGroup;
   final String difficulty;
-  final IconData icon;
+  final String iconAsset;
   final ExerciseType type;
   final ExerciseAnalyzer analyzer;
 
@@ -32,7 +31,7 @@ class Exercise {
     required this.instructions,
     required this.muscleGroup,
     required this.difficulty,
-    required this.icon,
+    required this.iconAsset,
     required this.type,
     required this.analyzer,
   });

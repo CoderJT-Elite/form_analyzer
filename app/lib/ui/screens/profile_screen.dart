@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,7 +17,13 @@ import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  // Accepted for symmetry with the other tabs (MainNavigationWrapper passes
+  // the same callback to all four); unused here since the big avatar below
+  // already makes this the profile screen — a second one in the header would
+  // just duplicate it.
+  final VoidCallback? onProfileTap;
+
+  const ProfileScreen({super.key, this.onProfileTap});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -29,6 +36,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSyncing = false;
   bool _voiceCoachingEnabled = true;
   bool _hapticFeedbackEnabled = true;
+  String? _profilePicturePath;
+  bool _isTakingPhoto = false;
+  String? _displayName;
 
   @override
   void initState() {
@@ -42,10 +52,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final data = await _storageService.loadSessions();
       final voiceEnabled = await _storageService.isVoiceCoachingEnabled();
       final hapticsEnabled = await _storageService.isHapticFeedbackEnabled();
+      final picturePath = await _storageService.getProfilePicturePath();
+      final displayName = await _storageService.getDisplayName();
       setState(() {
         _sessions = data;
         _voiceCoachingEnabled = voiceEnabled;
         _hapticFeedbackEnabled = hapticsEnabled;
+        _profilePicturePath = picturePath;
+        _displayName = displayName;
         _isLoading = false;
       });
     } catch (e) {
@@ -136,7 +150,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   )
                 : Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 60),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      4,
+                      20,
+                      // The floating blurred nav bar sits on top of this
+                      // scroll view (extendBody: true). 60 wasn't enough to
+                      // clear its own height plus the device's safe-area
+                      // inset, so the last row was stuck half-hidden behind
+                      // it with no way to scroll further.
+                      MediaQuery.paddingOf(context).bottom + 100,
+                    ),
                     child: Column(
                       children: [
                         _buildAvatarSection(),
@@ -144,8 +168,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildLifetimeStats(),
                         const SizedBox(height: 32),
                         _buildSettingsList(),
-                        const SizedBox(height: 24),
-                        _buildDangerZone(),
                       ],
                     ),
                   ),
@@ -157,69 +179,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildAvatarSection() {
+    // No accounts, so no email here — just a photo and name the user can set
+    // themselves (stored on-device only, like everything else) and the
+    // testing-status badge.
+    final hasPhoto = _profilePicturePath != null;
+
     return Column(
       children: [
-        Stack(
-          alignment: Alignment.bottomRight,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.accentCyan,
-                    AppColors.accentMagenta,
-                  ],
-                ),
-              ),
-              child: Container(
+        GestureDetector(
+          onTap: _isTakingPhoto ? null : _takeProfilePhoto,
+          child: Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              Container(
                 padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  color: AppColors.background,
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.accentCyan,
+                      AppColors.accentMagenta,
+                    ],
+                  ),
                 ),
-                child: const CircleAvatar(
-                  radius: 50,
-                  backgroundColor: AppColors.surface,
-                  child: Icon(
-                    Icons.person_rounded,
-                    size: 48,
-                    color: AppColors.textTertiary,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: AppColors.background,
+                    shape: BoxShape.circle,
+                  ),
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: AppColors.surface,
+                    backgroundImage: hasPhoto
+                        ? FileImage(File(_profilePicturePath!))
+                        : null,
+                    child: hasPhoto
+                        ? null
+                        : Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Image.asset(
+                              'assets/icons/avatar_placeholder.png',
+                            ),
+                          ),
                   ),
                 ),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: AppColors.accentCyan,
-                shape: BoxShape.circle,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: AppColors.accentCyan,
+                  shape: BoxShape.circle,
+                ),
+                child: _isTakingPhoto
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.black,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.camera_alt_rounded,
+                        size: 14,
+                        color: Colors.black,
+                      ),
               ),
-              child: const Icon(
-                Icons.edit_rounded,
-                size: 14,
-                color: Colors.black,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'ATHLETE',
-          style: GoogleFonts.outfit(
-            color: AppColors.textPrimary,
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1,
+            ],
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          'athlete@formanalyzer.app',
-          style: GoogleFonts.inter(
-            color: AppColors.textSecondary,
-            fontSize: 13,
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: _editDisplayName,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _displayName ?? 'ADD YOUR NAME',
+                style: GoogleFonts.outfit(
+                  color: _displayName != null
+                      ? AppColors.textPrimary
+                      : AppColors.textTertiary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.edit_rounded,
+                size: 16,
+                color: AppColors.textTertiary,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -500,6 +553,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _editDisplayName() async {
+    final controller = TextEditingController(text: _displayName ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: Text(
+          'Your Name',
+          style: GoogleFonts.outfit(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 40,
+          style: GoogleFonts.inter(color: AppColors.textPrimary),
+          decoration: const InputDecoration(hintText: 'e.g. Jordan'),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('SAVE'),
+          ),
+        ],
+      ),
+    );
+    if (result == null) return;
+
+    final trimmed = result.trim();
+    await _storageService.setDisplayName(trimmed.isEmpty ? null : trimmed);
+    if (mounted) {
+      setState(() => _displayName = trimmed.isEmpty ? null : trimmed);
+    }
+  }
+
+  /// Opens the front camera for a selfie and saves it as the local profile
+  /// photo. Copied into app storage under a fixed name so retaking overwrites
+  /// the old one instead of accumulating files.
+  Future<void> _takeProfilePhoto() async {
+    setState(() => _isTakingPhoto = true);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        maxWidth: 800,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+
+      final directory = await getApplicationDocumentsDirectory();
+      final savedPath = '${directory.path}/profile_picture.jpg';
+      await File(picked.path).copy(savedPath);
+
+      // Retaking a photo overwrites the same path, but FileImage caches by
+      // path, not file content — without this, both the header avatar and
+      // this screen keep showing the old bytes until the app restarts.
+      PaintingBinding.instance.imageCache.evict(FileImage(File(savedPath)));
+
+      await _storageService.setProfilePicturePath(savedPath);
+      if (mounted) setState(() => _profilePicturePath = savedPath);
+    } catch (e) {
+      _showMessage('Could not take a photo: $e');
+    } finally {
+      if (mounted) setState(() => _isTakingPhoto = false);
+    }
+  }
+
   Future<void> _openPrivacyPolicy() async {
     final uri = Uri.parse(AppConstants.privacyPolicyUrl);
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -574,30 +701,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDangerZone() {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: OutlinedButton(
-        onPressed: () {},
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.badRed,
-          side: BorderSide(
-            color: AppColors.badRed.withValues(alpha: 0.3),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        child: Text(
-          'SIGN OUT',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.5,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
 }

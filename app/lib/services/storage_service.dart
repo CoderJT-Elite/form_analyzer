@@ -3,6 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/exercise_model.dart';
 
+/// Shared across every screen so the header avatar updates the moment the
+/// profile photo changes, without each screen having to reload it itself.
+final ValueNotifier<String?> profilePictureNotifier = ValueNotifier<String?>(
+  null,
+);
+
 /// What an import actually did, so the UI can tell the user rather than just
 /// claiming success.
 class ImportResult {
@@ -37,6 +43,8 @@ class StorageService {
   static const String _voiceCoachingEnabledKey = 'voice_coaching_enabled_v1';
   static const String _hapticFeedbackEnabledKey = 'haptic_feedback_enabled_v1';
   static const String _disclaimerAcceptedKey = 'health_disclaimer_accepted_v1';
+  static const String _profilePicturePathKey = 'profile_picture_path_v1';
+  static const String _displayNameKey = 'display_name_v1';
 
   Future<void> saveSession(WorkoutSession session) async {
     final prefs = await SharedPreferences.getInstance();
@@ -217,6 +225,41 @@ class StorageService {
   Future<void> setHealthDisclaimerAccepted() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_disclaimerAcceptedKey, true);
+  }
+
+  /// Path to the locally-stored profile photo. Stored as a plain file path,
+  /// not the image itself — there is no account to attach a photo to, so
+  /// this is purely a per-device preference like the toggles above.
+  Future<String?> getProfilePicturePath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path = prefs.getString(_profilePicturePathKey);
+    profilePictureNotifier.value = path;
+    return path;
+  }
+
+  Future<void> setProfilePicturePath(String? path) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (path == null) {
+      await prefs.remove(_profilePicturePathKey);
+    } else {
+      await prefs.setString(_profilePicturePathKey, path);
+    }
+    profilePictureNotifier.value = path;
+  }
+
+  Future<String?> getDisplayName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_displayNameKey);
+  }
+
+  Future<void> setDisplayName(String? name) async {
+    final prefs = await SharedPreferences.getInstance();
+    final trimmed = name?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      await prefs.remove(_displayNameKey);
+    } else {
+      await prefs.setString(_displayNameKey, trimmed);
+    }
   }
 
   // ---------------------------------------------------------------------

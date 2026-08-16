@@ -5,11 +5,14 @@ import '../../models/exercise_catalog.dart';
 import '../../models/exercise_model.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/profile_avatar_button.dart';
 import 'exercise_screen.dart';
 import 'routine_execution_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final VoidCallback? onProfileTap;
+
+  const DashboardScreen({super.key, this.onProfileTap});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -97,7 +100,16 @@ class _DashboardScreenState extends State<DashboardScreen>
                 _buildSliverAppBar(),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      4,
+                      20,
+                      // Enough to clear the floating blurred nav bar plus
+                      // its own safe-area inset, or the last section gets
+                      // stuck half-hidden behind it with no way to scroll
+                      // further.
+                      MediaQuery.paddingOf(context).bottom + 100,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -136,29 +148,37 @@ class _DashboardScreenState extends State<DashboardScreen>
           padding: const EdgeInsets.fromLTRB(20, 80, 20, 0),
           child: FadeTransition(
             opacity: _headerFade,
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  greeting.toUpperCase(),
-                  style: GoogleFonts.outfit(
-                    color: AppColors.textTertiary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 3,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        greeting.toUpperCase(),
+                        style: GoogleFonts.outfit(
+                          color: AppColors.textTertiary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'TRAIN',
+                        style: GoogleFonts.outfit(
+                          color: AppColors.textPrimary,
+                          fontSize: 38,
+                          fontWeight: FontWeight.w900,
+                          height: 1,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'TRAIN',
-                  style: GoogleFonts.outfit(
-                    color: AppColors.textPrimary,
-                    fontSize: 38,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                    letterSpacing: -0.5,
-                  ),
-                ),
+                ProfileAvatarButton(onTap: widget.onProfileTap),
               ],
             ),
           ),
@@ -325,10 +345,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                 color: AppColors.accentCyan.withValues(alpha: 0.15),
               ),
             ),
-            child: Icon(
-              definition.icon,
-              color: AppColors.accentCyan,
-              size: 20,
+            child: Image.asset(
+              definition.iconAsset,
+              width: 20,
+              height: 20,
             ),
           ),
           Text(
@@ -410,10 +430,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.accentCyan.withValues(alpha: 0.1)),
             ),
-            child: const Icon(
-              Icons.fitness_center_rounded,
-              color: AppColors.accentCyan,
-              size: 32,
+            child: Image.asset(
+              'assets/icons/empty_routines.png',
+              width: 32,
+              height: 32,
             ),
           ),
           const SizedBox(height: 20),

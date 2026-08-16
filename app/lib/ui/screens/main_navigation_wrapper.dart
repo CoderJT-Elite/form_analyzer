@@ -23,11 +23,16 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
   late List<AnimationController> _iconControllers;
   final StorageService _storage = StorageService();
 
-  final List<Widget> _screens = const [
-    DashboardScreen(),
-    HistoryScreen(),
-    StatsScreen(),
-    ProfileScreen(),
+  void _goToProfile() => _onItemTapped(3);
+
+  // Rebuilt each time _selectedIndex changes, but the underlying State
+  // objects survive across rebuilds — IndexedStack matches children by
+  // position/type, not by list identity — so this doesn't reset any screen.
+  List<Widget> get _screens => [
+    DashboardScreen(onProfileTap: _goToProfile),
+    HistoryScreen(onProfileTap: _goToProfile),
+    StatsScreen(onProfileTap: _goToProfile),
+    ProfileScreen(onProfileTap: _goToProfile),
   ];
 
   @override
@@ -41,6 +46,8 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
       ),
     );
     _iconControllers[0].forward();
+    // Populate the header avatar before the user ever opens the Profile tab.
+    unawaited(_storage.getProfilePicturePath());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_showDisclaimerIfNeeded());
     });

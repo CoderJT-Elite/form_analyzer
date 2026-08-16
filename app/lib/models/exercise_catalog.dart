@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import '../logic/exercise_analyzer.dart';
 import 'exercise_model.dart';
 
@@ -15,7 +14,7 @@ class ExerciseDefinition {
   final String instructions;
   final String muscleGroup;
   final String difficulty;
-  final IconData icon;
+  final String iconAsset;
   final ExerciseType type;
   final ExerciseAnalyzer Function() createAnalyzer;
 
@@ -25,7 +24,7 @@ class ExerciseDefinition {
     required this.instructions,
     required this.muscleGroup,
     required this.difficulty,
-    required this.icon,
+    required this.iconAsset,
     required this.type,
     required this.createAnalyzer,
   });
@@ -36,7 +35,7 @@ class ExerciseDefinition {
         instructions: instructions,
         muscleGroup: muscleGroup,
         difficulty: difficulty,
-        icon: icon,
+        iconAsset: iconAsset,
         type: type,
         analyzer: createAnalyzer(),
       );
@@ -51,7 +50,7 @@ class ExerciseCatalog {
           'Stand side-on to the camera with feet shoulder-width apart. Lower your hips until thighs are parallel to the floor.',
       muscleGroup: 'Quadriceps, Glutes',
       difficulty: 'Intermediate',
-      icon: Icons.fitness_center_rounded,
+      iconAsset: 'assets/icons/exercises/squat.png',
       type: ExerciseType.squat,
       createAnalyzer: SquatAnalyzer.new,
     ),
@@ -62,7 +61,7 @@ class ExerciseCatalog {
           'Set up side-on to the camera. Keep your body in a straight line and lower your chest until your elbows reach 90 degrees.',
       muscleGroup: 'Chest, Triceps, Shoulders',
       difficulty: 'Beginner',
-      icon: Icons.horizontal_rule_rounded,
+      iconAsset: 'assets/icons/exercises/pushup.png',
       type: ExerciseType.pushup,
       createAnalyzer: PushupAnalyzer.new,
     ),
@@ -73,7 +72,7 @@ class ExerciseCatalog {
           'Stand side-on to the camera. Step forward and lower your hips until both knees are bent at about 90 degrees.',
       muscleGroup: 'Quadriceps, Glutes, Hamstrings',
       difficulty: 'Intermediate',
-      icon: Icons.directions_walk_rounded,
+      iconAsset: 'assets/icons/exercises/lunge.png',
       type: ExerciseType.lunge,
       createAnalyzer: LungeAnalyzer.new,
     ),
@@ -84,7 +83,7 @@ class ExerciseCatalog {
           'Stand side-on to the camera. Press your arms straight overhead from shoulder height, then lower with control.',
       muscleGroup: 'Shoulders, Triceps',
       difficulty: 'Intermediate',
-      icon: Icons.arrow_upward_rounded,
+      iconAsset: 'assets/icons/exercises/overheadPress.png',
       type: ExerciseType.overheadPress,
       createAnalyzer: OverheadPressAnalyzer.new,
     ),
@@ -95,7 +94,7 @@ class ExerciseCatalog {
           'Face side-on to the camera. Hold your body in a straight line from head to heels, supported on forearms and toes.',
       muscleGroup: 'Core, Shoulders',
       difficulty: 'Beginner',
-      icon: Icons.remove_rounded,
+      iconAsset: 'assets/icons/exercises/plank.png',
       type: ExerciseType.plank,
       createAnalyzer: PlankAnalyzer.new,
     ),
@@ -106,7 +105,7 @@ class ExerciseCatalog {
           'Lie on your back side-on to the camera, knees bent. Drive your hips up until your body forms a straight line, then lower slowly.',
       muscleGroup: 'Glutes, Hamstrings',
       difficulty: 'Beginner',
-      icon: Icons.arrow_drop_up_rounded,
+      iconAsset: 'assets/icons/exercises/gluteBridge.png',
       type: ExerciseType.gluteBridge,
       createAnalyzer: GluteBridgeAnalyzer.new,
     ),
@@ -117,7 +116,7 @@ class ExerciseCatalog {
           'Lie on your back side-on to the camera, knees bent. Curl your torso up toward your knees, then lower under control.',
       muscleGroup: 'Core, Hip Flexors',
       difficulty: 'Beginner',
-      icon: Icons.self_improvement_rounded,
+      iconAsset: 'assets/icons/exercises/situp.png',
       type: ExerciseType.situp,
       createAnalyzer: SitupAnalyzer.new,
     ),
@@ -128,7 +127,7 @@ class ExerciseCatalog {
           'Face the camera. Jump your feet wide and sweep your arms all the way overhead, then return to the start.',
       muscleGroup: 'Full Body, Cardio',
       difficulty: 'Beginner',
-      icon: Icons.accessibility_new_rounded,
+      iconAsset: 'assets/icons/exercises/jumpingJack.png',
       type: ExerciseType.jumpingJack,
       createAnalyzer: JumpingJackAnalyzer.new,
     ),
@@ -139,7 +138,7 @@ class ExerciseCatalog {
           'Sit against a wall side-on to the camera with your knees at about 90 degrees. Hold the position.',
       muscleGroup: 'Quadriceps, Glutes',
       difficulty: 'Beginner',
-      icon: Icons.chair_rounded,
+      iconAsset: 'assets/icons/exercises/wallSit.png',
       type: ExerciseType.wallSit,
       createAnalyzer: WallSitAnalyzer.new,
     ),
@@ -150,7 +149,7 @@ class ExerciseCatalog {
           'Lie on one side facing the camera edge-on, propped on your forearm. Lift your hips so your body makes a straight line and hold.',
       muscleGroup: 'Core, Obliques',
       difficulty: 'Intermediate',
-      icon: Icons.swap_horiz_rounded,
+      iconAsset: 'assets/icons/exercises/sidePlank.png',
       type: ExerciseType.sidePlank,
       createAnalyzer: SidePlankAnalyzer.new,
     ),
