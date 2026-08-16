@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FormAnalyzer — Master Your Movement</title>
-  <meta name="description" content="Cinematic real-time movement feedback for athletes. On-device AI analysis with zero latency.">
+  <title>Form Analyzer — Real-time form coaching, on your phone</title>
+  <meta name="description" content="Form Analyzer watches every rep through your phone's camera and tells you what to fix while you can still fix it. Ten exercises, fully on-device, nothing uploaded.">
+  <link rel="icon" href="favicon.png">
 
   <meta property="og:type" content="website">
   <meta property="og:title" content="Form Analyzer">
@@ -18,176 +19,1057 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            bg: '#010204',
-            accent: '#7cf2e4',
-            surface: 'rgba(15, 19, 31, 0.4)',
-            border: 'rgba(255, 255, 255, 0.05)',
-          },
-          fontFamily: {
-            sans: ['Plus Jakarta Sans', 'sans-serif'],
-          },
-        }
-      }
-    }
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <style>
-    /* 1. FACTORY DEFAULT SCROLLING (RESOLVED: NO SCROLL-SMOOTH) */
-    html, body {
-      margin: 0;
-      padding: 0;
-      background-color: #010204;
-      color: white;
-      -webkit-font-smoothing: antialiased;
+    :root {
+      --ink: #05070c;
+      --panel: #0c1420;
+      --panel-2: #101a2a;
+      --line: rgba(255, 255, 255, 0.09);
+      --line-strong: rgba(255, 255, 255, 0.18);
+      --text: #eef2f8;
+      --muted: #8993a8;
+      --muted-dim: #5c6478;
+      --cyan: #43f0df;
+      --cyan-dim: rgba(67, 240, 223, 0.14);
+      --flag: #ff3d7f;
+      --flag-dim: rgba(255, 61, 127, 0.16);
+      --font-display: "Outfit", sans-serif;
+      --font-body: "Inter", sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
     }
 
-    .g-fix { padding-bottom: 4px; line-height: 1.2; }
-    
-    .tilt-card { transition: transform 0.3s ease, border-color 0.3s ease; }
-    .tilt-card:hover { 
-      transform: perspective(1000px) rotateX(1deg) rotateY(1deg) scale(1.01);
-      border-color: rgba(124, 242, 228, 0.2);
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--ink);
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.045) 1px, transparent 0);
+      background-size: 28px 28px;
     }
-    
-    .metric-grid {
-      background: linear-gradient(165deg, rgba(255,255,255,0.02) 0%, transparent 100%);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+
+    img { max-width: 100%; display: block; }
+
+    a { color: inherit; }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+    }
+
+    h1, h2, h3 {
+      font-family: var(--font-display);
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    p { color: var(--muted); margin: 0; }
+
+    /* ---------- Header ---------- */
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 100;
+      padding: 18px 0;
+      background: rgba(5, 7, 12, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.05rem;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--cyan);
+      position: relative;
+      flex: none;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    nav.links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    nav.links a { text-decoration: none; transition: color 0.2s ease; }
+    nav.links a:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.88rem;
+      padding: 11px 22px;
+      border-radius: 10px;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--cyan);
+      color: #04140f;
+    }
+
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--line-strong);
+      color: var(--text);
+    }
+
+    .btn-ghost:hover { border-color: var(--cyan); }
+
+    /* ---------- Corner-bracket frame, reused motif ---------- */
+
+    .framed {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--panel);
+    }
+
+    .corner {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--cyan);
+      opacity: 0.7;
+    }
+
+    .corner.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; border-top-left-radius: 8px; }
+    .corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; border-top-right-radius: 8px; }
+    .corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; border-bottom-left-radius: 8px; }
+    .corner.br { bottom: -1px; right: -1px; border-left: none; border-top: none; border-bottom-right-radius: 8px; }
+
+    /* ---------- Hero ---------- */
+
+    .hero {
+      padding: 172px 0 96px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 56px;
+      align-items: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.6rem, 5vw, 4.2rem);
+      font-weight: 900;
+      text-transform: uppercase;
+      line-height: 0.98;
+      margin: 18px 0 22px;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--cyan);
+    }
+
+    .hero-sub {
+      font-size: 1.08rem;
+      line-height: 1.65;
+      max-width: 46ch;
+      color: var(--muted);
+    }
+
+    .cta-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-top: 34px;
+      flex-wrap: wrap;
+    }
+
+    .cta-row .btn { padding: 14px 28px; font-size: 0.95rem; }
+
+    .cta-hint {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--muted-dim);
+    }
+
+    .fact-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 42px;
+    }
+
+    .fact-pill {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 14px;
+    }
+
+    /* ---------- HUD viewport ---------- */
+
+    .viewport {
+      position: relative;
+      padding: 0;
+      overflow: hidden;
+      aspect-ratio: 5 / 6;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 60px 120px -60px rgba(0, 0, 0, 0.7);
+    }
+
+    .viewport::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 38%, var(--cyan-dim), transparent 60%);
+      pointer-events: none;
+    }
+
+    .scanline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity: 0.55;
+      animation: scan 5s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes scan {
+      0% { top: 6%; }
+      50% { top: 92%; }
+      100% { top: 6%; }
+    }
+
+    .viewport-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      position: relative;
+      z-index: 2;
+    }
+
+    .viewport-bar.top { border-bottom: 1px solid var(--line); }
+    .viewport-bar.bottom { border-top: 1px solid var(--line); }
+
+    .rec-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--flag);
+      box-shadow: 0 0 8px var(--flag);
+      margin-right: 8px;
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    .viewport-exercise {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .viewport-stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      padding: 24px;
+    }
+
+    .vp-figure-wrap {
+      position: relative;
+      width: 72%;
+      max-width: 260px;
+    }
+
+    .vp-figure {
+      width: 100%;
+      filter: drop-shadow(0 0 26px rgba(67, 240, 223, 0.25));
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .vp-figure.is-active { opacity: 1; }
+
+    .vp-callout {
+      position: absolute;
+      left: 50%;
+      bottom: -6px;
+      transform: translate(-50%, 0);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      border: 1px solid var(--line-strong);
+      background: rgba(5, 7, 12, 0.85);
+    }
+
+    .vp-callout.is-visible { opacity: 1; transform: translate(-50%, -8px); }
+
+    .vp-callout-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex: none;
+    }
+
+    .vp-callout.state-flag { color: var(--flag); border-color: rgba(255, 61, 127, 0.4); }
+    .vp-callout.state-flag .vp-callout-dot { background: var(--flag); box-shadow: 0 0 8px var(--flag); }
+
+    .vp-callout.state-fixed { color: var(--cyan); border-color: rgba(67, 240, 223, 0.4); }
+    .vp-callout.state-fixed .vp-callout-dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+    /* ---------- Section scaffolding ---------- */
+
+    section { padding: 96px 0; }
+
+    .section-head {
+      max-width: 640px;
+      margin-bottom: 52px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(1.9rem, 3.4vw, 2.7rem);
+      font-weight: 700;
+      margin-top: 14px;
+      line-height: 1.08;
+    }
+
+    .section-head p {
+      margin-top: 16px;
+      font-size: 1.02rem;
+      line-height: 1.6;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 0;
+    }
+
+    /* ---------- Movement grid ---------- */
+
+    .movement-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    .movement-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px 14px 16px;
+      text-align: center;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .movement-card:hover {
+      border-color: var(--cyan);
+      transform: translateY(-3px);
+    }
+
+    .movement-card img {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 14px;
+      object-fit: contain;
+    }
+
+    .movement-card span {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .movement-note {
+      margin-top: 22px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--muted-dim);
+    }
+
+    /* ---------- How it coaches ---------- */
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 64px;
+    }
+
+    .pipeline-step {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px 26px;
+    }
+
+    .pipeline-step .step-num {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--cyan);
+      letter-spacing: 0.1em;
+    }
+
+    .pipeline-step h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 14px 0 10px;
+    }
+
+    .pipeline-step p { font-size: 0.94rem; line-height: 1.55; }
+
+    .ladder-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 40px;
+    }
+
+    .ladder-panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .ladder-panel-head h3 {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .ladder-panel-head p {
+      max-width: 42ch;
+      font-size: 0.92rem;
+    }
+
+    .ladder {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .ladder-row {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .ladder-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      text-transform: uppercase;
+    }
+
+    .ladder-bar-track {
+      height: 34px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    .ladder-bar {
+      height: 100%;
+      border-radius: 8px;
+      background: var(--cyan);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+    }
+
+    .ladder-bar span {
+      font-size: 0.82rem;
+      color: #04140f;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ladder-row[data-tier="safety"] .ladder-bar { width: 100%; background: var(--flag); }
+    .ladder-row[data-tier="safety"] .ladder-bar span { color: #fff; }
+    .ladder-row[data-tier="setup"] .ladder-bar { width: 84%; background: #ffb454; }
+    .ladder-row[data-tier="setup"] .ladder-bar span { color: #241300; }
+    .ladder-row[data-tier="depth"] .ladder-bar { width: 66%; }
+    .ladder-row[data-tier="tempo"] .ladder-bar { width: 48%; opacity: 0.75; }
+    .ladder-row[data-tier="praise"] .ladder-bar { width: 30%; opacity: 0.55; }
+
+    /* ---------- Privacy ---------- */
+
+    .privacy-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+
+    .privacy-log {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .privacy-log-line {
+      display: flex;
+      gap: 12px;
+      font-size: 0.98rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .privacy-log-line::before {
+      content: "›";
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      flex: none;
+    }
+
+    .privacy-log-line strong { color: var(--text); }
+
+    .privacy-stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 48px 36px;
+      text-align: center;
+    }
+
+    .privacy-stat .big-num {
+      font-family: var(--font-mono);
+      font-size: clamp(2.6rem, 5vw, 3.6rem);
+      font-weight: 600;
+      color: var(--cyan);
+      letter-spacing: -0.02em;
+    }
+
+    .privacy-stat .big-label {
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .privacy-stat .fine {
+      margin-top: 22px;
+      font-size: 0.86rem;
+      color: var(--muted-dim);
+    }
+
+    .privacy-stat a { color: var(--cyan); text-decoration: none; font-weight: 600; }
+    .privacy-stat a:hover { text-decoration: underline; }
+
+    /* ---------- Join ---------- */
+
+    .join-panel {
+      padding: 64px 48px;
+      text-align: center;
+      position: relative;
+    }
+
+    .join-panel h2 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      max-width: 20ch;
+      margin: 16px auto 0;
+    }
+
+    .join-panel p.sub {
+      margin: 16px auto 0;
+      max-width: 46ch;
+      font-size: 1rem;
+    }
+
+    form.waitlist {
+      display: flex;
+      gap: 10px;
+      max-width: 460px;
+      margin: 36px auto 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    form.waitlist input[type="email"] {
+      flex: 1;
+      min-width: 220px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    form.waitlist input[type="email"]:focus { border-color: var(--cyan); }
+    form.waitlist input[type="email"]::placeholder { color: var(--muted-dim); }
+
+    form.waitlist button {
+      border: none;
+      font-family: var(--font-body);
+    }
+
+    .waitlist-count {
+      margin-top: 18px;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--muted-dim);
+      min-height: 1em;
+    }
+
+    .waitlist-count strong { color: var(--cyan); }
+
+    /* ---------- Footer ---------- */
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 36px 0 48px;
+    }
+
+    .footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: var(--muted-dim);
+    }
+
+    .footer-row a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .footer-row a:hover { color: var(--cyan); }
+
+    .footer-links {
+      display: flex;
+      gap: 22px;
+    }
+
+    /* ---------- Reveal-on-scroll ---------- */
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ---------- Responsive ---------- */
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; padding-top: 140px; }
+      .hero-sub { max-width: none; }
+      .viewport { max-width: 420px; margin: 0 auto; }
+      .movement-grid { grid-template-columns: repeat(3, 1fr); }
+      .pipeline { grid-template-columns: 1fr; }
+      .privacy-section { grid-template-columns: 1fr; }
+      .ladder-row { grid-template-columns: 110px 1fr; }
+      nav.links .link-text { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      .movement-grid { grid-template-columns: repeat(2, 1fr); }
+      .join-panel { padding: 48px 24px; }
+      section { padding: 64px 0; }
+      .ladder-panel { padding: 28px 22px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+      html { scroll-behavior: auto; }
     }
   </style>
 </head>
-<body class="bg-bg flex flex-col items-center">
-  <!-- Ambient Lighting Layer -->
-  <div class="fixed inset-0 z-[-1] pointer-events-none bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.03)_0%,transparent_70%)]"></div>
+<body>
 
-  <header class="fixed top-0 left-0 w-full z-[1000] py-4 bg-bg/80 backdrop-blur-md border-b border-white/5">
-    <div class="max-w-[1200px] w-[94vw] mx-auto flex justify-end items-center">
-      <!-- Fix: Removed redundant header logo to keep only the single hero logo -->
-      <a href="#join" class="bg-white text-black px-5 py-2.5 rounded-xl font-bold text-[0.75rem] hover:bg-accent transition-colors">JOIN BETA</a>
+  <header>
+    <div class="wrap header-row">
+      <a href="#top" class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        FORM ANALYZER
+      </a>
+      <nav class="links">
+        <a href="#movements"><span class="link-text">Movements</span></a>
+        <a href="#coaching"><span class="link-text">How it coaches</span></a>
+        <a href="#privacy"><span class="link-text">Privacy</span></a>
+        <a href="#join" class="btn btn-primary">Join beta</a>
+      </nav>
     </div>
   </header>
 
-  <main class="max-w-[1200px] w-[94vw] mx-auto">
-    <!-- Hero Section: Unique Layout -->
-    <section class="py-12 mt-12 min-h-[70vh] flex flex-col md:grid md:grid-cols-[1.1fr,0.9fr] gap-12 items-center">
-      <div class="text-center md:text-left space-y-12">
-        <div>
-          <!-- Fix: Increased logo size and moved lower with mt-12 -->
-          <img src="OFFICIAL%20FORM%20ANALYZER%20LOGO.png" alt="Form Analyzer" class="h-40 md:h-64 w-auto block mx-auto md:mx-0 mb-10 object-contain">
-          <div class="h-20"></div> 
-          <!-- Fix: Removed 'Precision Over Everything' sub-headline -->
-          <h2 class="text-4xl md:text-7xl font-black tracking-tighter leading-[0.9] opacity-60">
-            MASTER YOUR<br>MOVEMENT.
-          </h2>
+  <main id="top">
+    <section class="hero wrap">
+      <div>
+        <span class="eyebrow">On-device pose coaching</span>
+        <h1>Spots what you<br>can't feel<em>.</em></h1>
+        <p class="hero-sub">Form Analyzer watches every rep through your phone's camera and tells you what to fix while you can still fix it — depth, back position, tempo, left-right balance. Prop your phone up, pick an exercise, and start moving.</p>
+        <div class="cta-row">
+          <a href="#join" class="btn btn-primary">Join the beta →</a>
+          <a href="#movements" class="btn btn-ghost">See what it tracks</a>
         </div>
-        <p class="text-slate-400 text-xl max-w-[40ch] mx-auto md:mx-0 font-medium">Native-code pose estimation with zero latency. Built for the next generation of performance.</p>
-        <div class="pt-4">
-          <a href="#join" class="inline-flex bg-white text-black px-8 py-4 rounded-2xl font-bold text-base hover:scale-105 transition-transform">ENTER THE WAITLIST</a>
+        <div class="fact-row">
+          <span class="fact-pill">ON-DEVICE</span>
+          <span class="fact-pill">NO ACCOUNT</span>
+          <span class="fact-pill">NOTHING UPLOADED</span>
+          <span class="fact-pill">10 EXERCISES</span>
         </div>
       </div>
-      
-      <!-- Unique Bento Metrics (No Repeated Mockup) -->
-      <div class="w-full grid grid-cols-2 gap-4 p-6 metric-grid rounded-[40px] tilt-card">
-        <div class="col-span-2 p-8 bg-white/5 rounded-3xl border border-white/5">
-          <span class="text-[0.7rem] text-accent font-bold uppercase tracking-[0.2em]">Processing Speed</span>
-          <div class="text-5xl font-black mt-3">14.2ms</div>
-          <div class="w-full bg-white/10 h-2 mt-8 rounded-full overflow-hidden">
-            <div class="bg-accent h-full w-[94%]"></div>
+
+      <div class="viewport framed" id="hudViewport">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
+        <div class="scanline" aria-hidden="true"></div>
+        <div class="viewport-bar top">
+          <span><span class="rec-dot" aria-hidden="true"></span>LIVE ANALYSIS</span>
+          <span class="viewport-exercise" id="vpExercise">SQUAT</span>
+        </div>
+        <div class="viewport-stage">
+          <div class="vp-figure-wrap">
+            <img class="vp-figure" id="vpFigureA" src="assets/exercises/squat.png" alt="Illustrated skeleton tracking overlay of a squat">
+            <img class="vp-figure" id="vpFigureB" src="assets/exercises/pushup.png" alt="">
+            <div class="vp-callout" id="vpCallout">
+              <span class="vp-callout-dot" aria-hidden="true"></span>
+              <span id="vpCalloutText">KNEES CAVING IN</span>
+            </div>
           </div>
         </div>
-        <div class="p-8 bg-white/5 rounded-3xl border border-white/5 text-center">
-          <div class="text-3xl font-black text-white">99.8%</div>
-          <span class="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest">Accuracy</span>
-        </div>
-        <div class="p-8 bg-white/5 rounded-3xl border border-white/5 text-center">
-          <div class="text-3xl font-black text-white">60FPS</div>
-          <span class="text-[0.6rem] text-slate-500 uppercase font-bold tracking-widest">Stability</span>
+        <div class="viewport-bar bottom">
+          <span id="vpTracking">TRACKING HIP · KNEE · ANKLE</span>
+          <span id="vpRep">REP 01</span>
         </div>
       </div>
     </section>
 
-    <!-- 3. MAINTAIN TAB SYSTEM -->
-    <section class="py-20 flex flex-col items-center w-full mx-auto text-center border-t border-white/5">
-      <div class="flex flex-col md:flex-row justify-center items-center w-full mx-auto text-center gap-4 md:gap-12 mb-12">
-        <button onclick="switchTab(0)" class="tab-btn text-accent font-bold tracking-widest uppercase text-[0.8rem] px-6 py-3 border-b-2 border-accent transition-all">Fluid Logic</button>
-        <button onclick="switchTab(1)" class="tab-btn text-slate-500 font-bold tracking-widest uppercase text-[0.8rem] px-6 py-3 border-b-2 border-transparent transition-all">Private Core</button>
-        <button onclick="switchTab(2)" class="tab-btn text-slate-500 font-bold tracking-widest uppercase text-[0.8rem] px-6 py-3 border-b-2 border-transparent transition-all">Visual Pulse</button>
+    <div class="wrap"><hr class="divider"></div>
+
+    <section class="wrap" id="movements">
+      <div class="section-head reveal">
+        <span class="eyebrow">Movement library</span>
+        <h2>Ten exercises. One camera.</h2>
+        <p>Every icon below is the same skeleton the app draws over you mid-set — these are the joints it's watching, not stock art.</p>
+      </div>
+      <div class="movement-grid reveal">
+        <div class="movement-card"><img src="assets/exercises/squat.png" alt="Squat"><span>Squat</span></div>
+        <div class="movement-card"><img src="assets/exercises/pushup.png" alt="Push-up"><span>Push-up</span></div>
+        <div class="movement-card"><img src="assets/exercises/lunge.png" alt="Lunge"><span>Lunge</span></div>
+        <div class="movement-card"><img src="assets/exercises/overheadPress.png" alt="Overhead press"><span>Overhead press</span></div>
+        <div class="movement-card"><img src="assets/exercises/plank.png" alt="Plank"><span>Plank</span></div>
+        <div class="movement-card"><img src="assets/exercises/gluteBridge.png" alt="Glute bridge"><span>Glute bridge</span></div>
+        <div class="movement-card"><img src="assets/exercises/situp.png" alt="Sit-up"><span>Sit-up</span></div>
+        <div class="movement-card"><img src="assets/exercises/jumpingJack.png" alt="Jumping jack"><span>Jumping jack</span></div>
+        <div class="movement-card"><img src="assets/exercises/wallSit.png" alt="Wall sit"><span>Wall sit</span></div>
+        <div class="movement-card"><img src="assets/exercises/sidePlank.png" alt="Side plank"><span>Side plank</span></div>
+      </div>
+      <p class="movement-note reveal">More get added as the coaching model covers more ground.</p>
+    </section>
+
+    <div class="wrap"><hr class="divider"></div>
+
+    <section class="wrap" id="coaching">
+      <div class="section-head reveal">
+        <span class="eyebrow">How it coaches</span>
+        <h2>Camera in, coaching out.</h2>
+        <p>Three steps happen on every single frame, entirely on your phone.</p>
       </div>
 
-      <div id="tab-content" class="w-full max-w-[1100px] grid md:grid-cols-2 gap-12 items-center bg-surface border border-border p-10 md:p-16 rounded-[48px] tilt-card text-left overflow-hidden">
-        <div class="space-y-8">
-          <h2 class="text-4xl md:text-6xl font-black tracking-tighter g-fix">Precision Over Everything.</h2>
-          <p class="text-slate-400 text-lg leading-relaxed">Native-code inference that mirrors your physiology in real-time. Predict, analyze, and refine.</p>
-          <div class="flex gap-8 pt-6 border-t border-white/5 text-[0.7rem] font-bold text-accent uppercase tracking-[0.2em]">
-            <span>60FPS AI</span>
-            <span>NATIVE CORE</span>
-          </div>
+      <div class="pipeline reveal">
+        <div class="pipeline-step">
+          <span class="step-num">01 — WATCH</span>
+          <h3>Camera becomes skeleton</h3>
+          <p>Google's on-device pose model turns the camera feed into joint positions in real time. The image itself is discarded immediately — only the skeleton survives, in memory, for a fraction of a second.</p>
         </div>
-        <div class="rounded-3xl overflow-hidden shadow-2xl border border-white/5">
-          <img src="../dashboard.png" id="tab-img" alt="Feature Screenshot" class="w-full block">
+        <div class="pipeline-step">
+          <span class="step-num">02 — JUDGE</span>
+          <h3>Every rep gets checked</h3>
+          <p>Depth, back angle, tempo, and left-right symmetry are measured against real thresholds for the exercise you picked, not a generic "good form" guess.</p>
+        </div>
+        <div class="pipeline-step">
+          <span class="step-num">03 — SPEAK</span>
+          <h3>One cue, not a flood</h3>
+          <p>The single most important issue gets said out loud. You never hear five corrections stacked on top of each other mid-rep.</p>
+        </div>
+      </div>
+
+      <div class="ladder-panel reveal">
+        <div class="ladder-panel-head">
+          <h3>What "most important" means</h3>
+          <p>Cues are ranked. A higher tier always cuts off a lower one — so a safety warning is the only thing you'll hear until it's resolved.</p>
+        </div>
+        <div class="ladder">
+          <div class="ladder-row" data-tier="safety">
+            <span class="ladder-label">Safety</span>
+            <div class="ladder-bar-track"><div class="ladder-bar"><span>Rounded back, unsafe joint angle</span></div></div>
+          </div>
+          <div class="ladder-row" data-tier="setup">
+            <span class="ladder-label">Setup</span>
+            <div class="ladder-bar-track"><div class="ladder-bar"><span>Wrong orientation to the camera</span></div></div>
+          </div>
+          <div class="ladder-row" data-tier="depth">
+            <span class="ladder-label">Depth &amp; range</span>
+            <div class="ladder-bar-track"><div class="ladder-bar"><span>Came up short of full range</span></div></div>
+          </div>
+          <div class="ladder-row" data-tier="tempo">
+            <span class="ladder-label">Tempo</span>
+            <div class="ladder-bar-track"><div class="ladder-bar"><span>Dropping instead of lowering</span></div></div>
+          </div>
+          <div class="ladder-row" data-tier="praise">
+            <span class="ladder-label">Encouragement</span>
+            <div class="ladder-bar-track"><div class="ladder-bar"><span>Clean rep, said out loud</span></div></div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Beta Section -->
-    <section class="py-20 w-full text-center border-t border-white/5" id="join">
-      <h2 class="text-5xl md:text-8xl font-black tracking-tighter mb-6">JOIN THE BETA.</h2>
-      <p class="text-slate-400 mb-12 max-w-[40ch] mx-auto text-lg font-medium">Secure access to the v1.0 release. Enrollment is now active.</p>
-      
-      <form class="flex flex-col md:flex-row gap-3 max-w-[520px] mx-auto w-full px-4" action="https://formspree.io/f/mvzwveen" method="POST">
-        <input type="email" name="email" required placeholder="PROTOCOL@EMAIL.COM" class="flex-1 bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-white font-bold outline-none focus:border-accent transition-all text-sm tracking-widest">
-        <button class="bg-white text-black px-8 py-4 rounded-2xl font-black text-sm hover:bg-accent transition-colors uppercase" type="submit">SECURE ACCESS</button>
-      </form>
+    <div class="wrap"><hr class="divider"></div>
+
+    <section class="wrap" id="privacy">
+      <div class="privacy-section">
+        <div class="reveal">
+          <span class="eyebrow">Stays on your phone</span>
+          <h2 style="font-size: clamp(1.9rem, 3.4vw, 2.7rem); font-weight: 700; margin-top: 14px; line-height: 1.08;">No account. No cloud. No video, ever.</h2>
+          <div class="privacy-log" style="margin-top: 28px;">
+            <div class="privacy-log-line"><span>Pose detection runs <strong>entirely on-device</strong> — camera frames are never uploaded.</span></div>
+            <div class="privacy-log-line"><span>There's <strong>no sign-up and no account</strong> — nothing to hand over just to start a workout.</span></div>
+            <div class="privacy-log-line"><span>Your history is stored on your phone. <strong>Export it to a file</strong> whenever you want, and carry it to a new device yourself.</span></div>
+            <div class="privacy-log-line"><span>No analytics SDK, no ad SDK, no crash reporter watching you use the app.</span></div>
+          </div>
+        </div>
+        <div class="privacy-stat reveal">
+          <div class="big-num">0</div>
+          <div class="big-label">Frames of camera footage ever leave your phone</div>
+          <div class="fine">Full detail in the <a href="privacy.html">privacy policy</a>.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" id="join">
+      <div class="join-panel framed reveal">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
+        <span class="eyebrow">Early access</span>
+        <h2>Get the link before the store listing does.</h2>
+        <p class="sub">Leave your email and you'll be the first to hear when Form Analyzer is live on Google Play.</p>
+        <form class="waitlist" action="https://formspree.io/f/mvzwveen" method="POST">
+          <label for="waitlistEmail" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Email address</label>
+          <input id="waitlistEmail" type="email" name="email" required placeholder="you@email.com">
+          <button class="btn btn-primary" type="submit">Join the waitlist</button>
+        </form>
+        <div class="waitlist-count" id="waitlistCount"></div>
+      </div>
     </section>
   </main>
 
-  <footer class="w-full py-12 text-center border-t border-white/5 mt-8">
-    <p class="text-slate-300 font-bold text-[0.7rem] tracking-[0.3em] uppercase">© 2026 FORMANALYZER. BEYOND COMPROMISE.</p>
-    <a href="privacy.html" class="text-accent text-[0.65rem] font-bold tracking-widest mt-4 inline-block hover:opacity-70">PRIVACY PROTOCOL</a>
+  <footer>
+    <div class="wrap footer-row">
+      <span>© 2026 Form Analyzer. Built to stay off your data.</span>
+      <div class="footer-links">
+        <a href="privacy.html">Privacy policy</a>
+        <a href="#top">Back to top</a>
+      </div>
+    </div>
   </footer>
 
   <script>
-    const tabData = [
-      { title: "Precision Over Everything.", text: "Native-code inference that mirrors your physiology in real-time. Predict, analyze, and refine.", img: "../dashboard.png", specs: ["60FPS AI", "NATIVE CORE"] },
-      { title: "Absolute Data Sovereignty.", text: "Elite performance requires total privacy. All biometric processing occurs on-device.", img: "../stats.png", specs: ["ON-DEVICE", "ENCRYPTED"] },
-      { title: "Biomechanical Perfection.", text: "Dynamic haptic and visual cues that guide your form toward its absolute potential.", img: "scan.png", specs: ["HUD OVERLAY", "AUDIO CUES"] }
-    ];
+    // Hero HUD: cycles through real exercise icons + telemetry text,
+    // and demonstrates the flag -> fixed correction loop the app actually runs.
+    (function () {
+      var frames = [
+        { img: "assets/exercises/squat.png", name: "SQUAT", tracking: "TRACKING HIP · KNEE · ANKLE", rep: "REP 01", callout: null },
+        { img: "assets/exercises/squat.png", name: "SQUAT", tracking: "TRACKING HIP · KNEE · ANKLE", rep: "REP 02", callout: { text: "KNEES CAVING IN", state: "state-flag" } },
+        { img: "assets/exercises/squat.png", name: "SQUAT", tracking: "TRACKING HIP · KNEE · ANKLE", rep: "REP 03", callout: { text: "FIXED — GOOD REP", state: "state-fixed" } },
+        { img: "assets/exercises/pushup.png", name: "PUSH-UP", tracking: "TRACKING SHOULDER · ELBOW · HIP", rep: "REP 01", callout: null },
+        { img: "assets/exercises/plank.png", name: "PLANK", tracking: "TRACKING SHOULDER · HIP · ANKLE", rep: "0:32 HELD", callout: { text: "HIPS SAGGING", state: "state-flag" } },
+        { img: "assets/exercises/lunge.png", name: "LUNGE", tracking: "TRACKING HIP · KNEE · ANKLE", rep: "REP 06", callout: null }
+      ];
 
-    function switchTab(idx) {
-      const btns = document.querySelectorAll('.tab-btn');
-      btns.forEach((b, i) => {
-        b.classList.remove('text-accent', 'border-accent');
-        b.classList.add('text-slate-500', 'border-transparent');
-        if(i === idx) {
-          b.classList.add('text-accent', 'border-accent');
-          b.classList.remove('text-slate-500', 'border-transparent');
+      var figA = document.getElementById("vpFigureA");
+      var figB = document.getElementById("vpFigureB");
+      var exerciseLabel = document.getElementById("vpExercise");
+      var trackingLabel = document.getElementById("vpTracking");
+      var repLabel = document.getElementById("vpRep");
+      var callout = document.getElementById("vpCallout");
+      var calloutText = document.getElementById("vpCalloutText");
+
+      if (!figA || !figB) return;
+
+      var current = figA;
+      var next = figB;
+      current.classList.add("is-active");
+
+      var i = 0;
+
+      function showFrame() {
+        var frame = frames[i % frames.length];
+
+        next.src = frame.img;
+        next.classList.add("is-active");
+        current.classList.remove("is-active");
+        var swap = current; current = next; next = swap;
+
+        exerciseLabel.textContent = frame.name;
+        trackingLabel.textContent = frame.tracking;
+        repLabel.textContent = frame.rep;
+
+        if (frame.callout) {
+          calloutText.textContent = frame.callout.text;
+          callout.className = "vp-callout is-visible " + frame.callout.state;
+        } else {
+          callout.className = "vp-callout";
         }
-      });
-      
-      const content = tabData[idx];
-      const tabWrap = document.getElementById('tab-content');
-      
-      tabWrap.querySelector('h2').innerText = content.title;
-      tabWrap.querySelector('p').innerText = content.text;
-      tabWrap.querySelector('img').src = content.img;
-      const specs = tabWrap.querySelector('.flex');
-      specs.innerHTML = content.specs.map(s => `<span>${s}</span>`).join('');
-    }
 
-    // NATIVE SCROLL ONLY.
-    function scrollToForm(e) {
-      e.preventDefault();
-      const target = document.getElementById('join');
-      target.scrollIntoView({ behavior: 'auto' }); // Standard scroll
-    }
+        i++;
+      }
+
+      var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduceMotion) {
+        setInterval(showFrame, 2600);
+      }
+    })();
+
+    // Live waitlist count, sourced from the same JSON the Formspree sync job writes.
+    (function () {
+      var el = document.getElementById("waitlistCount");
+      if (!el) return;
+      fetch("data/beta-count.json")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (data && typeof data.total_submissions === "number" && data.total_submissions > 0) {
+            el.innerHTML = "<strong>" + data.total_submissions + "</strong> people already on the list";
+          }
+        })
+        .catch(function () { /* stay silent, this is decoration, not a requirement */ });
+    })();
+
+    // Reveal-on-scroll for section entrances.
+    (function () {
+      var els = document.querySelectorAll(".reveal");
+      if (!("IntersectionObserver" in window) || !els.length) {
+        els.forEach(function (el) { el.classList.add("is-visible"); });
+        return;
+      }
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      els.forEach(function (el) { io.observe(el); });
+    })();
   </script>
 </body>
 </html>
