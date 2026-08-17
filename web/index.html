@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Form Analyzer — Real-time form coaching, on your phone</title>
   <meta name="description" content="Form Analyzer watches every rep through your phone's camera and tells you what to fix while you can still fix it. Ten exercises, fully on-device, nothing uploaded.">
-  <link rel="icon" href="favicon.png">
+  <link rel="icon" href="assets/brand/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/brand/app-icon-180.png">
 
   <meta property="og:type" content="website">
   <meta property="og:title" content="Form Analyzer">
@@ -130,21 +131,11 @@
     }
 
     .brand-mark {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: 2px solid var(--cyan);
-      position: relative;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
       flex: none;
-    }
-
-    .brand-mark::after {
-      content: "";
-      position: absolute;
-      inset: 5px;
-      border-radius: 50%;
-      background: var(--cyan);
-      box-shadow: 0 0 8px var(--cyan);
+      display: block;
     }
 
     nav.links {
@@ -410,6 +401,63 @@
 
     .vp-callout.state-fixed { color: var(--cyan); border-color: rgba(67, 240, 223, 0.4); }
     .vp-callout.state-fixed .vp-callout-dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+    /* ---------- Real device gallery ---------- */
+
+    .device-gallery {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .device-card { text-align: center; }
+
+    .device-frame {
+      position: relative;
+      border-radius: 30px;
+      background: #000;
+      padding: 10px;
+      border: 1px solid var(--line-strong);
+      box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.8);
+    }
+
+    .device-frame::before {
+      content: "";
+      position: absolute;
+      top: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 46px;
+      height: 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.14);
+      z-index: 2;
+    }
+
+    .device-frame img {
+      border-radius: 20px;
+      display: block;
+      width: 100%;
+    }
+
+    .device-label {
+      margin-top: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .device-note {
+      max-width: 56ch;
+      margin: 44px auto 0;
+      text-align: center;
+      font-size: 0.92rem;
+      color: var(--muted-dim);
+    }
 
     /* ---------- Section scaffolding ---------- */
 
@@ -754,6 +802,19 @@
       gap: 22px;
     }
 
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .footer-wordmark {
+      height: 20px;
+      width: auto;
+      opacity: 0.55;
+      filter: grayscale(1) brightness(1.6);
+    }
+
     /* ---------- Reveal-on-scroll ---------- */
 
     .reveal {
@@ -774,6 +835,7 @@
       .hero-sub { max-width: none; }
       .viewport { max-width: 420px; margin: 0 auto; }
       .movement-grid { grid-template-columns: repeat(3, 1fr); }
+      .device-gallery { grid-template-columns: repeat(3, 1fr); gap: 14px; }
       .pipeline { grid-template-columns: 1fr; }
       .privacy-section { grid-template-columns: 1fr; }
       .ladder-row { grid-template-columns: 110px 1fr; }
@@ -782,6 +844,7 @@
 
     @media (max-width: 560px) {
       .movement-grid { grid-template-columns: repeat(2, 1fr); }
+      .device-gallery { grid-template-columns: 1fr; max-width: 260px; gap: 32px; }
       .join-panel { padding: 48px 24px; }
       section { padding: 64px 0; }
       .ladder-panel { padding: 28px 22px; }
@@ -798,7 +861,7 @@
   <header>
     <div class="wrap header-row">
       <a href="#top" class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
+        <img class="brand-mark" src="assets/brand/app-icon-64.png" alt="Form Analyzer app icon">
         FORM ANALYZER
       </a>
       <nav class="links">
@@ -851,6 +914,31 @@
           <span id="vpRep">REP 01</span>
         </div>
       </div>
+    </section>
+
+    <div class="wrap"><hr class="divider"></div>
+
+    <section class="wrap" id="app">
+      <div class="section-head reveal" style="margin-left: auto; margin-right: auto; text-align: center;">
+        <span class="eyebrow">On your phone</span>
+        <h2>Real screens, not mockups.</h2>
+        <p style="margin-left: auto; margin-right: auto;">Captured straight off a running install. Train, History and Stats — the same three tabs you'll open every day.</p>
+      </div>
+      <div class="device-gallery reveal">
+        <div class="device-card">
+          <div class="device-frame"><img src="assets/screenshots/new_icons_dash_clean.png" alt="Form Analyzer dashboard screen with quick-start exercise cards for squats, push-ups and lunges"></div>
+          <div class="device-label">Train</div>
+        </div>
+        <div class="device-card">
+          <div class="device-frame"><img src="assets/screenshots/history_empty_clean.png" alt="Form Analyzer workout history screen"></div>
+          <div class="device-label">History</div>
+        </div>
+        <div class="device-card">
+          <div class="device-frame"><img src="assets/screenshots/stats_empty_clean.png" alt="Form Analyzer stats screen"></div>
+          <div class="device-label">Stats</div>
+        </div>
+      </div>
+      <p class="device-note reveal">History and Stats start empty on purpose — that's day one, before your first set. Train a few sessions and they fill in on their own.</p>
     </section>
 
     <div class="wrap"><hr class="divider"></div>
@@ -974,7 +1062,10 @@
 
   <footer>
     <div class="wrap footer-row">
-      <span>© 2026 Form Analyzer. Built to stay off your data.</span>
+      <span class="footer-brand">
+        <img class="footer-wordmark" src="assets/brand/logo-wordmark.png" alt="Form Analyzer">
+        © 2026 Form Analyzer. Built to stay off your data.
+      </span>
       <div class="footer-links">
         <a href="privacy.html">Privacy policy</a>
         <a href="#top">Back to top</a>
