@@ -44,3 +44,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .vercel
+
+# Raw stock footage and model binaries used to generate test/fixtures/pose_sequences/*.json
+# (see tools/extract_pose_fixtures.py) -- large/binary, regenerable, not needed at build time.
+/tools/pose_fixture_footage/

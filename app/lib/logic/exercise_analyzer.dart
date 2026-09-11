@@ -354,6 +354,37 @@ class SquatAnalyzer extends ExerciseAnalyzer {
     final rightConfidence = rightKneeSmooth.likelihood + rightAnkleSmooth.likelihood;
     final rawAngle = leftConfidence >= rightConfidence ? leftAngle : rightAngle;
 
+    // A second angle used only for the depth check below, differing from
+    // rawAngle/currentAngle in two ways:
+    //
+    // 1. Unsmoothed. Even rawAngle has been through one stage of exponential
+    //    smoothing (LandmarkSmoother, alpha 0.35), which is enough lag to
+    //    blunt a fast rep's true bottom: confirmed against real stock footage
+    //    where a squat that hit 61-66 degrees at its actual deepest frame
+    //    only ever read 91-100 degrees through that filter, narrowly missing
+    //    squatDepthThreshold despite genuinely reaching depth. Depth is a
+    //    one-shot "did they ever get there" check, not something that needs
+    //    temporal stability the way the eccentric/concentric direction
+    //    reversal does, so it can use the unsmoothed landmarks directly.
+    // 2. Takes whichever leg reads deeper, not whichever ML Kit is more
+    //    confident about. rawAngle above picks a side by confidence because
+    //    that's the right call for a single stable display angle. But a
+    //    squat's true depth is bilaterally symmetric -- both legs bend
+    //    together -- so when the two sides disagree it reflects estimation
+    //    error, not anatomy, and there's no reason the *more confident* leg
+    //    is the *more accurate* one. Confirmed against real stock footage
+    //    where the higher-confidence leg (rc ~2.0) read ~100-160 degrees
+    //    for an entire rep while the other leg (lc ~1.8, still comfortably
+    //    above the visibility gate above) read 66-95 degrees for the same
+    //    frames -- the confidence-selected side alone missed a genuinely
+    //    deep rep for its whole duration. Both legs are already confirmed
+    //    visible by the check at the top of this method, so trusting
+    //    whichever one shows real depth is safe.
+    final unsmoothedAngle = math.min(
+      MathUtils.calculateAngle(leftHip, leftKnee, leftAnkle),
+      MathUtils.calculateAngle(rightHip, rightKnee, rightAnkle),
+    );
+
     // Both sides are computed anyway; comparing them is free and catches an
     // athlete loading one leg harder than the other. Only trusted when the
     // view is front-on, since a side view foreshortens the far leg and would
@@ -411,7 +442,7 @@ class SquatAnalyzer extends ExerciseAnalyzer {
           // rep can't carry over and penalise the next one.
           currentRepIssues.clear();
           _reachedDepth = false;
-          _deepestAngle = currentAngle;
+          _deepestAngle = unsmoothedAngle;
           markEccentricStart();
           statusMessage = 'Lower with control';
         } else {
@@ -421,9 +452,19 @@ class SquatAnalyzer extends ExerciseAnalyzer {
 
       case SquatState.eccentric:
         phase = RepPhase.eccentric;
-        _deepestAngle = math.min(_deepestAngle, currentAngle);
+        // Depth is checked against unsmoothedAngle, not the smoothed
+        // currentAngle used everywhere else in this method. A fast rep's true
+        // bottom can last just 1-2 frames -- confirmed against real stock
+        // footage where a squat that hit 61-66 degrees at its actual deepest
+        // frame only ever read 91-100 degrees through the smoothing pipeline,
+        // narrowly missing squatDepthThreshold despite genuinely reaching
+        // depth (see stock_footage_regression_test.dart). Depth is a one-shot
+        // "did they ever get there" check, not something that needs temporal
+        // stability the way the direction-reversal check below does, so it
+        // can safely use the unsmoothed landmarks directly.
+        _deepestAngle = math.min(_deepestAngle, unsmoothedAngle);
 
-        if (currentAngle <= AppConstants.squatDepthThreshold) {
+        if (unsmoothedAngle <= AppConstants.squatDepthThreshold) {
           _reachedDepth = true;
         }
 
@@ -442,7 +483,7 @@ class SquatAnalyzer extends ExerciseAnalyzer {
           currentRepIssues.clear();
           cues.request(CueIds.goDeeper, detail: _depthShortfall(_deepestAngle));
         } else if (!_reachedDepth && angleDelta > directionDelta) {
-          cues.request(CueIds.goDeeper, detail: _depthShortfall(currentAngle));
+          cues.request(CueIds.goDeeper, detail: _depthShortfall(unsmoothedAngle));
         } else {
           statusMessage = _reachedDepth ? 'Great depth, stand up' : 'Lower';
         }

@@ -292,6 +292,102 @@ test('SquatHeuristic counts rep on depth then stand', () {
 });
 ```
 
+### Real-Footage Regression Tests
+
+`test/stock_footage_regression_test.dart` drives the real `ExerciseAnalyzer`
+subclasses with landmark sequences recorded from real stock exercise footage,
+instead of only the hand-authored idealized angle sweeps used elsewhere. This
+runs under plain `flutter test` (no device/emulator needed) and catches things
+a clean synthetic sweep can't: noisy, non-monotonic real motion tripping up
+the rep-counting state machine.
+
+**How it works**: ML Kit's pose detector is a platform-channel plugin and
+can't run outside a device, so these fixtures are generated offline with
+MediaPipe Pose (Google's other pose-landmark model, close enough
+anatomically to drive the same analyzer logic) via
+`tools/extract_pose_fixtures.py`. This is a proxy for ML Kit's real output,
+not a guarantee ML Kit behaves identically on-device — full on-device
+verification still needs a real `integration_test` + emulator/device suite,
+which doesn't exist yet.
+
+**Adding a new recorded fixture** (e.g. for lunge/plank/overhead press):
+```bash
+# one-time setup
+pip install mediapipe opencv-python numpy
+curl -L "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task" \
+    -o tools/pose_fixture_footage/models/pose_landmarker_full.task
+
+# extract a new clip (defaults to sampling at the source frame rate)
+python tools/extract_pose_fixtures.py \
+    tools/pose_fixture_footage/<clip>.mp4 \
+    app/test/fixtures/pose_sequences/<name>.json
+```
+
+Then **actually trace the real analyzer against the fixture** before writing
+assertions — don't assume the app will agree with what the source video looks
+like. Two mistakes already happened building this pipeline, both worth not
+repeating:
+- **Don't zero out Z.** `MathUtils.calculateAngleFromCoordinates` falls back
+  to 2D-only math whenever all three landmarks' Z reads as flat/zero
+  (`_hasReliableZCoordinates`). MediaPipe documents Z as using roughly the
+  same scale as X, so `extract_pose_fixtures.py` carries it through, scaled
+  like X. Skipping this makes a front-facing camera's squat depth (which is
+  mostly a depth-axis motion, invisible in 2D from the front) measure as far
+  shallower than it really is.
+- **Don't undersample.** A fast rep's true bottom can fall between sampled
+  frames. Sampling one real clip at 10fps undercounted 2 of 5 genuinely deep
+  squats because the analyzer never saw the actual minimum angle. The script
+  now defaults to the source frame rate for exactly this reason.
+
+Even with both of those right, this pipeline caught two more real bugs in
+`SquatAnalyzer.processPose` itself, both since fixed and locked in by
+`stock_footage_regression_test.dart`:
+- The depth check compared against an angle that had been through two
+  stages of smoothing (a per-landmark exponential filter, then a 5-frame
+  moving average on top). A fast rep's true bottom can survive neither —
+  real footage showed a rep that hit 61-66 degrees at its actual deepest
+  frame read as high as 100 degrees post-smoothing, missing
+  `squatDepthThreshold` despite genuinely reaching depth. Fixed by checking
+  depth against the unsmoothed landmarks directly; the eccentric/concentric
+  direction-reversal check still uses the smoothed angle, since that one
+  benefits from the noise rejection.
+- That depth check also picked a leg by ML Kit's confidence score, on the
+  assumption the more confident leg is the more accurate one. Real footage
+  showed the opposite for a full rep: the higher-confidence leg read
+  100-160 degrees for its entire duration while the other leg (still
+  comfortably above the visibility threshold) read 66-95 degrees for the
+  same frames. A squat's depth is bilaterally symmetric, so a confidence
+  gap between the two sides reflects estimation error, not anatomy — fixed
+  by taking whichever visible leg reads deeper for the depth check
+  specifically.
+
+If a future fixture surfaces a similar-looking discrepancy, don't assume
+it's already covered by these two fixes — trace it and confirm. Other real
+(non-bug) ways a clip can fail to produce the rep count you expect from
+watching it:
+- **Visibility**: `SquatAnalyzer` requires all six leg landmarks
+  (`AppConstants.visibilityThreshold = 0.7`); a clip where one leg is
+  occluded or blurred will read "Adjust Camera" forever and never exercise
+  the rep-counting logic at all.
+- **Camera angle**: a rep only closes when the tracked angle climbs back to
+  `AppConstants.squatNeutralThreshold`/`pushupNeutralThreshold`. A
+  front-facing camera can leave MediaPipe's 3D "standing" reconstruction
+  permanently short of that threshold, so no rep ever counts regardless of
+  depth -- the same reason the app's back-angle safety check already gates
+  itself on a confirmed side view (`hasSideView` in `SquatAnalyzer.processPose`).
+  This isn't a silent failure: `updateOrientation` runs unconditionally every
+  frame and already fires the "turn side-on" cue (`CueIds.turnSideOn`,
+  repeating every 5 seconds) via pure 2D geometry (`PoseOrientation`,
+  unaffected by the Z issues above), so a front-facing athlete gets told why
+  before assuming the app is broken. Verified, not assumed -- see the second
+  squat test in `stock_footage_regression_test.dart`.
+
+The only trustworthy way to know which of these you're looking at is to
+print `lastProcessedAngle`/`phase`/`squatState` (or the pushup/plank
+equivalents) frame-by-frame from a real `flutter test` run and read what the
+state machine actually did, then write the assertion to match that —
+verified behavior, not a guess from the source video.
+
 ---
 
 ## Performance Testing
