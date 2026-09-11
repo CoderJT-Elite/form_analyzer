@@ -2,10 +2,22 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// One recorded error, kept entirely on-device until the user chooses to
-/// share it. Never sent anywhere automatically.
+/// Where crash reports are sent: a private Google Form (owned by the
+/// developer, not a third party), submitted the same way any public form
+/// accepts a response — a plain POST with `entry.<id>` fields, no API key or
+/// auth needed. Responses land in the form's own Responses tab. See
+/// [CrashReportService]'s doc comment for why this exists instead of a
+/// third-party SDK like Crashlytics or Sentry.
+const String _crashReportFormUrl =
+    'https://docs.google.com/forms/d/e/1FAIpQLSea1Upsp0TSICUQ6ap-bcuYVZZRYkQ9FL2AZFjzhjbndk-cgA/formResponse';
+const String _errorMessageEntryId = 'entry.1538321868';
+const String _fullReportEntryId = 'entry.1159895757';
+
+/// One recorded error. Always kept on-device; also best-effort submitted to
+/// the crash-report form (see [CrashReportService._submitRemote]).
 class CrashReport {
   final DateTime timestamp;
   final String message;
@@ -31,19 +43,29 @@ class CrashReport {
       );
 }
 
-/// Catches uncaught Flutter and platform errors and keeps a short, local-only
-/// log of them.
+/// Catches uncaught Flutter and platform errors, keeps a local log of them,
+/// and best-effort reports them automatically to a private Google Form.
 ///
-/// There is deliberately no third-party crash-reporting SDK here (Crashlytics,
-/// Sentry, etc.) — that would mean automatically sending device and
-/// stack-trace data off-device, which would contradict this app's stated
-/// privacy position ("no crash reporting service in the app", web/privacy.html)
-/// and would need a fresh Play Data Safety disclosure to add honestly.
-/// Instead, errors are recorded to SharedPreferences only; the sole way a
-/// report ever leaves the device is the user tapping "Report a Problem" in
-/// Profile and choosing where to send it themselves — the same opt-in pattern
-/// already used for workout-history backups.
+/// This deliberately isn't a third-party crash-reporting SDK (Crashlytics,
+/// Sentry, etc.) — those bundle a native SDK with their own data-collection
+/// terms and require a fresh Play Data Safety disclosure to add honestly.
+/// A plain form submission is simpler, fully inspectable (it's just an HTTP
+/// POST of the fields below, nothing else), and the destination is a form
+/// the developer owns outright rather than a third party's platform. Sent
+/// fields: the error message, and a JSON blob with timestamp + truncated
+/// stack trace — no device identifiers, no user data. This is still an
+/// automatic, off-device transmission on every crash, which is disclosed in
+/// web/privacy.html and noted for the Play Data Safety form.
+///
+/// The on-device copy is kept regardless of whether the remote submission
+/// succeeds (no network at crash time, etc.), and is what powers Profile >
+/// Report a Problem as a manual fallback/backup.
 class CrashReportService {
+  CrashReportService({http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
+
+  final http.Client _httpClient;
+
   static const String _reportsKey = 'crash_reports_v1';
   static const int maxStoredReports = 20;
   static const int _maxStackTraceChars = 4000;
@@ -64,19 +86,20 @@ class CrashReportService {
   }
 
   /// Appends one error to the on-device log, oldest-first, capped at
-  /// [maxStoredReports]. Exposed directly (not just via [install]'s global
-  /// handlers) so it's testable without mutating process-wide error hooks.
+  /// [maxStoredReports], and best-effort submits it to the crash-report
+  /// form. Exposed directly (not just via [install]'s global handlers) so
+  /// it's testable without mutating process-wide error hooks.
   Future<void> recordError(String message, StackTrace? stack) async {
-    try {
-      final rawStack = stack?.toString() ?? '';
-      final report = CrashReport(
-        timestamp: DateTime.now(),
-        message: message,
-        stackTrace: rawStack.length > _maxStackTraceChars
-            ? rawStack.substring(0, _maxStackTraceChars)
-            : rawStack,
-      );
+    final rawStack = stack?.toString() ?? '';
+    final report = CrashReport(
+      timestamp: DateTime.now(),
+      message: message,
+      stackTrace: rawStack.length > _maxStackTraceChars
+          ? rawStack.substring(0, _maxStackTraceChars)
+          : rawStack,
+    );
 
+    try {
       final prefs = await SharedPreferences.getInstance();
       final reports = await _loadRaw(prefs);
       reports.add(report);
@@ -89,6 +112,25 @@ class CrashReportService {
       );
     } catch (_) {
       // Recording a crash must never itself throw.
+    }
+
+    unawaited(_submitRemote(report));
+  }
+
+  /// Best-effort only: a failed network call must never compound a crash,
+  /// and the on-device copy above already covers the case where this fails
+  /// (no network at crash time, form unreachable, etc.).
+  Future<void> _submitRemote(CrashReport report) async {
+    try {
+      await _httpClient.post(
+        Uri.parse(_crashReportFormUrl),
+        body: {
+          _errorMessageEntryId: report.message,
+          _fullReportEntryId: jsonEncode(report.toJson()),
+        },
+      ).timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Best-effort only.
     }
   }
 

@@ -101,13 +101,19 @@ doctor before starting a new exercise programme, and stop if you feel pain.
 
 | Question | Answer |
 |---|---|
-| Does your app collect or share any of the required user data types? | **Yes** — one item, see below |
+| Does your app collect or share any of the required user data types? | **Yes** — two items, see below |
 | Data type | **Device or other IDs** |
 | Collected or shared? | Collected (by Google's ML Kit SDK, not by us) |
 | Purpose | App functionality |
 | Is it required or optional? | Required |
 | Is it encrypted in transit? | **Yes** (HTTPS) |
 | Can users request deletion? | No — the identifier is random, not tied to a user, and is removed on uninstall |
+| Data type | **Crash logs** *(added 2026-09-11 — confirm current wording/category in Play Console, this table entry hasn't been through a real submission yet)* |
+| Collected or shared? | Collected by the developer (via a Google Form the developer owns — not a third-party crash SDK, and not "shared" with an unrelated third party) |
+| Purpose | App functionality / diagnostics |
+| Is it required or optional? | Required |
+| Is it encrypted in transit? | **Yes** (HTTPS) |
+| Can users request deletion? | No stored user identifier to delete against — see below for exactly what's sent |
 
 Notes if Play asks you to justify:
 
@@ -119,7 +125,16 @@ Notes if Play asks you to justify:
   `shared_preferences`. It is not collected by the developer, because there is no
   server. Android's own backup may copy it to the user's Google account under
   the user's settings — this is Google's backup, not developer collection.
-- **No** analytics, advertising, or crash-reporting SDK is present.
+- **No** analytics or advertising SDK is present. There is also no
+  third-party crash-reporting *SDK* (no Crashlytics, no Sentry) — but as of
+  2026-09-11 the app does automatically send a crash report (error message +
+  a truncated stack trace, no device identifiers, no workout data, no
+  personal information) to a Google Form the developer controls whenever it
+  hits an uncaught error. See `CrashReportService` (`app/lib/services/`) and
+  the "Data sharing" section of `web/privacy.html`. This is new since the
+  last time this checklist's Data Safety table was actually filled in for a
+  real submission — double-check the exact Play Console category/wording
+  for this before submitting, don't just copy the row above verbatim.
 
 ### 3a. What ML Kit does on the network
 
@@ -243,20 +258,24 @@ To remove it: download the Outfit and Inter TTFs, put them in
 - [x] **Contact email decided (2026-09-11): keep the personal Gmail** already
       published in `web/privacy.html`. Revisit later if it ever becomes a real
       support-volume problem, but not a launch blocker.
-- [x] **Upload keystore backed up to Google Drive (2026-09-11).** The `.jks`
-      file itself is uploaded; the passwords in `android/key.properties` are
-      NOT included in that backup (don't want the key and its passwords sitting
-      together in one place) — back those up separately, e.g. a password
-      manager, before you'd actually need to rely on this.
+- [x] **Upload keystore (and its passwords) backed up to Google Drive
+      (2026-09-11, updated same day at John's request).** Both
+      `form-analyzer-upload-key.jks` and `key.properties` are in
+      [this Drive folder](https://drive.google.com/drive/folders/12cyEQu3-YICnvwlJJKzuOHnty3KKL48a).
+      They're kept together now, not split — the tradeoff is that Drive
+      account's own security (2FA etc.) is what stands between someone and
+      the signing key, worth being deliberate about.
 - [x] **BETA TESTER label removed (2026-09-11)** from the profile screen
       (`profile_screen.dart`) — it only shows a sync-status pill now, and only
       while a backup/restore is actually running.
-- [x] **On-device error log added (2026-09-11)**, not a third-party
-      crash-reporting SDK — see `CrashReportService` and the updated
-      `web/privacy.html`. Nothing is sent automatically; the user can share it
-      themselves from Profile → Report a Problem. Doesn't change the Data
-      Safety answer in §3 (still no crash-reporting *service*), but worth
-      knowing this exists if that section is ever revisited.
+- [x] **Automatic crash reporting added (2026-09-11)** — see
+      `CrashReportService` and §3's new Data Safety table row. Not a
+      third-party SDK (no Crashlytics/Sentry); the app posts the error
+      message and a truncated stack trace to a Google Form the developer
+      owns whenever it hits an uncaught error, no device identifiers or
+      workout data included. The on-device log from the same code also still
+      backs Profile → Report a Problem. **This changes the Data Safety
+      answer in §3 — don't submit without re-checking that section.**
 - [ ] Install the release build on a real phone and confirm pose detection still
       works after minification, the new icon appears, and voice cues play.
 - [ ] Bump `version:` in `pubspec.yaml` for every subsequent upload.
