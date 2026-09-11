@@ -45,11 +45,11 @@ class AppConstants {
   static const double incompleteLockoutPenalty = 0.15;
 
   static const double lungeDepthThreshold = 100.0;
-  static const double lungeNeutralThreshold = 160.0;
+  static const double lungeNeutralThreshold = 155.0;
   static const double lungeInsufficientDepthPenalty = 0.3;
 
   static const double overheadPressStartThreshold = 100.0;
-  static const double overheadPressLockoutThreshold = 165.0;
+  static const double overheadPressLockoutThreshold = 152.0;
   static const double overheadPressInsufficientRangePenalty = 0.3;
 
   // Joint angles come from acos and are therefore unsigned, in [0, 180]. A
@@ -76,18 +76,18 @@ class AppConstants {
   static const int asymmetryWindow = 10;
 
   // Glute bridge — shoulder/hip/knee opens up as the hips rise.
-  static const double gluteBridgeRestAngle = 130.0;
-  static const double gluteBridgeTopAngle = 160.0;
+  static const double gluteBridgeRestAngle = 138.0;
+  static const double gluteBridgeTopAngle = 150.0;
   static const double gluteBridgeShortRangePenalty = 0.3;
 
   // Sit-up — the same joint closes as the torso comes up.
-  static const double situpRestAngle = 150.0;
+  static const double situpRestAngle = 130.0;
   static const double situpTopAngle = 95.0;
   static const double situpShortRangePenalty = 0.3;
 
   // Jumping jack — arm abduction measured at the shoulder, seen front-on.
-  static const double jumpingJackRestAngle = 45.0;
-  static const double jumpingJackTopAngle = 135.0;
+  static const double jumpingJackRestAngle = 55.0;
+  static const double jumpingJackTopAngle = 130.0;
   static const double jumpingJackShortRangePenalty = 0.25;
 
   // Wall sit — knee angle held near a right angle.

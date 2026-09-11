@@ -617,6 +617,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
 
         if (currentAngle <= AppConstants.pushupDepthThreshold) {
           _reachedDepth = true;
+          currentRepIssues.remove('Insufficient Depth');
         }
 
         if (_reachedDepth && delta > AppConstants.angleDirectionDeltaDegrees) {
@@ -650,9 +651,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
             addIssue('Insufficient Depth');
             score -= AppConstants.pushupInsufficientDepthPenalty;
           }
-          if (currentRepIssues.contains('Incomplete Lockout')) {
-            score -= AppConstants.incompleteLockoutPenalty;
-          }
+          currentRepIssues.remove('Incomplete Lockout');
           statusMessage = 'Rep $repCount';
           recordRep(
             score: score,
@@ -712,30 +711,46 @@ class LungeAnalyzer extends ExerciseAnalyzer {
 
   @override
   void processPose(Pose pose) {
-    final leftKnee = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.leftHip],
-      pose.landmarks[PoseLandmarkType.leftKnee],
-      pose.landmarks[PoseLandmarkType.leftAnkle],
-    );
-    final rightKnee = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.rightHip],
-      pose.landmarks[PoseLandmarkType.rightKnee],
-      pose.landmarks[PoseLandmarkType.rightAnkle],
-    );
+    final leftHipLandmark = pose.landmarks[PoseLandmarkType.leftHip];
+    final leftKneeLandmark = pose.landmarks[PoseLandmarkType.leftKnee];
+    final leftAnkleLandmark = pose.landmarks[PoseLandmarkType.leftAnkle];
+    final rightHipLandmark = pose.landmarks[PoseLandmarkType.rightHip];
+    final rightKneeLandmark = pose.landmarks[PoseLandmarkType.rightKnee];
+    final rightAnkleLandmark = pose.landmarks[PoseLandmarkType.rightAnkle];
 
-    final currentAngle = _angleFilter.add(math.min(leftKnee, rightKnee));
-    final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
-    _prevAngle = currentAngle;
-    lastProcessedAngle = currentAngle;
+    final leftVisible = isLandmarkVisible(leftHipLandmark) &&
+        isLandmarkVisible(leftKneeLandmark) &&
+        isLandmarkVisible(leftAnkleLandmark);
+    final rightVisible = isLandmarkVisible(rightHipLandmark) &&
+        isLandmarkVisible(rightKneeLandmark) &&
+        isLandmarkVisible(rightAnkleLandmark);
 
-    final hipsVisible =
-        isLandmarkVisible(pose.landmarks[PoseLandmarkType.leftHip]) ||
-            isLandmarkVisible(pose.landmarks[PoseLandmarkType.rightHip]);
-
-    if (!hipsVisible) {
+    if (!leftVisible && !rightVisible) {
       statusMessage = 'Adjust Camera';
       return;
     }
+
+    final leftKnee = leftVisible
+        ? MathUtils.calculateJointAngle(leftHipLandmark, leftKneeLandmark, leftAnkleLandmark)
+        : 180.0;
+    final rightKnee = rightVisible
+        ? MathUtils.calculateJointAngle(rightHipLandmark, rightKneeLandmark, rightAnkleLandmark)
+        : 180.0;
+
+    // Both legs bend in a lunge. Depth is satisfied if either visible knee dips
+    // below the depth threshold. For standing lockout / neutral, the athlete
+    // recovers when the standing/supporting leg reaches extension.
+    final depthAngle = (leftVisible && rightVisible)
+        ? math.min(leftKnee, rightKnee)
+        : (leftVisible ? leftKnee : rightKnee);
+    final standingAngle = (leftVisible && rightVisible)
+        ? math.max(leftKnee, rightKnee)
+        : (leftVisible ? leftKnee : rightKnee);
+
+    final currentAngle = _angleFilter.add(standingAngle);
+    final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
+    _prevAngle = currentAngle;
+    lastProcessedAngle = currentAngle;
 
     final deadZone = AppConstants.hysteresisDeadZoneDegrees;
 
@@ -745,7 +760,7 @@ class LungeAnalyzer extends ExerciseAnalyzer {
           phase = RepPhase.eccentric;
           currentRepIssues.clear();
           _reachedDepth = false;
-          _deepestAngle = currentAngle;
+          _deepestAngle = depthAngle;
           markEccentricStart();
           statusMessage = 'Lower into lunge';
         } else {
@@ -754,10 +769,11 @@ class LungeAnalyzer extends ExerciseAnalyzer {
         break;
 
       case RepPhase.eccentric:
-        _deepestAngle = math.min(_deepestAngle, currentAngle);
+        _deepestAngle = math.min(_deepestAngle, depthAngle);
 
-        if (currentAngle <= AppConstants.lungeDepthThreshold) {
+        if (depthAngle <= AppConstants.lungeDepthThreshold) {
           _reachedDepth = true;
+          currentRepIssues.remove('Insufficient Depth');
         }
 
         if (_reachedDepth && delta > AppConstants.angleDirectionDeltaDegrees) {
@@ -770,7 +786,7 @@ class LungeAnalyzer extends ExerciseAnalyzer {
           currentRepIssues.clear();
           cues.request(CueIds.goDeeper);
         } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
-            currentAngle > AppConstants.lungeDepthThreshold + deadZone) {
+            depthAngle > AppConstants.lungeDepthThreshold + deadZone) {
           addIssue('Insufficient Depth');
           cues.request(CueIds.goDeeper);
         } else {
@@ -894,6 +910,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
 
         if (currentAngle <= AppConstants.overheadPressStartThreshold) {
           _reachedBottom = true;
+          currentRepIssues.remove('Insufficient Range');
         }
 
         if (_reachedBottom && delta > AppConstants.angleDirectionDeltaDegrees) {
@@ -923,9 +940,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
             addIssue('Insufficient Range');
             score -= AppConstants.overheadPressInsufficientRangePenalty;
           }
-          if (currentRepIssues.contains('No Full Lockout')) {
-            score -= AppConstants.incompleteLockoutPenalty;
-          }
+          currentRepIssues.remove('No Full Lockout');
           statusMessage = 'Rep $repCount';
           recordRep(
             score: score,
@@ -1136,9 +1151,10 @@ class HoldEvaluation {
 abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   TimedExerciseAnalyzer({super.cueEngine, super.clock});
 
-  final Stopwatch _timer = Stopwatch();
+  DateTime? _lastFrameTime;
+  int _accumulatedHeldMs = 0;
+  DateTime? _brokenSince;
   int _lastScoredSecond = 0;
-  int? _brokenSinceMs;
 
   /// Judge the current frame. Return null when the required landmarks aren't
   /// visible, which pauses the clock rather than counting bad time.
@@ -1147,22 +1163,30 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   /// Status line shown while the hold is going well.
   String holdingMessage(int seconds);
 
-  int get heldSeconds => _timer.elapsed.inSeconds;
+  int get heldSeconds => _accumulatedHeldMs ~/ 1000;
 
   @override
   void processPose(Pose pose) {
     final evaluation = evaluateHold(pose);
+    final currentTime = now();
 
     if (evaluation == null) {
-      _timer.stop();
-      _brokenSinceMs = null;
+      _lastFrameTime = null;
+      _brokenSince = null;
       statusMessage = 'Adjust Camera';
       return;
     }
 
+    if (_lastFrameTime != null) {
+      final deltaMs = currentTime.difference(_lastFrameTime!).inMilliseconds;
+      if (deltaMs > 0 && deltaMs <= 2000) {
+        _accumulatedHeldMs += deltaMs;
+      }
+    }
+    _lastFrameTime = currentTime;
+
     if (evaluation.isCorrect) {
-      _brokenSinceMs = null;
-      if (!_timer.isRunning) _timer.start();
+      _brokenSince = null;
       _accrue(1.0);
       statusMessage = holdingMessage(heldSeconds);
       return;
@@ -1171,11 +1195,10 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
     // Form is broken but the user is still in position, so the clock keeps
     // running — a sagging plank is still time under tension. If it stays broken
     // long enough we assume they've stood up and stop counting.
-    final elapsedMs = _timer.elapsed.inMilliseconds;
-    _brokenSinceMs ??= elapsedMs;
-    final brokenForMs = elapsedMs - _brokenSinceMs!;
+    _brokenSince ??= currentTime;
+    final brokenForMs = currentTime.difference(_brokenSince!).inMilliseconds;
     if (brokenForMs >= AppConstants.timedHoldBreakGraceSeconds * 1000) {
-      _timer.stop();
+      _lastFrameTime = null;
     }
 
     addIssue(evaluation.issue);
@@ -1186,7 +1209,7 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   /// Credit whole seconds that have elapsed since the last check, scoring each
   /// with the quality that applied when it ticked over.
   void _accrue(double secondScore) {
-    final seconds = _timer.elapsed.inSeconds;
+    final seconds = heldSeconds;
     if (seconds <= _lastScoredSecond) return;
 
     for (var s = _lastScoredSecond; s < seconds; s++) {
@@ -1211,11 +1234,10 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   @override
   void reset() {
     super.reset();
-    _timer
-      ..stop()
-      ..reset();
+    _lastFrameTime = null;
+    _accumulatedHeldMs = 0;
+    _brokenSince = null;
     _lastScoredSecond = 0;
-    _brokenSinceMs = null;
   }
 }
 
@@ -1237,15 +1259,36 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
 
   @override
   HoldEvaluation? evaluateHold(Pose pose) {
-    final shoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
-    final hip = pose.landmarks[PoseLandmarkType.leftHip];
-    final knee = pose.landmarks[PoseLandmarkType.leftKnee];
+    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
+    final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
+    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
 
-    if (!isLandmarkVisible(shoulder) ||
-        !isLandmarkVisible(hip) ||
-        !isLandmarkVisible(knee)) {
+    final rightShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
+    final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
+    final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
+
+    final leftVisible = isLandmarkVisible(leftShoulder) &&
+        isLandmarkVisible(leftHip) &&
+        isLandmarkVisible(leftKnee);
+    final rightVisible = isLandmarkVisible(rightShoulder) &&
+        isLandmarkVisible(rightHip) &&
+        isLandmarkVisible(rightKnee);
+
+    if (!leftVisible && !rightVisible) {
       return null;
     }
+
+    final leftConfidence = (leftShoulder?.likelihood ?? 0) +
+        (leftHip?.likelihood ?? 0) +
+        (leftKnee?.likelihood ?? 0);
+    final rightConfidence = (rightShoulder?.likelihood ?? 0) +
+        (rightHip?.likelihood ?? 0) +
+        (rightKnee?.likelihood ?? 0);
+
+    final useLeft = leftVisible && (!rightVisible || leftConfidence >= rightConfidence);
+    final shoulder = useLeft ? leftShoulder! : rightShoulder!;
+    final hip = useLeft ? leftHip! : rightHip!;
+    final knee = useLeft ? leftKnee! : rightKnee!;
 
     final backAngle = MathUtils.calculateJointAngle(shoulder, hip, knee);
     lastProcessedAngle = backAngle;
@@ -1257,8 +1300,8 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
     // Image y grows downward, so a hip below the shoulder-knee midline is a
     // sag and a hip above it is a pike. This works regardless of which way the
     // athlete is facing.
-    final midlineY = (shoulder!.y + knee!.y) / 2;
-    final isSagging = hip!.y > midlineY;
+    final midlineY = (shoulder.y + knee.y) / 2;
+    final isSagging = hip.y > midlineY;
 
     return HoldEvaluation.broken(
       issue: isSagging ? 'Hips Sagging' : 'Hips Piked',
@@ -1309,20 +1352,39 @@ class GluteBridgeAnalyzer extends RangeOfMotionAnalyzer {
   String get restingMessage => 'Press through your heels and lift';
 
   @override
-  double? measureAngle(Pose pose) => bestSideAngle(
-        pose,
-        isLandmarkVisible,
-        const [
-          PoseLandmarkType.leftShoulder,
-          PoseLandmarkType.leftHip,
-          PoseLandmarkType.leftKnee,
-        ],
-        const [
-          PoseLandmarkType.rightShoulder,
-          PoseLandmarkType.rightHip,
-          PoseLandmarkType.rightKnee,
-        ],
-      );
+  double? measureAngle(Pose pose) {
+    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
+    final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
+    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
+
+    final rightShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
+    final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
+    final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
+
+    final leftVisible = isLandmarkVisible(leftShoulder) &&
+        isLandmarkVisible(leftHip) &&
+        isLandmarkVisible(leftKnee);
+    final rightVisible = isLandmarkVisible(rightShoulder) &&
+        isLandmarkVisible(rightHip) &&
+        isLandmarkVisible(rightKnee);
+
+    if (!leftVisible && !rightVisible) return null;
+
+    final leftAngle = leftVisible
+        ? MathUtils.calculateJointAngle(leftShoulder, leftHip, leftKnee)
+        : null;
+    final rightAngle = rightVisible
+        ? MathUtils.calculateJointAngle(rightShoulder, rightHip, rightKnee)
+        : null;
+
+    if (leftAngle == null) return rightAngle;
+    if (rightAngle == null) return leftAngle;
+
+    // Both hips rise together in a bridge. When both sides are visible, take
+    // whichever side is more extended (larger angle) so camera perspective on
+    // the far hip doesn't mask a genuine bridge.
+    return math.max(leftAngle, rightAngle);
+  }
 }
 
 /// Torso curling toward the knees: the same joint closes as you come up.
