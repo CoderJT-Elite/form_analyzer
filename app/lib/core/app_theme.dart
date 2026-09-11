@@ -42,6 +42,25 @@ class AppTextStyles {
     fontSize: 80,
     fontWeight: FontWeight.w900,
   );
+
+  static final TextStyle setupHeader = GoogleFonts.inter(
+    color: AppColors.accentCyan,
+    fontSize: 13,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 2.0,
+  );
+
+  static final TextStyle setupInstruction = GoogleFonts.outfit(
+    color: Colors.white,
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+  );
+
+  static final TextStyle setupSubtext = GoogleFonts.inter(
+    color: AppColors.textSecondary,
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+  );
 }
 
 class AppTheme {

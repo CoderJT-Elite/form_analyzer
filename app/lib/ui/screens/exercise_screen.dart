@@ -7,7 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_theme.dart';
+import '../../logic/cue_engine.dart';
 import '../../logic/exercise_analyzer.dart';
+import '../../logic/pose_orientation.dart';
 import '../../models/exercise_model.dart';
 import '../../services/pose_detector_service.dart';
 import '../../services/tts_service.dart';
@@ -19,27 +21,57 @@ import '../widgets/workout_summary_dialog.dart';
 class ExerciseScreen extends StatefulWidget {
   final Exercise exercise;
   final bool isRoutineMode;
+  final TTSService? tts;
+  final bool skipCameraInitialization;
+  final Duration minGuidanceDuration;
+  final Duration maxGuidanceDuration;
 
   const ExerciseScreen({
     super.key,
     required this.exercise,
     this.isRoutineMode = false,
+    this.tts,
+    this.skipCameraInitialization = false,
+    this.minGuidanceDuration = const Duration(milliseconds: 1500),
+    this.maxGuidanceDuration = const Duration(milliseconds: 4000),
   });
 
   @override
-  State<ExerciseScreen> createState() => _ExerciseScreenState();
+  State<ExerciseScreen> createState() => ExerciseScreenState();
 }
 
-class _ExerciseScreenState extends State<ExerciseScreen>
+class ExerciseScreenState extends State<ExerciseScreen>
     with WidgetsBindingObserver {
   CameraController? _cameraController;
   final PoseDetectorService _poseDetector = PoseDetectorService();
-  final TTSService _tts = TTSService();
+  late final TTSService _tts;
   final StorageService _storage = StorageService();
 
   bool _isCameraInitialized = false;
   Future<void>? _cameraInitializationFuture;
   bool _isProcessingFrame = false;
+
+  // Setup guidance & calibration state
+  bool _isSetupGuiding = false;
+  bool _isOrientationConfirmed = false;
+  DateTime? _setupStartTime;
+  final OrientationTracker _setupOrientationTracker = OrientationTracker();
+  Timer? _guidanceAdvanceTimer;
+  Timer? _guidanceFallbackTimer;
+
+  bool get isSetupGuiding => _isSetupGuiding;
+  bool get isOrientationConfirmed => _isOrientationConfirmed;
+  bool get isCalibrated => _isCalibrated;
+  int get calibrationCountdown => _calibrationCountdown;
+
+  @visibleForTesting
+  void handleTestPose(Pose pose) {
+    if (_isSetupGuiding) {
+      _onPoseDuringSetup(pose);
+    }
+    _poses.value = [pose];
+  }
+
   int _calibrationCountdown = 3;
   bool _isCalibrated = false;
   static const int _frameSkipInterval = 2;
@@ -71,9 +103,15 @@ class _ExerciseScreenState extends State<ExerciseScreen>
   @override
   void initState() {
     super.initState();
+    _tts = widget.tts ?? TTSService();
     WidgetsBinding.instance.addObserver(this);
     _statusMessage.value = widget.exercise.analyzer.statusMessage;
-    _initialize();
+    if (widget.skipCameraInitialization) {
+      _isCameraInitialized = true;
+      _startSetupGuidance();
+    } else {
+      _initialize();
+    }
     _loadFeedbackPreferences();
     widget.exercise.analyzer.onRep = (count) {
       if (mounted) {
@@ -163,11 +201,9 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         if (mounted) {
           setState(() {
             _isCameraInitialized = true;
-            _isCalibrated = false;
-            _calibrationCountdown = 3;
             _errorMessage = null;
           });
-          _startCalibration();
+          _startSetupGuidance();
         }
       }
     } on CameraException catch (e) {
@@ -193,20 +229,95 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     }
   }
 
-  void _startCalibration() {
-    _calibrationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          if (_calibrationCountdown > 0) {
-            _calibrationCountdown--;
-            _tts.speak("$_calibrationCountdown");
-          } else {
-            _isCalibrated = true;
-            _calibrationTimer?.cancel();
-            _tts.speak("Go!");
+  void _startSetupGuidance() {
+    _calibrationTimer?.cancel();
+    _guidanceAdvanceTimer?.cancel();
+    _guidanceFallbackTimer?.cancel();
+
+    final orientation = widget.exercise.analyzer.requiredOrientation;
+
+    if (mounted) {
+      setState(() {
+        _isCalibrated = false;
+        _isSetupGuiding = true;
+        _isOrientationConfirmed = false;
+        _setupStartTime = DateTime.now();
+        _setupOrientationTracker.reset();
+      });
+    } else {
+      _isCalibrated = false;
+      _isSetupGuiding = true;
+      _isOrientationConfirmed = false;
+      _setupStartTime = DateTime.now();
+      _setupOrientationTracker.reset();
+    }
+
+    _tts.speak(CameraSetupCopy.spokenFor(orientation));
+
+    _guidanceFallbackTimer = Timer(widget.maxGuidanceDuration, () {
+      if (mounted && _isSetupGuiding) {
+        _startCountdown();
+      }
+    });
+  }
+
+  void _onPoseDuringSetup(Pose pose) {
+    if (!_isSetupGuiding) return;
+
+    final observed = _setupOrientationTracker.update(pose);
+    final required = widget.exercise.analyzer.requiredOrientation;
+
+    if (observed == required && !_isOrientationConfirmed) {
+      _isOrientationConfirmed = true;
+      if (mounted) setState(() {});
+
+      final startTime = _setupStartTime;
+      final elapsed = startTime == null
+          ? Duration.zero
+          : DateTime.now().difference(startTime);
+      final remaining = widget.minGuidanceDuration - elapsed;
+
+      if (remaining <= Duration.zero) {
+        _startCountdown();
+      } else {
+        _guidanceAdvanceTimer?.cancel();
+        _guidanceAdvanceTimer = Timer(remaining, () {
+          if (mounted && _isSetupGuiding) {
+            _startCountdown();
           }
         });
       }
+    }
+  }
+
+  void _startCountdown() {
+    _guidanceAdvanceTimer?.cancel();
+    _guidanceFallbackTimer?.cancel();
+    _calibrationTimer?.cancel();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSetupGuiding = false;
+      _calibrationCountdown = 3;
+    });
+    _tts.speak("3");
+
+    _calibrationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_calibrationCountdown > 1) {
+          _calibrationCountdown--;
+          _tts.speak("$_calibrationCountdown");
+        } else {
+          _isCalibrated = true;
+          _calibrationTimer?.cancel();
+          _tts.speak("Go!");
+        }
+      });
     });
   }
 
@@ -235,6 +346,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
       final poses = await _poseDetector.processImage(inputImage);
 
       if (!mounted) return;
+
+      if (_isSetupGuiding && poses.isNotEmpty) {
+        _onPoseDuringSetup(poses.first);
+      }
 
       if (_isCalibrated && !_isResting) {
         for (final pose in poses) {
@@ -377,6 +492,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_disposeCameraController());
     _poseDetector.dispose();
+    _guidanceAdvanceTimer?.cancel();
+    _guidanceFallbackTimer?.cancel();
     _calibrationTimer?.cancel();
     _restTimer?.cancel();
     widget.exercise.analyzer.reset();
@@ -422,7 +539,10 @@ class _ExerciseScreenState extends State<ExerciseScreen>
         fit: StackFit.expand,
         children: [
           // Camera Preview
-          CameraPreview(_cameraController!),
+          if (_cameraController != null)
+            CameraPreview(_cameraController!)
+          else
+            const ColoredBox(color: Colors.black),
 
           // Pose Landmarks Overlay. RepaintBoundary keeps the per-frame
           // skeleton repaint from dirtying the camera preview behind it.
@@ -484,17 +604,8 @@ class _ExerciseScreenState extends State<ExerciseScreen>
             ),
           ),
 
-          // Calibration Overlay
-          if (!_isCalibrated)
-            Container(
-              color: Colors.black54,
-              child: Center(
-                child: Text(
-                  '$_calibrationCountdown',
-                  style: AppTextStyles.calibrationCountdown,
-                ),
-              ),
-            ),
+          // Setup Guidance & Calibration Overlay
+          if (!_isCalibrated) _buildStartupOverlay(),
 
           // Rest Overlay
           if (_isResting) _buildRestOverlay(),
@@ -623,6 +734,158 @@ class _ExerciseScreenState extends State<ExerciseScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStartupOverlay() {
+    if (_isSetupGuiding) {
+      final orientation = widget.exercise.analyzer.requiredOrientation;
+      final isSideOn = orientation == ViewOrientation.sideOn;
+
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _startCountdown,
+        child: Container(
+          color: Colors.black87,
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Glowing Icon Badge
+                Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.surface,
+                    border: Border.all(
+                      color: _isOrientationConfirmed
+                          ? AppColors.goodGreen
+                          : AppColors.accentCyan,
+                      width: 2.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_isOrientationConfirmed
+                                ? AppColors.goodGreen
+                                : AppColors.accentCyan)
+                            .withValues(alpha: 0.35),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _isOrientationConfirmed
+                        ? Icons.check_rounded
+                        : (isSideOn
+                            ? Icons.swap_horiz_rounded
+                            : Icons.accessibility_new_rounded),
+                    size: 44,
+                    color: _isOrientationConfirmed
+                        ? AppColors.goodGreen
+                        : AppColors.accentCyan,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Category Header
+                Text(
+                  'CAMERA SETUP',
+                  style: AppTextStyles.setupHeader,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+
+                // Main Instruction Headline
+                Text(
+                  CameraSetupCopy.headlineFor(orientation),
+                  style: AppTextStyles.setupInstruction,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+
+                // Subtext / Description
+                Text(
+                  CameraSetupCopy.subtextFor(orientation),
+                  style: AppTextStyles.setupSubtext,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+
+                // Status Indicator Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: _isOrientationConfirmed
+                        ? AppColors.goodGreen.withValues(alpha: 0.15)
+                        : AppColors.surface.withValues(alpha: 0.6),
+                    border: Border.all(
+                      color: _isOrientationConfirmed
+                          ? AppColors.goodGreen
+                          : AppColors.border,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _isOrientationConfirmed
+                            ? Icons.check_circle_rounded
+                            : Icons.videocam_outlined,
+                        size: 16,
+                        color: _isOrientationConfirmed
+                            ? AppColors.goodGreen
+                            : AppColors.textTertiary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isOrientationConfirmed
+                            ? 'Position confirmed'
+                            : 'Adjust your position...',
+                        style: TextStyle(
+                          color: _isOrientationConfirmed
+                              ? AppColors.goodGreen
+                              : AppColors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 36),
+
+                // Tap to skip hint
+                const Text(
+                  'Tap anywhere to start countdown',
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Countdown Overlay
+    return Container(
+      color: Colors.black54,
+      child: Center(
+        child: Text(
+          '$_calibrationCountdown',
+          style: AppTextStyles.calibrationCountdown,
         ),
       ),
     );

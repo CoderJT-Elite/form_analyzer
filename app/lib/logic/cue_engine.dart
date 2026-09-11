@@ -10,6 +10,8 @@
 /// repeat itself within a single rep.
 library;
 
+import 'pose_orientation.dart';
+
 /// Relative importance. Higher wins when two cues compete.
 enum CuePriority {
   encouragement,
@@ -88,6 +90,48 @@ class CueIds {
   static const String hipsPiked = 'hold.hipsPiked';
 }
 
+/// Setup guidance copy for camera orientation before exercise start.
+///
+/// Reuses the existing phrasings from [CueIds.turnSideOn] and [CueIds.turnFrontOn]
+/// so the athlete hears and sees the same consistent guidance before their set
+/// that they would hear if they drifted out of position mid-set.
+class CameraSetupCopy {
+  const CameraSetupCopy._();
+
+  static const String sideOnSpoken =
+      'Turn side-on to the camera so I can see your form';
+  static const String sideOnHeadline = 'Turn side-on to the camera';
+  static const String sideOnSubtext = 'So I can see your form';
+
+  static const String frontOnSpoken = 'Face the camera';
+  static const String frontOnHeadline = 'Face the camera';
+  static const String frontOnSubtext = 'Turn to face the camera';
+
+  static String spokenFor(ViewOrientation orientation) {
+    return switch (orientation) {
+      ViewOrientation.sideOn => sideOnSpoken,
+      ViewOrientation.frontOn => frontOnSpoken,
+      ViewOrientation.unknown => sideOnSpoken,
+    };
+  }
+
+  static String headlineFor(ViewOrientation orientation) {
+    return switch (orientation) {
+      ViewOrientation.sideOn => sideOnHeadline,
+      ViewOrientation.frontOn => frontOnHeadline,
+      ViewOrientation.unknown => sideOnHeadline,
+    };
+  }
+
+  static String subtextFor(ViewOrientation orientation) {
+    return switch (orientation) {
+      ViewOrientation.sideOn => sideOnSubtext,
+      ViewOrientation.frontOn => frontOnSubtext,
+      ViewOrientation.unknown => sideOnSubtext,
+    };
+  }
+}
+
 /// The default coaching vocabulary.
 const List<CueDefinition> kDefaultCues = [
   CueDefinition(
@@ -110,7 +154,7 @@ const List<CueDefinition> kDefaultCues = [
     priority: CuePriority.setup,
     cooldown: Duration(seconds: 5),
     phrasings: [
-      'Turn side-on to the camera so I can see your form',
+      CameraSetupCopy.sideOnSpoken,
       'Stand sideways to the camera',
     ],
     escalated: ['I still need a side view to check your form'],
@@ -119,7 +163,7 @@ const List<CueDefinition> kDefaultCues = [
     id: CueIds.turnFrontOn,
     priority: CuePriority.setup,
     cooldown: Duration(seconds: 5),
-    phrasings: ['Face the camera', 'Turn to face the camera'],
+    phrasings: [CameraSetupCopy.frontOnSpoken, CameraSetupCopy.frontOnSubtext],
   ),
   CueDefinition(
     id: CueIds.getInFrame,
