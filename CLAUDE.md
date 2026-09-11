@@ -8,6 +8,14 @@ This repo contains two independent products:
 - `app/` — the Flutter mobile app (primary product; see below)
 - `web/` — a static landing page (waitlist signup, deployed via GitHub Pages). Root `index.html` is just a redirect to it.
 
+**Note:** this repo is also connected to a Vercel project (`form_analyzer`, auto-deploys on
+every push to `main`) that mirrors the same `web/` content — likely a leftover from before
+GitHub Pages became the real deploy target, not something actively relied on. Its deployments
+are behind Vercel SSO deployment protection with no exempted custom domain, so **never open one
+of its `*.vercel.app` URLs in a real browser tool (Claude in Chrome, `navigate`, `computer`)** —
+doing so pops a Vercel authentication challenge in whatever browser made the request. If you
+need to confirm a `web/` change deployed, check the real GitHub Pages URL instead.
+
 The app is the priority. Marketing/site work is secondary — keep it lightweight and don't let it block app reliability.
 
 ## Commands

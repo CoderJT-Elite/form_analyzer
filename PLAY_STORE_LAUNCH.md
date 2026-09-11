@@ -259,6 +259,11 @@ is granted. Create the developer account and recruit testers **now** — that cl
 runs in parallel with everything else. Confirm the current requirement in Play
 Console, since Google has changed it more than once.
 
+**Funding is available for the $25 account fee** — tracked in
+`C:\OS\Life\budget.md` (competition winnings, John is 18+ so the account goes under
+his own identity, no parent/guardian workaround needed). This is the one real
+money gap blocking the timeline above; recommended as the first thing to buy.
+
 ### About the bundle size
 
 `app-release.aab` is ~81MB, but a large part of that is debug symbols and the
