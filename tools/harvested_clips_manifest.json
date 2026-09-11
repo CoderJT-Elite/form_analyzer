@@ -1,0 +1,31 @@
+{
+  "plank": [
+    {
+      "id": "6525477",
+      "slug": "video/side-view-of-woman-exercising-legs",
+      "file": "tools\\pose_fixture_footage\\plank\\plank_pexels_6525477.mp4",
+      "size": 5326385
+    },
+    {
+      "id": "7117437",
+      "slug": "video/video-of-a-man-exercising",
+      "file": "tools\\pose_fixture_footage\\plank\\plank_pexels_7117437.mp4",
+      "size": 23486462
+    },
+    {
+      "id": "4945589",
+      "slug": "video/woman-exercising-outdoors",
+      "file": "tools\\pose_fixture_footage\\plank\\plank_pexels_4945589.mp4",
+      "size": 113815914
+    }
+  ],
+  "sidePlank": [],
+  "gluteBridge": [],
+  "situp": [],
+  "jumpingJack": [],
+  "wallSit": [],
+  "overheadPress": [],
+  "lunge": [],
+  "pushup": [],
+  "squat": []
+}
