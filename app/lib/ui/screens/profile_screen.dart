@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
 import '../../models/exercise_model.dart';
+import '../../services/crash_report_service.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 
@@ -31,6 +32,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final StorageService _storageService = StorageService();
+  final CrashReportService _crashReportService = CrashReportService();
   List<WorkoutSession>? _sessions;
   bool _isLoading = true;
   bool _isSyncing = false;
@@ -180,8 +182,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAvatarSection() {
     // No accounts, so no email here — just a photo and name the user can set
-    // themselves (stored on-device only, like everything else) and the
-    // testing-status badge.
+    // themselves (stored on-device only, like everything else), plus a
+    // sync-status badge that only shows up while a backup/restore is running.
     final hasPhoto = _profilePicturePath != null;
 
     return Column(
@@ -275,20 +277,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.accentCyan.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.accentCyan.withValues(alpha: 0.2),
+        if (_isSyncing) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.accentCyan.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.accentCyan.withValues(alpha: 0.2),
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_isSyncing) ...[
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 const SizedBox(
                   width: 10,
                   height: 10,
@@ -307,19 +309,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     letterSpacing: 2,
                   ),
                 ),
-              ] else
-                Text(
-                  'BETA TESTER',
-                  style: GoogleFonts.outfit(
-                    color: AppColors.accentCyan,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2,
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -450,6 +443,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final items = <(IconData, String, Future<void> Function())>[
       (Icons.ios_share_rounded, 'Back Up My Data', _exportData),
       (Icons.download_rounded, 'Restore From Backup', _importData),
+      (Icons.bug_report_outlined, 'Report a Problem', _reportProblem),
       (Icons.security_rounded, 'Privacy Policy', _openPrivacyPolicy),
       (Icons.health_and_safety_outlined, 'Health & Safety', _showDisclaimer),
     ];
@@ -527,6 +521,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } catch (e) {
       _showMessage('Could not create a backup: $e');
+    }
+  }
+
+  /// Share any errors recorded on-device since the last report, or say
+  /// there's nothing to report. Nothing is ever sent automatically — see
+  /// CrashReportService's doc comment and web/privacy.html.
+  Future<void> _reportProblem() async {
+    try {
+      final reports = await _crashReportService.loadReports();
+      if (reports.isEmpty) {
+        _showMessage('No errors have been recorded on this device.');
+        return;
+      }
+
+      final json = const JsonEncoder.withIndent('  ')
+          .convert(reports.map((r) => r.toJson()).toList());
+      final directory = await getTemporaryDirectory();
+      final stamp = DateTime.now().toIso8601String().split('T').first;
+      final file =
+          File('${directory.path}/form-analyzer-error-log-$stamp.json');
+      await file.writeAsString(json);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          fileNameOverrides: ['form-analyzer-error-log-$stamp.json'],
+          subject: 'Form Analyzer error report',
+        ),
+      );
+    } catch (e) {
+      _showMessage('Could not prepare the error report: $e');
     }
   }
 

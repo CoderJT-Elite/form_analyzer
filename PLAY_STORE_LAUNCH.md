@@ -240,13 +240,23 @@ To remove it: download the Outfit and Inter TTFs, put them in
 ## 7. Before you hit submit
 
 - [ ] Privacy policy URL loads in a private browser window (§1a)
-- [ ] Decide which contact email to publish. `web/privacy.html` currently lists
-      your personal Gmail — Play requires a public contact address, so consider a
-      dedicated one instead.
-- [ ] **Back up the upload keystore off this machine.**
-      `C:\Users\natuj\AndroidKeystores\form-analyzer-upload-key.jks` is the only
-      copy. Lose it and you can never update this listing again. Put it in a
-      password manager or encrypted cloud folder, along with the passwords.
+- [x] **Contact email decided (2026-09-11): keep the personal Gmail** already
+      published in `web/privacy.html`. Revisit later if it ever becomes a real
+      support-volume problem, but not a launch blocker.
+- [x] **Upload keystore backed up to Google Drive (2026-09-11).** The `.jks`
+      file itself is uploaded; the passwords in `android/key.properties` are
+      NOT included in that backup (don't want the key and its passwords sitting
+      together in one place) — back those up separately, e.g. a password
+      manager, before you'd actually need to rely on this.
+- [x] **BETA TESTER label removed (2026-09-11)** from the profile screen
+      (`profile_screen.dart`) — it only shows a sync-status pill now, and only
+      while a backup/restore is actually running.
+- [x] **On-device error log added (2026-09-11)**, not a third-party
+      crash-reporting SDK — see `CrashReportService` and the updated
+      `web/privacy.html`. Nothing is sent automatically; the user can share it
+      themselves from Profile → Report a Problem. Doesn't change the Data
+      Safety answer in §3 (still no crash-reporting *service*), but worth
+      knowing this exists if that section is ever revisited.
 - [ ] Install the release build on a real phone and confirm pose detection still
       works after minification, the new icon appears, and voice cues play.
 - [ ] Bump `version:` in `pubspec.yaml` for every subsequent upload.
