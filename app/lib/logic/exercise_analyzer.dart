@@ -855,36 +855,55 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
 
   @override
   void processPose(Pose pose) {
+    final leftShoulderLandmark = pose.landmarks[PoseLandmarkType.leftShoulder];
     final leftElbowLandmark = pose.landmarks[PoseLandmarkType.leftElbow];
     final leftWristLandmark = pose.landmarks[PoseLandmarkType.leftWrist];
+    final rightShoulderLandmark = pose.landmarks[PoseLandmarkType.rightShoulder];
     final rightElbowLandmark = pose.landmarks[PoseLandmarkType.rightElbow];
     final rightWristLandmark = pose.landmarks[PoseLandmarkType.rightWrist];
 
+    final leftVisible = isLandmarkVisible(leftShoulderLandmark) &&
+        isLandmarkVisible(leftElbowLandmark) &&
+        isLandmarkVisible(leftWristLandmark);
+    final rightVisible = isLandmarkVisible(rightShoulderLandmark) &&
+        isLandmarkVisible(rightElbowLandmark) &&
+        isLandmarkVisible(rightWristLandmark);
+
     final leftElbow = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.leftShoulder],
+      leftShoulderLandmark,
       leftElbowLandmark,
       leftWristLandmark,
     );
     final rightElbow = MathUtils.calculateJointAngle(
-      pose.landmarks[PoseLandmarkType.rightShoulder],
+      rightShoulderLandmark,
       rightElbowLandmark,
       rightWristLandmark,
     );
 
-    final leftConfidence = (leftElbowLandmark?.likelihood ?? 0) + (leftWristLandmark?.likelihood ?? 0);
-    final rightConfidence = (rightElbowLandmark?.likelihood ?? 0) + (rightWristLandmark?.likelihood ?? 0);
-    final rawAngle = leftConfidence >= rightConfidence ? leftElbow : rightElbow;
+    // Both arms press together in an overhead press. When both sides are
+    // visible, trust whichever shows genuine lockout (max) for the
+    // lockout/neutral-threshold comparisons that drive phase transitions and
+    // rep-closing, and whichever shows genuine depth (min) for tracking
+    // whether the bottom was reached -- a confidence gap between the two
+    // sides reflects estimation error, not anatomy, the same principle
+    // already applied to Squat/Lunge/GluteBridge. Confirmed against real
+    // stock footage where the higher-confidence (left) arm read up to ~141
+    // degrees for an entire set while the other arm -- still comfortably
+    // visible -- read 156-171 degrees for the same frames; picking a side by
+    // confidence alone missed genuine lockouts for the whole clip.
+    final lockoutAngle = (leftVisible && rightVisible)
+        ? math.max(leftElbow, rightElbow)
+        : (leftVisible ? leftElbow : rightElbow);
+    final bottomAngle = (leftVisible && rightVisible)
+        ? math.min(leftElbow, rightElbow)
+        : (leftVisible ? leftElbow : rightElbow);
 
-    final currentAngle = _angleFilter.add(rawAngle);
+    final currentAngle = _angleFilter.add(lockoutAngle);
     final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
     _prevAngle = currentAngle;
     lastProcessedAngle = currentAngle;
 
-    final shouldersVisible =
-        isLandmarkVisible(pose.landmarks[PoseLandmarkType.leftShoulder]) ||
-            isLandmarkVisible(pose.landmarks[PoseLandmarkType.rightShoulder]);
-
-    if (!shouldersVisible) {
+    if (!leftVisible && !rightVisible) {
       statusMessage = 'Adjust Camera';
       return;
     }
@@ -897,7 +916,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
           phase = RepPhase.eccentric;
           currentRepIssues.clear();
           _reachedBottom = false;
-          _deepestAngle = currentAngle;
+          _deepestAngle = bottomAngle;
           markEccentricStart();
           statusMessage = 'Lower to shoulder level';
         } else {
@@ -906,9 +925,9 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
         break;
 
       case RepPhase.eccentric:
-        _deepestAngle = math.min(_deepestAngle, currentAngle);
+        _deepestAngle = math.min(_deepestAngle, bottomAngle);
 
-        if (currentAngle <= AppConstants.overheadPressStartThreshold) {
+        if (bottomAngle <= AppConstants.overheadPressStartThreshold) {
           _reachedBottom = true;
           currentRepIssues.remove('Insufficient Range');
         }
@@ -924,7 +943,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
           currentRepIssues.clear();
           cues.request(CueIds.fullRange);
         } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
-            currentAngle > AppConstants.overheadPressStartThreshold + deadZone) {
+            bottomAngle > AppConstants.overheadPressStartThreshold + deadZone) {
           addIssue('Insufficient Range');
           cues.request(CueIds.fullRange);
         } else {

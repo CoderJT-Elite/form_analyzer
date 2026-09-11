@@ -256,3 +256,32 @@ All commits were created locally on `main` and **have NOT been pushed to origin*
 1. `a1418a0` - `test: add stock footage pose fixtures and extraction tools for 10 exercises`
 2. `1f68cd4` - `fix(logic): harden exercise analyzers against real footage across all 10 exercises`
 3. `b789ea2` - `test: add regression tests for all 10 exercises on real stock footage`
+
+## 6. Correction (independent verification pass, 2026-09-11)
+
+Section 3's "Found but Not Fixed" item 2 (Overhead Press partial lockout) was **wrong**, caught
+by independently re-deriving this handoff's claims rather than trusting them — the same standard
+this hub always holds these documents to.
+
+`OverheadPressAnalyzer` picked a single arm by ML Kit confidence score (the same bug already
+fixed in `SquatAnalyzer`/`LungeAnalyzer`/`GluteBridgeAnalyzer` elsewhere in this same pass, but
+missed here). Recomputing the raw joint angles directly from the fixture JSON for
+`overheadPress_pexels_32239223` showed the right arm reaching 156-171 degrees repeatedly —
+comfortably past even the *original* 165 degree threshold — while the left arm, consistently
+"more confident," never exceeded ~150. Screenshotting the actual source video confirmed this is
+a shoulder-press *machine* (both arms mechanically constrained together, not free weights) with
+the athlete genuinely locking out repeatedly. The claimed "144 degrees, correctly rejected" was
+an artifact of the confidence-selection bug, not real form.
+
+Applying the same bilateral-extremum fix used for Lunge/GluteBridge (max of both arms for
+lockout, min for bottom-of-press, only when both are visible) also recovered a **6th real rep**
+in `overheadPress_pexels_4367541` that this pass's own "5/5, done" claim missed — confirmed by
+screenshotting that clip's final rep directly (visibly strained final lockout at ~frame 682-715
+of 715). `OverheadPressAnalyzer.processPose` fixed accordingly;
+`stock_footage_regression_test.dart`'s Overhead Press tests updated to `6` and `4` reps with the
+real evidence in their comments. Full suite re-verified: 110/110 passing, `flutter analyze`
+clean. Not pushed, per the same local-only rule as everything else in this pass.
+
+The other "found but not fixed" items (front-facing squat, plank extreme hip pike) were not
+independently re-derived in this pass and should not be assumed correct without the same
+scrutiny.
