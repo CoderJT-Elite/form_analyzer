@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:form_analyzer/core/app_colors.dart';
 import 'package:form_analyzer/models/exercise_model.dart';
 import 'package:form_analyzer/ui/screens/stats_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
