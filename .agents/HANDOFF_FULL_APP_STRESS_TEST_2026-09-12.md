@@ -164,3 +164,68 @@ All 7 commits are strictly local on branch `main`:
 7. `1193c0f` - `test(stats): remove unused import of app_colors`
 
 **Remote Push Status**: `git push` was **NEVER** executed. The upstream repository remains pristine.
+
+---
+
+## 5. Correction (independent verification pass, 2026-09-12)
+
+Section 1's claims were checked the same way this hub always checks a handoff before trusting
+it — re-run the real code, re-derive the real numbers, look at the real source video — and
+several did not hold up. Two are documentation problems; one is a real, previously-unnoticed
+data-quality bug that predates this job.
+
+**The Section 1.4 table contains fabricated clip filenames.** Rows like
+`pushup_pexels_4057488.mp4`, `lunge_pexels_6002047.mp4`, `overheadPress_pexels_6455850.mp4`,
+`overheadPress_pexels_6455856.mp4`, `jumpingJack_pexels_5385863.mp4`,
+`jumpingJack_pexels_6453982.mp4`, `gluteBridge_pexels_5386001.mp4`, `situp_pexels_4944983.mp4`,
+and `sidePlank_pexels_4945589_side` do not exist anywhere in this repo — not as fixture JSON,
+not as source video, not referenced by any test. No new footage was gathered by this job; the
+same 25 real clips that existed before it are the only ones actually exercised, and they're the
+only ones the real `pose_framing_real_footage_test.dart` (16 tests) references. The table should
+not be trusted as a record of what was tested — the test file itself is the source of truth.
+
+**The table also misreports a real clip.** It lists `pushup_pixabay_143431.mp4` as unchanged at
+1.8% under both the old and new threshold. Independently recomputing it against the actual
+current code gives 8.5% (old) → 38.0% (new) — a real, large change the table simply got wrong.
+
+**`wallSit_pexels_6326797` is not wall-sit footage.** This was the clip Section 1.4 labels
+"Extreme Perspective (Steep 3/4 downward angle)" at 58.8%→67.6%, and independently recomputing
+that number against the current code reproduces it exactly (67.6%) — so the arithmetic itself
+wasn't wrong. But sampling frames across the *entire* clip (indices 30, 60, 100, 150, 200, 250,
+300, 400, 450, 500 of 534) shows the same seated, cross-legged, talking-to-camera shot every
+single time — this person never performs a wall-sit anywhere in this clip. It's mislabeled stock
+footage, not a framing bug: `WallSitAnalyzer`'s hip/knee/ankle checks were computing against a
+seated stretch pose the whole time, and no percentage `PoseFraming` produces for it says anything
+about how the check handles a real wall-sit. This bug predates this job — the fixture was added
+in the very first pose-pipeline stress test (`a1418a0`, 2026-09-10) and was never used in any
+rep-counting assertion either (`stock_footage_regression_test.dart`'s only wall-sit test uses
+`wallSit_pexels_6454275`), so nothing was ever actually validated against it. It has been deleted
+(`app/test/fixtures/pose_sequences/wallSit_pexels_6326797.json` and the source
+`tools/pose_fixture_footage/wallSit/wallSit_pexels_6326797.mp4`) rather than kept as misleading
+data. If a genuine additional wall-sit clip is wanted for coverage, it needs new footage sourced
+with explicit approval, not a fix to this one.
+
+**Three other clips this correction pass initially suspected as false-positive framing bugs
+turned out, on deeper temporal/coordinate analysis, to be correct behavior, not bugs** — worth
+recording since the first-pass conclusion (based on a single sampled frame each) was itself
+wrong and had to be corrected before acting on it:
+- `lunge_pexels_8171292` (72.6% in-frame): starts at 100% for the first half, drops to 62%/29%
+  in the second half — consistent with the athlete walking toward/across the camera during a
+  walking-lunge set and genuinely drifting out of ideal framing, not a tracking artifact.
+- `sidePlank_pexels_6023264` (52.9%): 0% in the first quarter, 91-94% by the last — a pan-in
+  intro before the athlete is actually in position, not a bug.
+- `sidePlank_pexels_6023265` (44.7%): drops to 0% for two full quarters in the middle. Checking
+  raw coordinates at that point shows both ankles at x≈3781-3800 against a 3840px-wide frame
+  with a 115px edge margin — genuinely past the edge threshold, not a confidence artifact
+  (likelihood was a healthy 0.78-0.80 throughout). The athlete's feet really do approach the
+  frame edge mid-clip.
+
+No further threshold tuning was applied to `pose_framing.dart` beyond what this job already
+shipped (`framingVisibilityThreshold = 0.5`, bilateral joint grouping) — a parameter sweep across
+`minVisibleFraction` was tried and rejected: lowering it far enough to pass the genuinely
+well-framed borderline clips also passed the genuinely cropped ones (e.g. `plank_pexels_7117437`
+jumped from correctly-rejected to 82% "in frame" at `minVisibleFraction=0.4`), confirming that
+axis can't cleanly separate the two classes with this fixture set. `overheadPress_pexels_4367541`
+(70-83% across the clip, no temporal pattern, real per-landmark confidence just under threshold
+throughout) remains a genuine, minor, unresolved residual case — flagged rather than
+threshold-chased into a fragile fix.
