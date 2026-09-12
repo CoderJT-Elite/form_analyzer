@@ -23,9 +23,31 @@ class PoseFraming {
   /// reasonable confidence.
   static const double edgeMarginFraction = 0.03;
 
-  /// At least this fraction of the exercise's required landmarks must be
-  /// both visible and away from the frame edge to count as "in frame".
+  /// At least this fraction of the exercise's required joints must be
+  /// visible and away from the frame edge to count as "in frame".
   static const double minVisibleFraction = 0.8;
+
+  /// Maps each bilateral landmark to a side-agnostic joint key so that one
+  /// occluded side doesn't count against framing -- self-occlusion of the
+  /// far side is normal and expected when filming side-on or mid-rep (e.g.
+  /// the trailing knee in a side-on squat, or the far elbow in a push-up),
+  /// the same bilateral-extremum reasoning already applied when analyzers
+  /// pick a rep angle (see SquatAnalyzer, OverheadPressAnalyzer, etc. in
+  /// exercise_analyzer.dart). A landmark with no entry here is its own group.
+  static const Map<PoseLandmarkType, String> _jointGroup = {
+    PoseLandmarkType.leftShoulder: 'shoulder',
+    PoseLandmarkType.rightShoulder: 'shoulder',
+    PoseLandmarkType.leftElbow: 'elbow',
+    PoseLandmarkType.rightElbow: 'elbow',
+    PoseLandmarkType.leftWrist: 'wrist',
+    PoseLandmarkType.rightWrist: 'wrist',
+    PoseLandmarkType.leftHip: 'hip',
+    PoseLandmarkType.rightHip: 'hip',
+    PoseLandmarkType.leftKnee: 'knee',
+    PoseLandmarkType.rightKnee: 'knee',
+    PoseLandmarkType.leftAnkle: 'ankle',
+    PoseLandmarkType.rightAnkle: 'ankle',
+  };
 
   /// [imageSize] is the analyzed frame's dimensions in the same pixel space
   /// as the landmark coordinates. When unavailable (e.g. camera not yet
@@ -43,20 +65,29 @@ class PoseFraming {
     final marginX = imageSize.width * edgeMarginFraction;
     final marginY = imageSize.height * edgeMarginFraction;
 
-    var visibleCount = 0;
-    for (final type in requiredLandmarks) {
+    bool isVisibleAndFramed(PoseLandmarkType type) {
       final landmark = pose.landmarks[type];
       if (landmark == null ||
           landmark.likelihood < AppConstants.visibilityThreshold) {
-        continue;
+        return false;
       }
       final nearEdge = landmark.x < marginX ||
           landmark.x > imageSize.width - marginX ||
           landmark.y < marginY ||
           landmark.y > imageSize.height - marginY;
-      if (!nearEdge) visibleCount++;
+      return !nearEdge;
     }
 
-    return visibleCount / requiredLandmarks.length >= minVisibleFraction;
+    final joints = <String, List<PoseLandmarkType>>{};
+    for (final type in requiredLandmarks) {
+      final key = _jointGroup[type] ?? type.toString();
+      joints.putIfAbsent(key, () => []).add(type);
+    }
+
+    final visibleJointCount = joints.values
+        .where((types) => types.any(isVisibleAndFramed))
+        .length;
+
+    return visibleJointCount / joints.length >= minVisibleFraction;
   }
 }
