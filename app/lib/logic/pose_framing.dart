@@ -27,6 +27,13 @@ class PoseFraming {
   /// visible and away from the frame edge to count as "in frame".
   static const double minVisibleFraction = 0.8;
 
+  /// Minimum landmark confidence required for the framing presence check.
+  /// Decoupled from [AppConstants.visibilityThreshold] (0.7), which is tuned
+  /// for precise joint-angle math during rep counting. For framing, 0.5
+  /// matches the pose detector's presence threshold and avoids false
+  /// "step back" cues when well-framed athletes experience minor tracking noise.
+  static const double framingVisibilityThreshold = 0.5;
+
   /// Maps each bilateral landmark to a side-agnostic joint key so that one
   /// occluded side doesn't count against framing -- self-occlusion of the
   /// far side is normal and expected when filming side-on or mid-rep (e.g.
@@ -56,6 +63,7 @@ class PoseFraming {
     required Pose pose,
     required Set<PoseLandmarkType> requiredLandmarks,
     required Size? imageSize,
+    double minLikelihood = framingVisibilityThreshold,
   }) {
     if (requiredLandmarks.isEmpty) return true;
     if (imageSize == null || imageSize.width <= 0 || imageSize.height <= 0) {
@@ -67,8 +75,7 @@ class PoseFraming {
 
     bool isVisibleAndFramed(PoseLandmarkType type) {
       final landmark = pose.landmarks[type];
-      if (landmark == null ||
-          landmark.likelihood < AppConstants.visibilityThreshold) {
+      if (landmark == null || landmark.likelihood < minLikelihood) {
         return false;
       }
       final nearEdge = landmark.x < marginX ||
