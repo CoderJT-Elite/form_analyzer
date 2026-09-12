@@ -29,6 +29,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _loadHistory() async {
     final sessions = await _storage.loadSessions();
+    if (!mounted) return;
     setState(() {
       _sessions = sessions.reversed.toList();
       _isLoading = false;
@@ -325,7 +326,11 @@ class _SessionCard extends StatelessWidget {
                             ),
                           ),
                         Text(
-                          'S$i: ${set.reps} reps',
+                          set.reps > 0
+                              ? 'S$i: ${set.reps} reps'
+                              : (set.duration != null
+                                  ? 'S$i: ${set.duration!.inSeconds}s'
+                                  : 'S$i: 0 reps'),
                           style: GoogleFonts.inter(
                             color: set.isPR
                                 ? AppColors.accentGold
