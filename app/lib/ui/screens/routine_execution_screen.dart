@@ -22,29 +22,34 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
   final StorageService _storage = StorageService();
 
   void _nextExercise() async {
-    if (_currentIndex < widget.routine.exercises.length) {
-      final type = widget.routine.exercises[_currentIndex];
-      final exercise = ExerciseCatalog.exerciseForType(type);
+    if (_currentIndex >= widget.routine.exercises.length) {
+      Navigator.pop(context);
+      return;
+    }
 
-      final result = await Navigator.push<WorkoutSession>(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              ExerciseScreen(exercise: exercise, isRoutineMode: true),
-        ),
-      );
+    final type = widget.routine.exercises[_currentIndex];
+    final exercise = ExerciseCatalog.exerciseForType(type);
 
-      if (result != null) {
-        _completedSessions.add(result);
-      }
+    final result = await Navigator.push<WorkoutSession>(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ExerciseScreen(exercise: exercise, isRoutineMode: true),
+      ),
+    );
 
-      setState(() {
-        _currentIndex++;
-      });
+    if (!mounted) return;
 
-      if (_currentIndex >= widget.routine.exercises.length) {
-        _finishRoutine();
-      }
+    if (result != null) {
+      _completedSessions.add(result);
+    }
+
+    setState(() {
+      _currentIndex++;
+    });
+
+    if (_currentIndex >= widget.routine.exercises.length) {
+      _finishRoutine();
     }
   }
 
@@ -98,7 +103,11 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = _currentIndex / widget.routine.exercises.length;
+    final hasExercises = widget.routine.exercises.isNotEmpty;
+    final progress = hasExercises
+        ? (_currentIndex / widget.routine.exercises.length).clamp(0.0, 1.0)
+        : 0.0;
+    final isFinished = _currentIndex >= widget.routine.exercises.length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -114,13 +123,16 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                     onPressed: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    widget.routine.name.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
+                  Expanded(
+                    child: Text(
+                      widget.routine.name.toUpperCase(),
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -144,7 +156,9 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Exercise ${_currentIndex < widget.routine.exercises.length ? _currentIndex + 1 : widget.routine.exercises.length} of ${widget.routine.exercises.length}',
+                    hasExercises
+                        ? 'Exercise ${_currentIndex < widget.routine.exercises.length ? _currentIndex + 1 : widget.routine.exercises.length} of ${widget.routine.exercises.length}'
+                        : '0 of 0 exercises',
                     style: GoogleFonts.inter(
                       color: Colors.white54,
                       fontSize: 13,
@@ -154,52 +168,80 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                 ],
               ),
             ),
-            const Spacer(),
-            if (_currentIndex < widget.routine.exercises.length)
-              Padding(
-                padding: const EdgeInsets.all(40),
-                child: Column(
-                  children: [
-                    Text(
-                      'NEXT UP',
-                      style: GoogleFonts.inter(
-                        color: AppColors.accentCyan,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      widget.routine.exercises[_currentIndex].name
-                          .toUpperCase(),
-                      style: GoogleFonts.outfit(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-                    SizedBox(
-                      width: 200,
-                      height: 200,
-                      child: GlassContainer(
-                        padding: const EdgeInsets.all(40),
-                        child: Image.asset(
-                          ExerciseCatalog.definitionForType(
-                            widget.routine.exercises[_currentIndex],
-                          ).iconAsset,
-                          width: 80,
-                          height: 80,
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: hasExercises && !isFinished
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'NEXT UP',
+                              style: GoogleFonts.inter(
+                                color: AppColors.accentCyan,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              widget.routine.exercises[_currentIndex].name
+                                  .toUpperCase(),
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.w900,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 32),
+                            SizedBox(
+                              width: 180,
+                              height: 180,
+                              child: GlassContainer(
+                                padding: const EdgeInsets.all(32),
+                                child: Image.asset(
+                                  ExerciseCatalog.definitionForType(
+                                    widget.routine.exercises[_currentIndex],
+                                  ).iconAsset,
+                                  width: 80,
+                                  height: 80,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              hasExercises
+                                  ? Icons.check_circle_outline_rounded
+                                  : Icons.info_outline_rounded,
+                              color: AppColors.accentCyan,
+                              size: 64,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              hasExercises
+                                  ? 'ALL EXERCISES COMPLETE'
+                                  : 'NO EXERCISES IN ROUTINE',
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
-            const Spacer(),
+            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -215,9 +257,13 @@ class _RoutineExecutionScreenState extends State<RoutineExecutionScreen> {
                     shadowColor: AppColors.accentCyan.withValues(alpha: 0.3),
                   ),
                   child: Text(
-                    _currentIndex == 0
-                        ? 'START WORKOUT'
-                        : 'START NEXT EXERCISE',
+                    !hasExercises
+                        ? 'CLOSE'
+                        : isFinished
+                            ? 'FINISH ROUTINE'
+                            : (_currentIndex == 0
+                                ? 'START WORKOUT'
+                                : 'START NEXT EXERCISE'),
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.w900,
                       fontSize: 16,
