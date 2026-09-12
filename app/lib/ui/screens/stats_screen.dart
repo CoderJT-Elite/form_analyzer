@@ -316,11 +316,13 @@ class _StatsScreenState extends State<StatsScreen>
 
   Widget _buildFormRatingCard() {
     final rating = _avgRating;
-    final color = rating >= 4
-        ? AppColors.goodGreen
-        : rating >= 3
-        ? AppColors.warnOrange
-        : AppColors.badRed;
+    final color = rating <= 0
+        ? AppColors.textTertiary
+        : rating >= 4
+            ? AppColors.goodGreen
+            : rating >= 3
+                ? AppColors.warnOrange
+                : AppColors.badRed;
 
     return GlassContainer(
       padding: const EdgeInsets.all(24),
@@ -378,15 +380,32 @@ class _StatsScreenState extends State<StatsScreen>
 
   Widget _buildTrendCard() {
     final points = _recentRatedSessions;
-    final improvement = points.length >= 2
+    final hasEnoughPoints = points.length >= 2;
+    final improvement = hasEnoughPoints
         ? (points.last.overallRating! - points.first.overallRating!)
         : 0.0;
-    final trendColor = improvement >= 0 ? AppColors.goodGreen : AppColors.badRed;
-    final trendLabel = points.length < 2
-        ? 'Need more sessions'
-        : improvement >= 0
-        ? 'Trending up'
-        : 'Trending down';
+
+    final IconData trendIcon;
+    final Color trendColor;
+    final String trendLabel;
+
+    if (!hasEnoughPoints) {
+      trendIcon = Icons.horizontal_rule_rounded;
+      trendColor = AppColors.textSecondary;
+      trendLabel = 'Need more sessions';
+    } else if (improvement > 0) {
+      trendIcon = Icons.trending_up_rounded;
+      trendColor = AppColors.goodGreen;
+      trendLabel = 'Trending up';
+    } else if (improvement < 0) {
+      trendIcon = Icons.trending_down_rounded;
+      trendColor = AppColors.badRed;
+      trendLabel = 'Trending down';
+    } else {
+      trendIcon = Icons.trending_flat_rounded;
+      trendColor = AppColors.accentCyan;
+      trendLabel = 'Maintaining form';
+    }
 
     return GlassContainer(
       padding: const EdgeInsets.all(20),
@@ -406,7 +425,7 @@ class _StatsScreenState extends State<StatsScreen>
           Row(
             children: [
               Icon(
-                improvement >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                trendIcon,
                 color: trendColor,
               ),
               const SizedBox(width: 8),
