@@ -56,6 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final hapticsEnabled = await _storageService.isHapticFeedbackEnabled();
       final picturePath = await _storageService.getProfilePicturePath();
       final displayName = await _storageService.getDisplayName();
+      if (!mounted) return;
       setState(() {
         _sessions = data;
         _voiceCoachingEnabled = voiceEnabled;
@@ -65,6 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
