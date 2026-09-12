@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Gradle's own build output (separate from Flutter's top-level /build/ above) --
+# missing from this file let app/android/build/ show up as untracked after a
+# local `flutter build apk`.
+/android/build/
+/android/app/build/

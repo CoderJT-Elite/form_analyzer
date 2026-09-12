@@ -9,6 +9,7 @@ import '../../core/app_colors.dart';
 import '../../core/app_theme.dart';
 import '../../logic/cue_engine.dart';
 import '../../logic/exercise_analyzer.dart';
+import '../../logic/pose_framing.dart';
 import '../../logic/pose_orientation.dart';
 import '../../models/exercise_model.dart';
 import '../../services/pose_detector_service.dart';
@@ -18,6 +19,10 @@ import '../widgets/glass_container.dart';
 import '../widgets/pose_painter.dart';
 import '../widgets/workout_summary_dialog.dart';
 
+/// What's blocking the pre-exercise setup screen from advancing, in the
+/// priority order they're checked.
+enum SetupIssue { notInFrame, wrongOrientation }
+
 class ExerciseScreen extends StatefulWidget {
   final Exercise exercise;
   final bool isRoutineMode;
@@ -25,6 +30,10 @@ class ExerciseScreen extends StatefulWidget {
   final bool skipCameraInitialization;
   final Duration minGuidanceDuration;
   final Duration maxGuidanceDuration;
+  // Only meaningful alongside skipCameraInitialization: real camera init
+  // always sets the frame size itself, so this exists purely so tests can
+  // exercise PoseFraming's edge/distance logic without a real camera.
+  final Size? imageSizeForTesting;
 
   const ExerciseScreen({
     super.key,
@@ -34,6 +43,7 @@ class ExerciseScreen extends StatefulWidget {
     this.skipCameraInitialization = false,
     this.minGuidanceDuration = const Duration(milliseconds: 1500),
     this.maxGuidanceDuration = const Duration(milliseconds: 4000),
+    this.imageSizeForTesting,
   });
 
   @override
@@ -53,14 +63,22 @@ class ExerciseScreenState extends State<ExerciseScreen>
 
   // Setup guidance & calibration state
   bool _isSetupGuiding = false;
-  bool _isOrientationConfirmed = false;
+  // Which problem (if any) is currently blocking setup, checked in priority
+  // order (framing before orientation -- there's no point telling someone
+  // to turn side-on if half of them isn't even in the shot yet). Null means
+  // nothing is blocking and it's safe to advance to the countdown.
+  SetupIssue? _setupIssue;
   DateTime? _setupStartTime;
   final OrientationTracker _setupOrientationTracker = OrientationTracker();
   Timer? _guidanceAdvanceTimer;
   Timer? _guidanceFallbackTimer;
 
+  // Kept as the external name since that's what existing tests/UI code
+  // already read; it now means "nothing blocking setup" rather than
+  // literally "orientation only".
+  bool get isOrientationConfirmed => _setupIssue == null;
+  SetupIssue? get setupIssue => _setupIssue;
   bool get isSetupGuiding => _isSetupGuiding;
-  bool get isOrientationConfirmed => _isOrientationConfirmed;
   bool get isCalibrated => _isCalibrated;
   int get calibrationCountdown => _calibrationCountdown;
 
@@ -88,7 +106,12 @@ class ExerciseScreenState extends State<ExerciseScreen>
   final ValueNotifier<int> _setCount = ValueNotifier<int>(0);
 
   Size? _imageSize;
-  late InputImageRotation _imageRotation;
+  // Real camera init always overwrites this with the actual mapped
+  // rotation; the default only matters when skipCameraInitialization skips
+  // that step (tests), since the pose overlay's build() reads this
+  // whenever _imageSize is set, independent of whether the camera pipeline
+  // ever ran.
+  InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
   late InputImageFormat _inputImageFormat;
   CameraLensDirection _lensDirection = CameraLensDirection.front;
   String? _errorMessage;
@@ -108,6 +131,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
     _statusMessage.value = widget.exercise.analyzer.statusMessage;
     if (widget.skipCameraInitialization) {
       _isCameraInitialized = true;
+      _imageSize = widget.imageSizeForTesting;
       _startSetupGuidance();
     } else {
       _initialize();
@@ -234,25 +258,29 @@ class ExerciseScreenState extends State<ExerciseScreen>
     _guidanceAdvanceTimer?.cancel();
     _guidanceFallbackTimer?.cancel();
 
-    final orientation = widget.exercise.analyzer.requiredOrientation;
+    // Best guess before any pose data has arrived: assume orientation is
+    // the thing to fix. _onPoseDuringSetup corrects this immediately once a
+    // real frame comes in, e.g. switching to "step back" if that's the
+    // actual problem.
+    const initialIssue = SetupIssue.wrongOrientation;
 
     if (mounted) {
       setState(() {
         _isCalibrated = false;
         _isSetupGuiding = true;
-        _isOrientationConfirmed = false;
+        _setupIssue = initialIssue;
         _setupStartTime = DateTime.now();
         _setupOrientationTracker.reset();
       });
     } else {
       _isCalibrated = false;
       _isSetupGuiding = true;
-      _isOrientationConfirmed = false;
+      _setupIssue = initialIssue;
       _setupStartTime = DateTime.now();
       _setupOrientationTracker.reset();
     }
 
-    _tts.speak(CameraSetupCopy.spokenFor(orientation));
+    _speakForIssue(initialIssue);
 
     _guidanceFallbackTimer = Timer(widget.maxGuidanceDuration, () {
       if (mounted && _isSetupGuiding) {
@@ -261,16 +289,43 @@ class ExerciseScreenState extends State<ExerciseScreen>
     });
   }
 
+  void _speakForIssue(SetupIssue issue) {
+    switch (issue) {
+      case SetupIssue.notInFrame:
+        _tts.speak(CameraSetupCopy.notInFrameSpoken);
+      case SetupIssue.wrongOrientation:
+        _tts.speak(
+          CameraSetupCopy.spokenFor(widget.exercise.analyzer.requiredOrientation),
+        );
+    }
+  }
+
   void _onPoseDuringSetup(Pose pose) {
     if (!_isSetupGuiding) return;
+
+    // Framing is checked first: turning side-on is meaningless advice if
+    // half the athlete isn't even in the shot yet.
+    final inFrame = PoseFraming.isInFrame(
+      pose: pose,
+      requiredLandmarks: widget.exercise.analyzer.activeLandmarkTypes,
+      imageSize: _imageSize,
+    );
 
     final observed = _setupOrientationTracker.update(pose);
     final required = widget.exercise.analyzer.requiredOrientation;
 
-    if (observed == required && !_isOrientationConfirmed) {
-      _isOrientationConfirmed = true;
-      if (mounted) setState(() {});
+    final newIssue = !inFrame
+        ? SetupIssue.notInFrame
+        : (observed == required ? null : SetupIssue.wrongOrientation);
 
+    if (newIssue == _setupIssue) return;
+
+    final wasConfirmed = _setupIssue == null;
+    _setupIssue = newIssue;
+    if (mounted) setState(() {});
+    if (newIssue != null) _speakForIssue(newIssue);
+
+    if (newIssue == null && !wasConfirmed) {
       final startTime = _setupStartTime;
       final elapsed = startTime == null
           ? Duration.zero
@@ -287,6 +342,8 @@ class ExerciseScreenState extends State<ExerciseScreen>
           }
         });
       }
+    } else {
+      _guidanceAdvanceTimer?.cancel();
     }
   }
 
@@ -743,6 +800,30 @@ class ExerciseScreenState extends State<ExerciseScreen>
     if (_isSetupGuiding) {
       final orientation = widget.exercise.analyzer.requiredOrientation;
       final isSideOn = orientation == ViewOrientation.sideOn;
+      final issue = _setupIssue;
+      final isConfirmed = issue == null;
+
+      // Framing gets its own copy; a confirmed or wrong-orientation state
+      // both fall back to the orientation copy, matching the screen's
+      // original behavior of always showing the orientation instruction
+      // except when framing is the actual blocker.
+      final headline = issue == SetupIssue.notInFrame
+          ? CameraSetupCopy.notInFrameHeadline
+          : CameraSetupCopy.headlineFor(orientation);
+      final subtext = issue == SetupIssue.notInFrame
+          ? CameraSetupCopy.notInFrameSubtext
+          : CameraSetupCopy.subtextFor(orientation);
+      final pillText = switch (issue) {
+        null => 'Position confirmed',
+        SetupIssue.notInFrame => 'Step back a little...',
+        SetupIssue.wrongOrientation => 'Adjust your position...',
+      };
+      final badgeIcon = switch (issue) {
+        null => Icons.check_rounded,
+        SetupIssue.notInFrame => Icons.zoom_out_map_rounded,
+        SetupIssue.wrongOrientation =>
+          isSideOn ? Icons.swap_horiz_rounded : Icons.accessibility_new_rounded,
+      };
 
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -762,14 +843,14 @@ class ExerciseScreenState extends State<ExerciseScreen>
                     shape: BoxShape.circle,
                     color: AppColors.surface,
                     border: Border.all(
-                      color: _isOrientationConfirmed
+                      color: isConfirmed
                           ? AppColors.goodGreen
                           : AppColors.accentCyan,
                       width: 2.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (_isOrientationConfirmed
+                        color: (isConfirmed
                                 ? AppColors.goodGreen
                                 : AppColors.accentCyan)
                             .withValues(alpha: 0.35),
@@ -779,13 +860,9 @@ class ExerciseScreenState extends State<ExerciseScreen>
                     ],
                   ),
                   child: Icon(
-                    _isOrientationConfirmed
-                        ? Icons.check_rounded
-                        : (isSideOn
-                            ? Icons.swap_horiz_rounded
-                            : Icons.accessibility_new_rounded),
+                    badgeIcon,
                     size: 44,
-                    color: _isOrientationConfirmed
+                    color: isConfirmed
                         ? AppColors.goodGreen
                         : AppColors.accentCyan,
                   ),
@@ -802,7 +879,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
 
                 // Main Instruction Headline
                 Text(
-                  CameraSetupCopy.headlineFor(orientation),
+                  headline,
                   style: AppTextStyles.setupInstruction,
                   textAlign: TextAlign.center,
                 ),
@@ -810,7 +887,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
 
                 // Subtext / Description
                 Text(
-                  CameraSetupCopy.subtextFor(orientation),
+                  subtext,
                   style: AppTextStyles.setupSubtext,
                   textAlign: TextAlign.center,
                 ),
@@ -824,34 +901,30 @@ class ExerciseScreenState extends State<ExerciseScreen>
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    color: _isOrientationConfirmed
+                    color: isConfirmed
                         ? AppColors.goodGreen.withValues(alpha: 0.15)
                         : AppColors.surface.withValues(alpha: 0.6),
                     border: Border.all(
-                      color: _isOrientationConfirmed
-                          ? AppColors.goodGreen
-                          : AppColors.border,
+                      color: isConfirmed ? AppColors.goodGreen : AppColors.border,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _isOrientationConfirmed
+                        isConfirmed
                             ? Icons.check_circle_rounded
                             : Icons.videocam_outlined,
                         size: 16,
-                        color: _isOrientationConfirmed
+                        color: isConfirmed
                             ? AppColors.goodGreen
                             : AppColors.textTertiary,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _isOrientationConfirmed
-                            ? 'Position confirmed'
-                            : 'Adjust your position...',
+                        pillText,
                         style: TextStyle(
-                          color: _isOrientationConfirmed
+                          color: isConfirmed
                               ? AppColors.goodGreen
                               : AppColors.textSecondary,
                           fontSize: 13,

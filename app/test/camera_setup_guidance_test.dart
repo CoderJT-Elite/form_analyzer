@@ -57,6 +57,7 @@ Future<void> pumpExerciseScreen(
   required FakeTTSService tts,
   Duration minGuidanceDuration = const Duration(milliseconds: 1500),
   Duration maxGuidanceDuration = const Duration(milliseconds: 4000),
+  Size? imageSize,
 }) async {
   SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(
@@ -68,6 +69,7 @@ Future<void> pumpExerciseScreen(
         skipCameraInitialization: true,
         minGuidanceDuration: minGuidanceDuration,
         maxGuidanceDuration: maxGuidanceDuration,
+        imageSizeForTesting: imageSize,
       ),
     ),
   );
@@ -298,6 +300,105 @@ void main() {
       expect(state.isSetupGuiding, isFalse);
       expect(find.text('3'), findsOneWidget);
       expect(tts.spoken, contains('3'));
+    });
+  });
+
+  group('Framing (in-frame) checks', () {
+    testWidgets(
+        'a cropped pose (limbs near the frame edge) is told to step back, '
+        'not to turn side-on', (WidgetTester tester) async {
+      final tts = FakeTTSService();
+      final squatExercise = ExerciseCatalog.exerciseForType(ExerciseType.squat);
+
+      await pumpExerciseScreen(
+        tester,
+        exercise: squatExercise,
+        tts: tts,
+        imageSize: const Size(1000, 1000),
+      );
+
+      // Shoulders pinned near the top edge and ankles near the bottom edge
+      // of a 1000x1000 frame -- half of the squat's 8 required landmarks
+      // sit within PoseFraming's edge margin, well below the 80% threshold.
+      final croppedPose = PoseFixtures.fromLandmarks([
+        PoseFixtures.landmark(PoseLandmarkType.leftShoulder, 500, 2),
+        PoseFixtures.landmark(PoseLandmarkType.rightShoulder, 500, 2),
+        PoseFixtures.landmark(PoseLandmarkType.leftHip, 500, 300),
+        PoseFixtures.landmark(PoseLandmarkType.rightHip, 500, 300),
+        PoseFixtures.landmark(PoseLandmarkType.leftKnee, 500, 600),
+        PoseFixtures.landmark(PoseLandmarkType.rightKnee, 500, 600),
+        PoseFixtures.landmark(PoseLandmarkType.leftAnkle, 500, 998),
+        PoseFixtures.landmark(PoseLandmarkType.rightAnkle, 500, 998),
+      ]);
+
+      final state =
+          tester.state<ExerciseScreenState>(find.byType(ExerciseScreen));
+      state.handleTestPose(croppedPose);
+      await tester.pump();
+
+      expect(state.setupIssue, SetupIssue.notInFrame);
+      expect(state.isOrientationConfirmed, isFalse);
+      expect(find.text('Step back from the camera'), findsOneWidget);
+      expect(find.text('I need to see your whole body'), findsOneWidget);
+      expect(tts.spoken, contains('Step back so I can see all of you'));
+      // The orientation instruction should NOT be showing -- framing takes
+      // priority, and turning side-on wouldn't fix a cropped shot.
+      expect(find.text('Turn side-on to the camera'), findsNothing);
+    });
+
+    testWidgets(
+        'once fully in frame but still misoriented, the orientation copy '
+        'takes over from the framing copy', (WidgetTester tester) async {
+      final tts = FakeTTSService();
+      final squatExercise = ExerciseCatalog.exerciseForType(ExerciseType.squat);
+
+      await pumpExerciseScreen(
+        tester,
+        exercise: squatExercise,
+        tts: tts,
+        imageSize: const Size(1000, 1000),
+      );
+
+      final croppedPose = PoseFixtures.fromLandmarks([
+        PoseFixtures.landmark(PoseLandmarkType.leftShoulder, 500, 2),
+        PoseFixtures.landmark(PoseLandmarkType.rightShoulder, 500, 2),
+        PoseFixtures.landmark(PoseLandmarkType.leftHip, 500, 300),
+        PoseFixtures.landmark(PoseLandmarkType.rightHip, 500, 300),
+        PoseFixtures.landmark(PoseLandmarkType.leftKnee, 500, 600),
+        PoseFixtures.landmark(PoseLandmarkType.rightKnee, 500, 600),
+        PoseFixtures.landmark(PoseLandmarkType.leftAnkle, 500, 998),
+        PoseFixtures.landmark(PoseLandmarkType.rightAnkle, 500, 998),
+      ]);
+
+      final state =
+          tester.state<ExerciseScreenState>(find.byType(ExerciseScreen));
+      state.handleTestPose(croppedPose);
+      await tester.pump();
+      expect(state.setupIssue, SetupIssue.notInFrame);
+
+      // Now comfortably centered and away from every edge (all 8 required
+      // landmarks present, unlike PoseFixtures.torso() which only covers
+      // shoulders/hips), but facing the camera front-on -- a squat needs
+      // side-on. Shoulder/hip spread mirrors PoseFixtures.torso's own
+      // (120/100/160) known-frontOn ratio.
+      final frontOnCentered = PoseFixtures.fromLandmarks([
+        PoseFixtures.landmark(PoseLandmarkType.leftShoulder, 440, 300),
+        PoseFixtures.landmark(PoseLandmarkType.rightShoulder, 560, 300),
+        PoseFixtures.landmark(PoseLandmarkType.leftHip, 450, 460),
+        PoseFixtures.landmark(PoseLandmarkType.rightHip, 550, 460),
+        PoseFixtures.landmark(PoseLandmarkType.leftKnee, 450, 620),
+        PoseFixtures.landmark(PoseLandmarkType.rightKnee, 550, 620),
+        PoseFixtures.landmark(PoseLandmarkType.leftAnkle, 450, 780),
+        PoseFixtures.landmark(PoseLandmarkType.rightAnkle, 550, 780),
+      ]);
+      for (var i = 0; i < AppConstants.orientationDebounceFrames + 1; i++) {
+        state.handleTestPose(frontOnCentered);
+      }
+      await tester.pump();
+
+      expect(state.setupIssue, SetupIssue.wrongOrientation);
+      expect(find.text('Turn side-on to the camera'), findsOneWidget);
+      expect(find.text('Step back from the camera'), findsNothing);
     });
   });
 }

@@ -107,6 +107,14 @@ class CameraSetupCopy {
   static const String frontOnHeadline = 'Face the camera';
   static const String frontOnSubtext = 'Turn to face the camera';
 
+  /// Shown/spoken instead of the orientation copy above when the athlete
+  /// isn't fully in frame yet (too close, or partially cropped out of
+  /// shot) -- reuses [CueIds.getInFrame]'s phrasing for the same reason the
+  /// orientation copy reuses turnSideOn/turnFrontOn.
+  static const String notInFrameSpoken = 'Step back so I can see all of you';
+  static const String notInFrameHeadline = 'Step back from the camera';
+  static const String notInFrameSubtext = 'I need to see your whole body';
+
   static String spokenFor(ViewOrientation orientation) {
     return switch (orientation) {
       ViewOrientation.sideOn => sideOnSpoken,
