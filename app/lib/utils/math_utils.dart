@@ -186,6 +186,28 @@ class MathUtils {
     return math.acos(cosine) * 180 / math.pi;
   }
 
+  /// Degrees [top]-to-[bottom] leans away from vertical (straight down the
+  /// image), 0 being perfectly upright. Used for torso-lean checks (lunge,
+  /// overhead press) where the fault is leaning forward/back, not a joint
+  /// bending -- there's no natural third landmark to form a angle from, so
+  /// this measures against the image's own vertical axis instead.
+  static double degreesFromVertical(PoseLandmark top, PoseLandmark bottom) {
+    final dx = bottom.x - top.x;
+    final dy = bottom.y - top.y;
+    if (dx == 0 && dy == 0) return 0.0;
+    return math.atan2(dx.abs(), dy.abs()) * 180 / math.pi;
+  }
+
+  /// Horizontal offset between [a] and [b] as a fraction of [scale] (a body
+  /// length such as shin or torso length), so the check works the same at
+  /// any camera distance or resolution instead of comparing raw pixels.
+  /// Always non-negative -- callers that care about direction should check
+  /// it separately.
+  static double horizontalOffsetRatio(PoseLandmark a, PoseLandmark b, double scale) {
+    if (scale < AppConstants.minMagnitude) return 0.0;
+    return (a.x - b.x).abs() / scale;
+  }
+
   /// Returns true when all Z values are finite and not near zero.
   /// 'Near zero' here means every Z coordinate is below [AppConstants.minMagnitude]
   /// in absolute magnitude, indicating the depth channel contains no useful data.

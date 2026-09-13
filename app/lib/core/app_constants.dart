@@ -36,6 +36,13 @@ class AppConstants {
   // Squat scoring penalties
   static const double squatRoundedBackPenalty = 0.3;
   static const double squatCriticalBackRoundingPenalty = 0.5;
+  static const double squatInsufficientDepthPenalty = 0.3;
+  static const double squatUnevenSidesPenalty = 0.15;
+  static const double squatKneeValgusPenalty = 0.2;
+
+  // Knees drifting inward (valgus) relative to the hip-ankle stance width.
+  // Only meaningful front-on, same as the existing asymmetry check.
+  static const double squatKneeValgusRatio = 0.65;
 
   static const double pushupDepthThreshold = 90.0;
   static const double pushupNeutralThreshold = 155.0;
@@ -44,19 +51,71 @@ class AppConstants {
   // Failing to finish a rep at full extension is a real fault, not just a note.
   static const double incompleteLockoutPenalty = 0.15;
 
+  // Push-up hip line: straight shoulder-hip-knee, same idea as plank.
+  static const double pushupBackAngleMin = 155.0;
+  static const double pushupHipAlignmentPenalty = 0.25;
+
   static const double lungeDepthThreshold = 100.0;
   static const double lungeNeutralThreshold = 155.0;
   static const double lungeInsufficientDepthPenalty = 0.3;
 
+  /// Front knee drifting past the toe, as a fraction of shin length.
+  static const double lungeKneePastToeRatio = 0.35;
+  static const double lungeKneePastToePenalty = 0.2;
+
+  /// Forward/back torso lean during a lunge, in degrees from vertical.
+  static const double lungeTorsoLeanMaxDegrees = 25.0;
+  static const double lungeTorsoLeanPenalty = 0.2;
+
   static const double overheadPressStartThreshold = 100.0;
   static const double overheadPressLockoutThreshold = 152.0;
   static const double overheadPressInsufficientRangePenalty = 0.3;
+
+  /// Wrist horizontal offset from directly above the elbow, as a fraction of
+  /// forearm length -- catches the wrist flaring out to the side.
+  static const double overheadPressWristOffsetRatio = 0.35;
+  static const double overheadPressWristOffsetPenalty = 0.2;
+
+
+  // Sit-up
+  static const double situpAsymmetryDegreesThreshold = 15.0;
+  static const double situpAsymmetryPenalty = 0.15;
+  // Straight-leg sit-ups (knee angle above this) load the hip flexors and
+  // lower back instead of the abdominals.
+  static const double situpKneeStraightAngle = 150.0;
+  static const double situpStraightLegPenalty = 0.2;
+
+  // Jumping jack
+  // Ankle-to-ankle spread below this multiple of shoulder width is a
+  // half-hearted jack that only moved the arms.
+  static const double jumpingJackFeetSpreadRatio = 1.3;
+  static const double jumpingJackFeetSpreadPenalty = 0.2;
+  static const double jumpingJackAsymmetryDegreesThreshold = 20.0;
+  static const double jumpingJackAsymmetryPenalty = 0.15;
 
   // Joint angles come from acos and are therefore unsigned, in [0, 180]. A
   // straight plank measures near 180 and BOTH sagging and piking pull it down,
   // so the angle alone cannot tell them apart — the hip's position relative to
   // the shoulder-knee line supplies the direction.
   static const double plankBackAngleMin = 160.0;
+
+  // Elbow horizontal offset from directly under the shoulder, as a fraction
+  // of torso length (shoulder-to-hip distance).
+  static const double plankElbowOffsetRatio = 0.4;
+  static const double sidePlankElbowOffsetRatio = 0.5;
+
+  static const double plankHipAsymmetryDegreesThreshold = 15.0;
+
+  // Wall sit
+  // Knee drifting past the toe, as a fraction of shin length -- same idea as
+  // the lunge check above.
+  static const double wallSitKneePastToeRatio = 0.35;
+  static const double wallSitAsymmetryDegreesThreshold = 15.0;
+
+  // Side plank
+  // Straight legs (hip-knee-ankle near 180) is the goal; below this the
+  // bottom knee is bending.
+  static const double sidePlankStraightLegAngleMin = 160.0;
 
   // Coaching
   /// Lowering faster than this is a drop, not a controlled eccentric.

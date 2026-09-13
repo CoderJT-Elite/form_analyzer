@@ -88,6 +88,14 @@ class CueIds {
 
   static const String hipsSagging = 'hold.hipsSagging';
   static const String hipsPiked = 'hold.hipsPiked';
+
+  static const String rushedTempo = 'tempo.rushed';
+  static const String kneeValgus = 'form.kneeValgus';
+  static const String kneePastToe = 'form.kneePastToe';
+  static const String torsoLean = 'form.torsoLean';
+  static const String straightenLegs = 'form.straightenLegs';
+  static const String feetNotSpread = 'form.feetNotSpread';
+  static const String elbowsOut = 'form.elbowsOut';
 }
 
 /// Setup guidance copy for camera orientation before exercise start.
@@ -243,6 +251,51 @@ const List<CueDefinition> kDefaultCues = [
     repeatableWithinRep: true,
     phrasings: ['Lower your hips', 'Drop your hips into line'],
     escalated: ['Hips are too high — flatten your body out'],
+  ),
+  CueDefinition(
+    id: CueIds.rushedTempo,
+    priority: CuePriority.tempo,
+    cooldown: Duration(seconds: 4),
+    phrasings: ['Slow that down', 'Control the movement'],
+    escalated: ['Way too fast — take your time on the way down'],
+  ),
+  CueDefinition(
+    id: CueIds.kneeValgus,
+    priority: CuePriority.safety,
+    cooldown: Duration(milliseconds: 3000),
+    repeatableWithinRep: true,
+    phrasings: ['Push your knees out', 'Track knees over your toes'],
+    escalated: ['Knees are caving in — push them out'],
+  ),
+  CueDefinition(
+    id: CueIds.kneePastToe,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 4),
+    phrasings: ['Keep your knee behind your toes', 'Shift weight back a little'],
+  ),
+  CueDefinition(
+    id: CueIds.torsoLean,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 4),
+    phrasings: ['Keep your chest up', 'Stay more upright'],
+  ),
+  CueDefinition(
+    id: CueIds.straightenLegs,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 4),
+    phrasings: ['Keep your legs straight', 'Straighten those knees'],
+  ),
+  CueDefinition(
+    id: CueIds.feetNotSpread,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 4),
+    phrasings: ['Feet wider', 'Jump your feet further out'],
+  ),
+  CueDefinition(
+    id: CueIds.elbowsOut,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 4),
+    phrasings: ['Elbows under your shoulders', 'Stack your elbows under you'],
   ),
 ];
 
