@@ -178,6 +178,13 @@ abstract class ExerciseAnalyzer {
   /// counted from a camera on the floor facing the athlete.
   bool acceptsOrientation(ViewOrientation observed) => observed == requiredOrientation;
 
+  /// Whether the poses fed to this analyzer are levelled to a *known* gravity.
+  /// When the accelerometer is missing (or the phone lies flat) they are not, and
+  /// a plank filmed with the phone on its side looks exactly like a person
+  /// standing up. Checks that ask "is the body lying flat?" only mean something
+  /// when this is true.
+  bool gravityKnown = true;
+
   /// Whether joint angles may use ML Kit's depth estimate. Exercises filmed in
   /// a plane facing the camera measure in the image plane only.
   bool get uses3dAngles => true;
@@ -1900,7 +1907,7 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
     // gravity-aligned. Upright is standing up (or leaning on a wall, which is
     // not a plank however straight the line): not in position, and no time is
     // credited. Bending the line, by contrast, is bad form, not leaving.
-    final flat =
+    final flat = !gravityKnown ||
         HipLineJudge.tiltFromHorizontal(shoulder, knee) <= AppConstants.holdMaxTiltDegrees;
     final settled = _gate.update(flat, now());
     if (!flat) return _notInPlank;
@@ -2505,7 +2512,7 @@ class SidePlankAnalyzer extends TimedExerciseAnalyzer {
     final bodyAngle = MathUtils.calculateJointAngle(shoulder, hip, ankle);
     lastProcessedAngle = bodyAngle;
 
-    final flat =
+    final flat = !gravityKnown ||
         HipLineJudge.tiltFromHorizontal(shoulder, ankle) <= AppConstants.holdMaxTiltDegrees;
     final settled = _gate.update(flat, now());
     if (!flat) return _notInPlank;

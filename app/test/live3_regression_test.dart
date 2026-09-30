@@ -75,14 +75,18 @@ void main() {
     expect(run.issues.containsAll({'Hips Sagging', 'Hips Piked'}), isFalse);
   });
 
-  test('plank: a wall lean is not credited as a floor plank, and the athlete is told', () {
+  test('plank: a floor plank filmed with the phone on its side is credited in full', () {
     final run = replay('live3_plank', (c) => PlankAnalyzer(clock: c));
     expect(run.analyzer.isTimedHold, isTrue);
-    // The set was leaning on a wall, 65 degrees from horizontal. That is not a
-    // plank however straight the line, so no time is banked -- but the athlete
-    // hears why instead of watching the timer refuse to move.
-    expect(run.analyzer.repCount, lessThan(4));
-    expect(run.cues.any((c) => c.toLowerCase().contains('plank position')), isTrue);
+    // About 18-20 real seconds, on the floor, phone turned on its side. Levelled
+    // by gravity (as the app does) the body lies flat and the hold is credited;
+    // the old code credited 12 and, unlevelled, called it a body standing up.
+    expect(run.analyzer.repCount, inInclusiveRange(16, 22));
+    // Getting down and getting up may prompt "get into plank position"; the
+    // middle of the hold must not.
+    final midHold = run.timedCues.where(
+        (e) => e.$1 > 4 && e.$1 < 17 && e.$2.toLowerCase().contains('plank position'));
+    expect(midHold, isEmpty);
   });
 
   test('plank: never calls the hips both too high and too low in quick succession', () {

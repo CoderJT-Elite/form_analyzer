@@ -609,6 +609,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
       // the poses that come back belong to the rotation they were detected in.
       final detectionRotation = _detectionRotation;
       final gravity = _gravityFrame;
+      final gravityKnown = _gravity.estimate != null;
       final inputImage = _poseDetector.buildInputImage(
         image: image,
         rotation: detectionRotation,
@@ -636,6 +637,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
         if (_pausedForPhoneMotion()) {
           // The phone is being carried: nothing it sees is the exercise.
         } else {
+          widget.exercise.analyzer.gravityKnown = gravityKnown;
           for (final pose in poses) {
             // Analyzers are written for an upright phone; level the pose first.
             widget.exercise.analyzer.processPose(normalizePose(pose, gravity));

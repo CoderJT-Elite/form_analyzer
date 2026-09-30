@@ -335,6 +335,22 @@ void main() {
       expect(analyzer.statusMessage, contains('plank'));
     });
 
+    test('without a known gravity a sideways plank is not mistaken for standing', () {
+      // No accelerometer: a plank filmed with the phone on its side is
+      // indistinguishable from a person upright, so it must not be refused.
+      analyzer.gravityKnown = false;
+      Pose sideways(Pose p) => PoseFixtures.fromLandmarks([
+            for (final lm in p.landmarks.values)
+              PoseFixtures.landmark(lm.type, -lm.y, lm.x, likelihood: lm.likelihood),
+          ]);
+      final evaluation = judgeAfter(sideways(PoseFixtures.plank(backAngle: 178)), 3)!;
+      expect(evaluation.leftPosition, isFalse);
+      expect(evaluation.isCorrect, isTrue);
+
+      hold(sideways(PoseFixtures.plank(backAngle: 178)), 6);
+      expect(analyzer.repCount, greaterThanOrEqualTo(3));
+    });
+
     test('returns null when landmarks are missing', () {
       expect(analyzer.evaluateHold(PoseFixtures.empty()), isNull);
       analyzer.processPose(PoseFixtures.empty());

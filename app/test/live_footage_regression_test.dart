@@ -87,13 +87,10 @@ void main() {
   test('plank: a timed hold, credited as time, with no rapid hip contradictions', () {
     final run = replay('live2_plank', (c) => PlankAnalyzer(clock: c));
     expect(run.analyzer.isTimedHold, isTrue);
-    // This "plank" was leaning on a wall for most of its 36 seconds (the body
-    // sits 65-85 degrees from horizontal), which is not a floor plank; only the
-    // stretch actually near the floor position is credited. The old code
-    // credited 14 for a dropout-riddled hold and called the hips both too high
-    // and too low within 0.2 seconds; the dropout side is covered in
-    // live_test_fixes_test.dart.
-    expect(run.analyzer.repCount, greaterThan(0));
+    // A ~36 second floor plank with the phone on its side and repeated landmark
+    // dropouts. The old code credited 14 and called the hips both too high and
+    // too low within 0.2 seconds.
+    expect(run.analyzer.repCount, greaterThanOrEqualTo(25));
     expect(oppositeHipCallsWithin(run, const Duration(milliseconds: 1500)), isEmpty);
   });
 }
