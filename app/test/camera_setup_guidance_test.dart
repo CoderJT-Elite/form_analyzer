@@ -307,6 +307,45 @@ void main() {
     });
   });
 
+  group('Setup never counts down at an empty room', () {
+    testWidgets('with nobody in frame the fallback timeout does not start the countdown',
+        (WidgetTester tester) async {
+      final tts = FakeTTSService();
+      final squatExercise = ExerciseCatalog.exerciseForType(ExerciseType.squat);
+
+      await pumpExerciseScreen(
+        tester,
+        exercise: squatExercise,
+        tts: tts,
+        minGuidanceDuration: const Duration(milliseconds: 1000),
+        maxGuidanceDuration: const Duration(milliseconds: 4000),
+      );
+      final state = tester.state<ExerciseScreenState>(find.byType(ExerciseScreen));
+
+      // Live test #3 counted down in all 8 sets while the athlete was still
+      // placing the phone, because the fallback fired on a timer alone.
+      await tester.pump(const Duration(seconds: 10));
+      expect(state.isSetupGuiding, isTrue);
+      expect(find.text('CAMERA SETUP'), findsOneWidget);
+      expect(tts.spoken, isNot(contains('3')));
+    });
+
+    testWidgets('the athlete can still start it by tapping', (WidgetTester tester) async {
+      final tts = FakeTTSService();
+      final squatExercise = ExerciseCatalog.exerciseForType(ExerciseType.squat);
+
+      await pumpExerciseScreen(tester, exercise: squatExercise, tts: tts);
+      final state = tester.state<ExerciseScreenState>(find.byType(ExerciseScreen));
+      await tester.pump(const Duration(seconds: 6));
+      expect(state.isSetupGuiding, isTrue);
+
+      await tester.tap(find.text('CAMERA SETUP'));
+      await tester.pump();
+      expect(state.isSetupGuiding, isFalse);
+      expect(tts.spoken, contains('3'));
+    });
+  });
+
   group('Framing (in-frame) checks', () {
     testWidgets(
         'a cropped pose (limbs near the frame edge) is told to step back, '

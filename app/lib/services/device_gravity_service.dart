@@ -5,6 +5,7 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../logic/gravity_frame.dart';
+import '../logic/phone_motion.dart';
 
 /// One raw accelerometer reading, kept for the session recorder so the
 /// device-axis conventions can be verified against real captures.
@@ -23,10 +24,15 @@ class AccelerometerSample {
 /// sensor is missing or the phone lies flat, the last known answer (or plain
 /// portrait) is used, which is exactly the behaviour before this existed.
 class DeviceGravityService {
-  DeviceGravityService({Stream<AccelerometerSample> Function()? source})
-      : _source = source ?? _sensorStream;
+  DeviceGravityService({
+    Stream<AccelerometerSample> Function()? source,
+    DateTime Function()? clock,
+  })  : _source = source ?? _sensorStream,
+        _now = clock ?? DateTime.now;
 
   final Stream<AccelerometerSample> Function() _source;
+  final DateTime Function() _now;
+  final PhoneMotionMonitor _motion = PhoneMotionMonitor();
 
   static Stream<AccelerometerSample> _sensorStream() => accelerometerEventStream(
         samplingPeriod: SensorInterval.gameInterval,
@@ -55,11 +61,19 @@ class DeviceGravityService {
 
   bool get isRunning => _subscription != null;
 
+  /// True while the phone is being picked up or carried, as opposed to lying
+  /// still (floor vibration does not count).
+  bool get phoneIsMoving => _motion.isMoving;
+
+  /// When the current bout of movement began.
+  DateTime? get phoneMovingSince => _motion.movingSince;
+
   void start({required bool frontCamera, required int sensorOrientation}) {
     _front = frontCamera;
     _sensorOrientation = sensorOrientation;
     _estimate = null;
     _ax = _ay = _az = null;
+    _motion.reset();
     _subscription?.cancel();
     try {
       _subscription = _source().listen(_onSample, onError: (Object _) {});
@@ -70,6 +84,8 @@ class DeviceGravityService {
   }
 
   void _onSample(AccelerometerSample s) {
+    // Motion is judged from the raw reading; the filtered one is for direction.
+    _motion.addSample(s.x, s.y, s.z, _now());
     _ax = _ax == null ? s.x : _ax! + smoothing * (s.x - _ax!);
     _ay = _ay == null ? s.y : _ay! + smoothing * (s.y - _ay!);
     _az = _az == null ? s.z : _az! + smoothing * (s.z - _az!);

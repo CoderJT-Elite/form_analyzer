@@ -1,18 +1,22 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_constants.dart';
 import '../../core/app_theme.dart';
 import '../../logic/cue_engine.dart';
 import '../../logic/exercise_analyzer.dart';
 import '../../logic/gravity_frame.dart';
 import '../../logic/pose_framing.dart';
+import '../../logic/presence_tracker.dart';
 import '../../logic/pose_normalizer.dart';
 import '../../logic/pose_orientation.dart';
+import '../../logic/pose_validity.dart';
 import '../../models/exercise_model.dart';
 import '../../services/device_gravity_service.dart';
 import '../../services/pose_detector_service.dart';
@@ -58,6 +62,8 @@ class ExerciseScreenState extends State<ExerciseScreen>
   CameraController? _cameraController;
   final PoseDetectorService _poseDetector = PoseDetectorService();
   final DeviceGravityService _gravity = DeviceGravityService();
+  final PoseValidator _validator = PoseValidator();
+  final PresenceTracker _presence = PresenceTracker();
   late final TTSService _tts;
   final StorageService _storage = StorageService();
 
@@ -76,6 +82,15 @@ class ExerciseScreenState extends State<ExerciseScreen>
   final OrientationTracker _setupOrientationTracker = OrientationTracker();
   Timer? _guidanceAdvanceTimer;
   Timer? _guidanceFallbackTimer;
+
+  /// Watches for the end of a set once counting has begun.
+  Timer? _setWatchTimer;
+  bool _setOverHinted = false;
+
+  /// The last time setup saw an athlete properly in frame. The fallback that
+  /// starts the countdown anyway needs this to be recent: with nobody there,
+  /// starting proves nothing (live test #3 counted down at an empty room).
+  DateTime? _lastSetupInFrameAt;
 
   // Kept as the external name since that's what existing tests/UI code
   // already read; it now means "nothing blocking setup" rather than
@@ -360,13 +375,40 @@ class ExerciseScreenState extends State<ExerciseScreen>
     }
 
     _setupSpokenAt.clear();
+    _lastSetupInFrameAt = null;
+    _presence.reset();
     _speakForIssue(initialIssue);
 
-    _guidanceFallbackTimer = Timer(widget.maxGuidanceDuration, () {
-      if (mounted && _isSetupGuiding) {
-        _startCountdown();
-      }
-    });
+    _guidanceFallbackTimer = Timer(widget.maxGuidanceDuration, _fallbackStart);
+  }
+
+  /// After the guidance has run its course, start anyway even if the
+  /// orientation is not quite right -- but only if an athlete really is in
+  /// frame and the phone is still. Otherwise keep waiting: the countdown used to
+  /// fire on a timer alone, at an empty room or a phone still being propped up
+  /// (all 8 sets of live test #3), and analysis then ran on garbage.
+  void _fallbackStart() {
+    if (!mounted || !_isSetupGuiding) return;
+    final seen = _lastSetupInFrameAt;
+    final athleteThere =
+        seen != null && DateTime.now().difference(seen) < const Duration(milliseconds: 1500);
+    if (athleteThere && !_gravity.phoneIsMoving) {
+      _startCountdown();
+      return;
+    }
+    _guidanceFallbackTimer = Timer(const Duration(milliseconds: 500), _fallbackStart);
+  }
+
+  /// Start the countdown once the phone has stopped moving.
+  void _advanceWhenReady() {
+    if (!mounted || !_isSetupGuiding) return;
+    if (_gravity.phoneIsMoving) {
+      _guidanceAdvanceTimer?.cancel();
+      _guidanceAdvanceTimer =
+          Timer(const Duration(milliseconds: 400), _advanceWhenReady);
+      return;
+    }
+    _startCountdown();
   }
 
   // The framing check can flip between "step back" and "turn side-on" every
@@ -407,6 +449,8 @@ class ExerciseScreenState extends State<ExerciseScreen>
           : PoseCoordinates.frameSize(raw, poseRotation ?? _imageRotation),
     );
 
+    if (inFrame) _lastSetupInFrameAt = DateTime.now();
+
     final observed = _setupOrientationTracker.update(pose);
 
     final newIssue = !inFrame
@@ -430,14 +474,10 @@ class ExerciseScreenState extends State<ExerciseScreen>
       final remaining = widget.minGuidanceDuration - elapsed;
 
       if (remaining <= Duration.zero) {
-        _startCountdown();
+        _advanceWhenReady();
       } else {
         _guidanceAdvanceTimer?.cancel();
-        _guidanceAdvanceTimer = Timer(remaining, () {
-          if (mounted && _isSetupGuiding) {
-            _startCountdown();
-          }
-        });
+        _guidanceAdvanceTimer = Timer(remaining, _advanceWhenReady);
       }
     } else {
       _guidanceAdvanceTimer?.cancel();
@@ -462,6 +502,13 @@ class ExerciseScreenState extends State<ExerciseScreen>
         timer.cancel();
         return;
       }
+      // Counting down while the phone is still being propped up starts the set
+      // on the wrong picture. Go back to guidance until it is still.
+      if (_gravity.phoneIsMoving) {
+        timer.cancel();
+        _startSetupGuidance();
+        return;
+      }
       setState(() {
         if (_calibrationCountdown > 1) {
           _calibrationCountdown--;
@@ -470,9 +517,34 @@ class ExerciseScreenState extends State<ExerciseScreen>
           _isCalibrated = true;
           _calibrationTimer?.cancel();
           _tts.speak("Go!", priority: SpeechPriority.urgent);
+          _startSetWatch();
         }
       });
     });
+  }
+
+  /// Once the set is under way, notice when it has ended: the athlete walks off
+  /// (nobody in the shot) or picks the phone up to stop. Counting stops on its
+  /// own in the second case; this tells the athlete the set can be saved.
+  void _startSetWatch() {
+    _setWatchTimer?.cancel();
+    _setOverHinted = false;
+    _presence.reset();
+    _setWatchTimer = Timer.periodic(const Duration(seconds: 1), (_) => _checkSetOver());
+  }
+
+  void _checkSetOver() {
+    if (!mounted || !_isCalibrated || _isResting) return;
+    if (widget.exercise.analyzer.repCount == 0) return;
+    final over = _presence.hasBeenAbsentFor(AppConstants.setOverAbsence) ||
+        _gravity.phoneIsMoving;
+    if (over && !_setOverHinted) {
+      _setOverHinted = true;
+      _statusMessage.value = 'Set done? Tap the check to save it.';
+    } else if (!over && _setOverHinted) {
+      _setOverHinted = false;
+      _statusMessage.value = widget.exercise.analyzer.displayMessage;
+    }
   }
 
   Future<void> _processImage(CameraImage image) async {
@@ -501,24 +573,40 @@ class ExerciseScreenState extends State<ExerciseScreen>
         format: _inputImageFormat,
       );
 
-      final poses = await _poseDetector.processImage(inputImage);
+      final detected = await _poseDetector.processImage(inputImage);
 
       if (!mounted) return;
+
+      // Drop "poses" that are not an athlete (a barbell plate, a blurred face
+      // close-up while the phone is put down): they neither count nor draw.
+      final raw = _imageSize;
+      final poses = raw == null
+          ? detected
+          : detected
+              .where((p) => _validator.accepts(p, PoseCoordinates.frameSize(raw, detectionRotation)))
+              .toList();
 
       if (_isSetupGuiding && poses.isNotEmpty) {
         _onPoseDuringSetup(poses.first, poseRotation: detectionRotation);
       }
 
       if (_isCalibrated && !_isResting) {
-        for (final pose in poses) {
-          // Analyzers are written for an upright phone; level the pose first.
-          widget.exercise.analyzer.processPose(normalizePose(pose, gravity));
+        if (_pausedForPhoneMotion()) {
+          // The phone is being carried: nothing it sees is the exercise.
+        } else {
+          for (final pose in poses) {
+            // Analyzers are written for an upright phone; level the pose first.
+            widget.exercise.analyzer.processPose(normalizePose(pose, gravity));
+          }
+          if (!_setOverHinted) {
+            _statusMessage.value = widget.exercise.analyzer.displayMessage;
+          }
         }
-        _statusMessage.value = widget.exercise.analyzer.displayMessage;
       }
 
       // Notifier assignment instead of setState: only the skeleton overlay
       // repaints, leaving CameraPreview and the surrounding chrome alone.
+      _presence.frame(athleteVisible: poses.isNotEmpty);
       _posesRotation = detectionRotation;
       _poses.value = poses;
     } catch (e) {
@@ -528,65 +616,121 @@ class ExerciseScreenState extends State<ExerciseScreen>
     }
   }
 
+  bool _wasPhoneMoving = false;
+
+  /// True while the phone is being picked up or carried. On the moment it starts
+  /// moving, take back reps counted just before -- that is the athlete walking
+  /// up to the phone, and what the camera sees then is not the exercise.
+  bool _pausedForPhoneMotion() {
+    final moving = _gravity.phoneIsMoving;
+    final analyzer = widget.exercise.analyzer;
+    if (moving && !_wasPhoneMoving) {
+      final since = (_gravity.phoneMovingSince ?? DateTime.now())
+          .subtract(AppConstants.phoneMotionRetractWindow);
+      analyzer.retractRepsSince(since);
+      analyzer.interrupt();
+      _repCount.value = analyzer.repCount;
+      _statusMessage.value = 'Phone moved - paused';
+    } else if (!moving && _wasPhoneMoving) {
+      _statusMessage.value = analyzer.displayMessage;
+    }
+    _wasPhoneMoving = moving;
+    return moving;
+  }
+
   void _onFinishWorkout() async {
+    final analyzer = widget.exercise.analyzer;
     final sets = List<ExerciseSet>.from(_completedSets);
+    double? rating;
+    List<String> feedback = const [];
     if (_repCount.value > 0) {
-      final setPerformance = widget.exercise.analyzer.getPerformanceMetrics();
+      final setPerformance = analyzer.getPerformanceMetrics();
+      rating = setPerformance.averageFormScore;
+      feedback = setPerformance.commonIssues;
       sets.add(
         ExerciseSet(
           reps: _repCount.value,
           timestamp: DateTime.now(),
           rating: setPerformance.averageFormScore,
           feedback: setPerformance.commonIssues,
-          repRecords: List.of(widget.exercise.analyzer.repRecords),
+          repRecords: List.of(analyzer.repRecords),
         ),
       );
     }
     if (sets.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Complete at least one rep before finishing.'),
-          ),
-        );
+      // Nothing was counted. That is not the same as nothing happening: the
+      // counter may have missed a whole set (it did, twice, on live test #3),
+      // and throwing it away with a snackbar lost the athlete's work.
+      final choice = await _askAboutEmptySet();
+      if (!mounted || choice == null) return; // keep going
+      if (choice == _EmptySetSheet.discard) {
+        Navigator.pop(context);
+        return;
       }
-      return;
+      sets.add(
+        ExerciseSet(
+          reps: choice,
+          countedReps: 0,
+          timestamp: DateTime.now(),
+          rating: 0,
+        ),
+      );
+      rating = null; // no counted reps, so no form score
+    } else if (rating == null) {
+      // Finished right after "finish set": the analyzer has been reset, so rate
+      // the workout from the sets that were saved rather than from nothing.
+      final rated = sets.where((s) => s.counted > 0).toList();
+      rating = rated.isEmpty
+          ? null
+          : rated.fold<double>(0, (sum, s) => sum + s.rating) / rated.length;
     }
-
-    final performance = widget.exercise.analyzer.getPerformanceMetrics();
 
     final session = WorkoutSession(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       date: DateTime.now(),
       exerciseType: widget.exercise.type,
       sets: sets,
-      overallRating: performance.averageFormScore,
-      overallFeedback: performance.commonIssues,
+      overallRating: rating,
+      overallFeedback: feedback,
     );
 
     // Read the previous rating for this exercise before saving, so the
     // comparison is against the last session rather than this one.
     final previousRating = await _previousRatingForExercise();
 
-    // Save standalone session if not in routine mode
-    if (!widget.isRoutineMode) {
-      await _storage.saveSession(session);
-    }
+    if (!mounted) return;
+    // The session is saved when the athlete confirms, so a corrected rep count
+    // is what is stored (the counter's own number is kept with it).
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => WorkoutSummaryDialog(
+        session: session,
+        previousRating: previousRating,
+        onConfirm: (finalSession) async {
+          // Save standalone session if not in routine mode
+          if (!widget.isRoutineMode) {
+            await _storage.saveSession(finalSession);
+          }
+          if (!context.mounted) return;
+          Navigator.pop(context); // Close dialog
+          Navigator.pop(context, finalSession); // Return to dashboard/routine
+        },
+      ),
+    );
+  }
 
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => WorkoutSummaryDialog(
-          session: session,
-          previousRating: previousRating,
-          onConfirm: () {
-            Navigator.pop(context); // Close dialog
-            Navigator.pop(context, session); // Return to dashboard/routine
-          },
-        ),
-      );
-    }
+  /// Ask what to do about a set in which nothing was counted. Returns the reps
+  /// to save (at least 1), [_EmptySetSheet.discard], or null to keep going.
+  Future<int?> _askAboutEmptySet() {
+    return showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      builder: (context) => _EmptySetSheet(
+        unit: widget.exercise.analyzer.isTimedHold ? 'seconds' : 'reps',
+      ),
+    );
   }
 
   /// Overall rating of the most recent stored session for this exercise, or
@@ -622,6 +766,8 @@ class ExerciseScreenState extends State<ExerciseScreen>
     );
     _repCount.value = 0;
     _setCount.value = _completedSets.length;
+    _setOverHinted = false;
+    _presence.reset();
     widget.exercise.analyzer.reset();
     _statusMessage.value = widget.exercise.analyzer.displayMessage;
     _startRest();
@@ -656,6 +802,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
     _guidanceAdvanceTimer?.cancel();
     _guidanceFallbackTimer?.cancel();
     _calibrationTimer?.cancel();
+    _setWatchTimer?.cancel();
     _restTimer?.cancel();
     widget.exercise.analyzer.reset();
     widget.exercise.analyzer.onRep = null;
@@ -1218,6 +1365,116 @@ class ExerciseScreenState extends State<ExerciseScreen>
     } catch (e) {
       debugPrint('Error disposing camera controller: $e');
     }
+  }
+}
+
+/// Shown when the athlete ends a workout in which nothing was counted.
+class _EmptySetSheet extends StatefulWidget {
+  const _EmptySetSheet({required this.unit});
+
+  /// What is being counted: "reps" or "seconds".
+  final String unit;
+
+  /// Returned from the sheet to mean "throw this set away".
+  static const int discard = -1;
+
+  @override
+  State<_EmptySetSheet> createState() => _EmptySetSheetState();
+}
+
+class _EmptySetSheetState extends State<_EmptySetSheet> {
+  int _amount = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'NOTHING WAS COUNTED',
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'If you did some, say how many and it will be saved. It will not '
+              'get a form score, because nothing was analysed.',
+              style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  key: const Key('empty-minus'),
+                  onPressed: _amount > 1 ? () => setState(() => _amount = math.max(1, _amount - 1)) : null,
+                  icon: const Icon(Icons.remove_circle_outline_rounded),
+                  color: Colors.white70,
+                ),
+                SizedBox(
+                  width: 96,
+                  child: Text(
+                    '$_amount ${widget.unit}',
+                    textAlign: TextAlign.center,
+                    key: const Key('empty-value'),
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('empty-plus'),
+                  onPressed: _amount < 999 ? () => setState(() => _amount = math.min(999, _amount + 1)) : null,
+                  icon: const Icon(Icons.add_circle_outline_rounded),
+                  color: AppColors.accentCyan,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                key: const Key('empty-save'),
+                onPressed: () => Navigator.pop(context, _amount),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentCyan,
+                  foregroundColor: Colors.black,
+                ),
+                child: Text('SAVE $_amount ${widget.unit.toUpperCase()}'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    key: const Key('empty-keep-going'),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('KEEP GOING'),
+                  ),
+                ),
+                Expanded(
+                  child: TextButton(
+                    key: const Key('empty-discard'),
+                    onPressed: () => Navigator.pop(context, _EmptySetSheet.discard),
+                    child: const Text('DISCARD'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

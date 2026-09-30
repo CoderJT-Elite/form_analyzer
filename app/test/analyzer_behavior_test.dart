@@ -195,19 +195,21 @@ void main() {
     test(
         'does not silently pass the back check when the athlete faces the camera',
         () {
-      final alerts = <String>[];
+      final clock = ManualClock();
+      final facing = SquatAnalyzer(clock: clock.call);
       final corrections = <String>[];
-      analyzer.onSafetyAlert = alerts.add;
-      analyzer.onCorrection = corrections.add;
+      facing.onCorrection = corrections.add;
 
-      // Identical joint angles to the side-on case above — a badly rounded
-      // back — but viewed head-on, where shoulder/hip/knee are near-collinear
-      // in the image and the measured angle is meaningless.
-      settle(
-        analyzer,
-        PoseFixtures.squat(kneeAngle: 175, forwardLean: 80, lateralSpread: 90),
-        frames: 30,
-      );
+      // Identical joint angles to the side-on case above -- a badly rounded
+      // back -- but viewed head-on, where shoulder/hip/knee are near-collinear
+      // in the image and the measured angle is meaningless. The athlete is told
+      // to turn once the view has stayed wrong for a few seconds with nothing
+      // counting (said sooner, or mid-set, it is a nag).
+      final pose = PoseFixtures.squat(kneeAngle: 175, forwardLean: 80, lateralSpread: 90);
+      for (var i = 0; i < 5 * 15; i++) {
+        clock.advance(const Duration(milliseconds: 66));
+        facing.processPose(pose);
+      }
 
       expect(
         corrections.any((message) => message.toLowerCase().contains('side')),

@@ -8,6 +8,14 @@ import 'pose_orientation.dart';
 import 'rep_cycle_detector.dart';
 import 'rep_recovery.dart';
 
+/// Issues that cannot both be the headline of the same set.
+const Map<String, String> _contradictions = {
+  'Hips Sagging': 'Hips Piked',
+  'Hips Piked': 'Hips Sagging',
+  'Insufficient Depth': 'Too Low',
+  'Too Low': 'Insufficient Depth',
+};
+
 class PerformanceMetrics {
   final double averageFormScore;
   final List<String> commonIssues;
@@ -117,6 +125,7 @@ abstract class ExerciseAnalyzer {
 
   String? _lastCueMessage;
   DateTime? _lastCueAt;
+  DateTime? _wrongViewSince;
 
   /// How long a delivered cue stays on screen.
   static const Duration cueDisplayDuration = Duration(milliseconds: 2500);
@@ -137,6 +146,11 @@ abstract class ExerciseAnalyzer {
 
   final List<String> currentRepIssues = [];
   final List<RepRecord> repRecords = [];
+
+  /// When each entry of [repRecords] was completed. Kept alongside rather than
+  /// inside [RepRecord] so stored sessions are unchanged; used to take back reps
+  /// that turn out to be the athlete walking to the phone.
+  final List<DateTime> _repTimes = [];
 
   DateTime? _eccentricStartedAt;
   DateTime? _concentricStartedAt;
@@ -180,10 +194,12 @@ abstract class ExerciseAnalyzer {
     lastProcessedAngle = null;
     currentRepIssues.clear();
     repRecords.clear();
+    _repTimes.clear();
     cues.reset();
     orientationTracker.reset();
     _lastCueMessage = null;
     _lastCueAt = null;
+    _wrongViewSince = null;
     _eccentricStartedAt = null;
     _concentricStartedAt = null;
     _cleanRepStreak = 0;
@@ -221,14 +237,24 @@ abstract class ExerciseAnalyzer {
   /// measuring must stay quiet rather than silently report good form.
   bool updateOrientation(Pose pose) {
     final observed = orientationTracker.update(pose);
-    if (observed == requiredOrientation) return true;
+    if (observed == requiredOrientation) {
+      _wrongViewSince = null;
+      return true;
+    }
     if (observed == ViewOrientation.unknown) return false;
 
-    cues.request(
-      requiredOrientation == ViewOrientation.sideOn
-          ? CueIds.turnSideOn
-          : CueIds.turnFrontOn,
-    );
+    // "Turn side-on" belongs to the setup screen. Said mid-set it is a nag: the
+    // squat, sit-up and glute-bridge replays of live test #3 each heard it while
+    // reps were being counted. Only raise it when the view has stayed wrong for
+    // a while *and* nothing has counted, i.e. it really is why nothing counts.
+    final since = _wrongViewSince ??= now();
+    if (repCount == 0 && now().difference(since) >= AppConstants.wrongViewCueDelay) {
+      cues.request(
+        requiredOrientation == ViewOrientation.sideOn
+            ? CueIds.turnSideOn
+            : CueIds.turnFrontOn,
+      );
+    }
     return false;
   }
 
@@ -262,6 +288,7 @@ abstract class ExerciseAnalyzer {
 
     final clamped = score.clamp(0.0, 1.0);
 
+    _repTimes.add(timestamp);
     repRecords.add(
       RepRecord(
         index: repCount,
@@ -306,6 +333,42 @@ abstract class ExerciseAnalyzer {
 
   void processPose(Pose pose);
 
+  /// Take back reps counted at or after [since].
+  ///
+  /// When the phone is picked up the athlete is walking toward it, and the
+  /// frames of a person looming at the lens plus a moving camera produce
+  /// phantom reps (an extra overhead press on live test #3). Returns how many
+  /// were removed. Timed holds record no rep times and are unaffected.
+  int retractRepsSince(DateTime since) {
+    var removed = 0;
+    while (_repTimes.isNotEmpty && !_repTimes.last.isBefore(since)) {
+      _repTimes.removeLast();
+      if (repRecords.isNotEmpty) repRecords.removeLast();
+      removed++;
+    }
+    if (removed > 0) {
+      repCount = math.max(0, repCount - removed);
+      _cleanRepStreak = 0;
+      if (onRep != null) onRep!(repCount);
+    }
+    return removed;
+  }
+
+  /// Drop whatever movement is in progress without touching the count, for when
+  /// analysis has to pause (the phone is being moved).
+  void interrupt() {
+    final count = repCount;
+    final records = List<RepRecord>.of(repRecords);
+    final times = List<DateTime>.of(_repTimes);
+    final streak = _cleanRepStreak;
+    reset();
+    repCount = count;
+    repRecords.addAll(records);
+    _repTimes.addAll(times);
+    _cleanRepStreak = streak;
+    statusMessage = 'Paused';
+  }
+
   PerformanceMetrics getPerformanceMetrics() {
     final Map<String, int> issueCounts = {};
     for (var record in repRecords) {
@@ -317,7 +380,15 @@ abstract class ExerciseAnalyzer {
     final sortedIssues = issueCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final commonIssues = sortedIssues.take(3).map((e) => e.key).toList();
+    // A summary that says the hips both sagged and piked reads as a broken
+    // app. Keep whichever was more common.
+    final commonIssues = <String>[];
+    for (final entry in sortedIssues) {
+      final rival = _contradictions[entry.key];
+      if (rival != null && commonIssues.contains(rival)) continue;
+      commonIssues.add(entry.key);
+      if (commonIssues.length == 3) break;
+    }
     final scores = repScores;
     final avgScore = scores.isEmpty
         ? 0.0
@@ -1641,6 +1712,15 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   /// can tell for themselves (see [HoldEvaluation.leftPosition]) turn this off,
   /// so a sagging plank is still time under tension.
   bool get stopsClockOnLongBreak => true;
+
+  /// A hold keeps its accumulated time when interrupted; only the running
+  /// clock stops until the athlete is back in position.
+  @override
+  void interrupt() {
+    _lastFrameTime = null;
+    _brokenSince = null;
+    statusMessage = 'Paused';
+  }
 
   DateTime? _lastFrameTime;
   int _accumulatedHeldMs = 0;

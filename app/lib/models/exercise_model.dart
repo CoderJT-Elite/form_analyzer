@@ -48,7 +48,14 @@ class Exercise {
 }
 
 class ExerciseSet {
+  /// The reps the athlete ended up with: what the counter saw, unless they
+  /// corrected it after the set (see [countedReps]).
   final int reps;
+
+  /// What the rep counter itself counted, recorded only when the athlete
+  /// corrected it afterwards. Null means [reps] was never edited. The gap is the
+  /// most honest accuracy measure the app has.
+  final int? countedReps;
   final Duration? duration; // For time-based exercises like Plank
   final int? targetReps;
   final bool isPR;
@@ -62,6 +69,7 @@ class ExerciseSet {
 
   ExerciseSet({
     required this.reps,
+    this.countedReps,
     this.duration,
     this.targetReps,
     this.isPR = false,
@@ -70,6 +78,26 @@ class ExerciseSet {
     this.feedback = const [],
     this.repRecords = const [],
   });
+
+  /// What the counter saw, whether or not it was later corrected.
+  int get counted => countedReps ?? reps;
+
+  /// True when the athlete changed the rep count after the set.
+  bool get wasCorrected => countedReps != null && countedReps != reps;
+
+  /// This set with its rep count corrected to [newReps]. Remembers what the
+  /// counter originally saw.
+  ExerciseSet withCorrectedReps(int newReps) => ExerciseSet(
+        reps: newReps,
+        countedReps: counted,
+        duration: duration,
+        targetReps: targetReps,
+        isPR: isPR,
+        timestamp: timestamp,
+        rating: rating,
+        feedback: feedback,
+        repRecords: repRecords,
+      );
 
   /// Average lowering time across reps that measured it, or null when unknown.
   Duration? get averageEccentric {
@@ -93,6 +121,7 @@ class ExerciseSet {
 
   Map<String, dynamic> toJson() => {
     'reps': reps,
+    if (countedReps != null) 'countedReps': countedReps,
     'durationMs': duration?.inMilliseconds,
     'targetReps': targetReps,
     'isPR': isPR,
@@ -104,6 +133,7 @@ class ExerciseSet {
 
   factory ExerciseSet.fromJson(Map<String, dynamic> json) => ExerciseSet(
     reps: json['reps'],
+    countedReps: json['countedReps'] as int?,
     duration: json['durationMs'] != null
         ? Duration(milliseconds: json['durationMs'])
         : null,
@@ -137,6 +167,34 @@ class WorkoutSession {
   });
 
   int get totalReps => sets.fold(0, (sum, set) => sum + set.reps);
+
+  /// Reps the counter itself saw, before any correction.
+  int get countedTotal => sets.fold(0, (sum, set) => sum + set.counted);
+
+  /// How far the athlete's corrections moved the total, as a share of the total
+  /// they ended up with. Zero when nothing was corrected.
+  double get correctionFraction {
+    final total = totalReps;
+    if (countedTotal == total) return 0;
+    return (total - countedTotal).abs() / (total > 0 ? total : 1);
+  }
+
+  /// False when the counter was so far off that a form rating made from its
+  /// reps would not describe the set.
+  bool get ratingTrustworthy => correctionFraction <= 0.2;
+
+  /// True when corrections are what made [ratingTrustworthy] false.
+  bool get wasCorrectedNotably => correctionFraction > 0.2;
+
+  WorkoutSession copyWith({List<ExerciseSet>? sets, double? overallRating, bool clearRating = false}) =>
+      WorkoutSession(
+        id: id,
+        date: date,
+        exerciseType: exerciseType,
+        sets: sets ?? this.sets,
+        overallRating: clearRating ? null : (overallRating ?? this.overallRating),
+        overallFeedback: overallFeedback,
+      );
 
   /// Seconds held, for timed exercises; zero otherwise.
   int get heldSeconds => exerciseType.isTimedHold ? totalReps : 0;

@@ -28,7 +28,7 @@ void main() {
   test('squat: no setup nag ("turn side-on") once the set is running', () {
     final run = replay('live3_squat', (c) => SquatAnalyzer(clock: c));
     expect(run.cues.where((c) => c.toLowerCase().contains('turn side-on')), isEmpty);
-  }, skip: 'Phase 2.6: orientation cue leaks into a running set');
+  });
 
   test('jumping jacks: the full set is counted, not stuck at 6', () {
     final run = replay('live3_jumpingJack', (c) => JumpingJackAnalyzer(clock: c));
@@ -51,11 +51,13 @@ void main() {
     expect(run.analyzer.repCount, inInclusiveRange(13, 17));
   });
 
-  test('overhead press: no phantom rep while walking back to the phone', () {
-    final run = replay('live3_overheadPress', (c) => OverheadPressAnalyzer(clock: c));
+  test('overhead press: the rep counted as the athlete walks to the phone is taken back', () {
+    // The last "rep" (20.8 s) is the athlete stepping up to the phone. The
+    // phone is picked up at 21 s; reps counted in the 1.5 s before that go.
+    final run = replay('live3_overheadPress', (c) => OverheadPressAnalyzer(clock: c),
+        phoneMovedAt: 21.0);
     expect(run.analyzer.repCount, inInclusiveRange(7, 8));
-    expect(run.repTimes.where((t) => t > 19.5), isEmpty);
-  }, skip: 'Phase 2.4: counts 9, the last one after the plate is put down');
+  });
 
   test('push-ups (side view): the ~10 real reps, not 1', () {
     final run = replay('live3_pushupSide', (c) => PushupAnalyzer(clock: c));

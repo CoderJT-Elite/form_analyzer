@@ -158,6 +158,21 @@ class AppConstants {
   // bottom knee is bending.
   static const double sidePlankStraightLegAngleMin = 160.0;
 
+  // Camera view
+  /// How long the view must stay wrong, with no reps counted, before a running
+  /// exercise tells the athlete to turn.
+  static const Duration wrongViewCueDelay = Duration(seconds: 3);
+
+  // End of a set
+  /// Nobody in the shot for this long after a rep has been counted means the
+  /// athlete has walked off to stop.
+  static const Duration setOverAbsence = Duration(seconds: 3);
+
+  // Phone handling
+  /// Reps counted this long before the phone was seen to move are taken back:
+  /// the athlete was already walking toward it.
+  static const Duration phoneMotionRetractWindow = Duration(milliseconds: 1500);
+
   // Coaching
   /// Lowering faster than this is a drop, not a controlled eccentric.
   static const int minEccentricMillis = 700;

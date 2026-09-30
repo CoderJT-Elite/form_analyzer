@@ -57,6 +57,9 @@ class StorageService {
       updatedSets.add(
         ExerciseSet(
           reps: set.reps,
+          // Must be carried across too: it is the record of what the counter
+          // actually saw, which is the only accuracy measure the app has.
+          countedReps: set.countedReps,
           duration: set.duration,
           targetReps: set.targetReps,
           isPR: _isPersonalRecord(sessions, session.exerciseType, set),

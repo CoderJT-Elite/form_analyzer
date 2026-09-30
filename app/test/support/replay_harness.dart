@@ -1,3 +1,4 @@
+import 'package:form_analyzer/core/app_constants.dart';
 import 'package:form_analyzer/logic/exercise_analyzer.dart';
 
 import 'recorded_pose_fixtures.dart';
@@ -26,6 +27,7 @@ ReplayRun replay(
   String fixture,
   ExerciseAnalyzer Function(DateTime Function()) make, {
   int fps = 15,
+  double? phoneMovedAt,
 }) {
   var t = DateTime(2026);
   final analyzer = make(() => t);
@@ -44,10 +46,20 @@ ReplayRun replay(
     run.safety.add(m);
   };
   var lastCount = 0;
+  var paused = false;
   for (final pose in RecordedPoseFixtures.loadSequence(fixture)) {
     t = t.add(step);
-    analyzer.processPose(pose);
     frame++;
+    if (phoneMovedAt != null && frame / fps >= phoneMovedAt) {
+      // What the exercise screen does when the phone is picked up.
+      if (!paused) {
+        paused = true;
+        analyzer.retractRepsSince(t.subtract(AppConstants.phoneMotionRetractWindow));
+        analyzer.interrupt();
+      }
+      continue;
+    }
+    analyzer.processPose(pose);
     if (analyzer.repCount != lastCount) {
       lastCount = analyzer.repCount;
       run.repTimes.add(frame / fps);
