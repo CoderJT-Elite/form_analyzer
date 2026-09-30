@@ -21,8 +21,12 @@ class FakeTTSService extends TTSService {
   Future<void> init() async {}
 
   @override
-  Future<void> speak(String message) async {
+  Future<bool> speak(
+    String message, {
+    SpeechPriority priority = SpeechPriority.normal,
+  }) async {
     spoken.add(message);
+    return true;
   }
 
   @override

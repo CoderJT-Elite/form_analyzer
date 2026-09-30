@@ -231,8 +231,10 @@ class _SessionCard extends StatelessWidget {
                       ),
                     const SizedBox(width: 8),
                     DataBadge(
-                      label: 'REPS',
-                      value: '${session.totalReps}',
+                      label: session.exerciseType.isTimedHold ? 'HELD' : 'REPS',
+                      value: session.exerciseType.isTimedHold
+                          ? '${session.heldSeconds}s'
+                          : '${session.totalReps}',
                     ),
                   ],
                 ),
@@ -327,7 +329,9 @@ class _SessionCard extends StatelessWidget {
                           ),
                         Text(
                           set.reps > 0
-                              ? 'S$i: ${set.reps} reps'
+                              ? (session.exerciseType.isTimedHold
+                                  ? 'S$i: ${set.reps}s'
+                                  : 'S$i: ${set.reps} reps')
                               : (set.duration != null
                                   ? 'S$i: ${set.duration!.inSeconds}s'
                                   : 'S$i: 0 reps'),

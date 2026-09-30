@@ -32,13 +32,13 @@ class PoseFixtures {
     );
   }
 
-  /// A side-on squat pose whose hip-knee-ankle angle is [kneeAngle] degrees and
-  /// whose shoulder-hip-knee (back) angle is [backAngle] degrees.
+  /// A side-on squat pose whose hip-knee-ankle angle is [kneeAngle] degrees.
   ///
   /// The knee is the origin. The ankle is placed straight down from it and the
   /// hip is rotated away by [kneeAngle], so the measured joint angle comes out
-  /// as requested. The shoulder is then placed relative to the hip to produce
-  /// the requested back angle.
+  /// as requested. The torso is then placed parallel to the shin, which is how
+  /// a sound squat looks at any depth, and tipped forward by [forwardLean]
+  /// degrees (0 = parallel to the shin; larger = chest collapsing forward).
   /// [lateralSpread] separates the left and right landmarks horizontally.
   ///
   /// Zero puts them on top of each other, which is what a profile view looks
@@ -47,7 +47,7 @@ class PoseFixtures {
   /// is unchanged — so the same movement can be replayed from either view.
   static Pose squat({
     required double kneeAngle,
-    double backAngle = 175.0,
+    double forwardLean = 0.0,
     double lateralSpread = 0.0,
     double likelihood = _defaultLikelihood,
   }) {
@@ -64,12 +64,12 @@ class PoseFixtures {
       kneeY + segment * math.cos(kneeRad),
     );
 
-    // Direction hip->knee, rotated by the back angle, gives hip->shoulder.
-    final hipToKnee = math.atan2(kneeY - hip.dy, kneeX - hip.dx);
-    final shoulderDir = hipToKnee + _radians(backAngle);
+    // Torso parallel to the shin (ankle -> knee is straight up), then tipped
+    // toward the direction the hip has travelled by [forwardLean].
+    final leanRad = _radians(forwardLean);
     final shoulder = Offset(
-      hip.dx + segment * math.cos(shoulderDir),
-      hip.dy + segment * math.sin(shoulderDir),
+      hip.dx + segment * math.sin(leanRad),
+      hip.dy - segment * math.cos(leanRad),
     );
 
     final halfSpread = lateralSpread / 2;

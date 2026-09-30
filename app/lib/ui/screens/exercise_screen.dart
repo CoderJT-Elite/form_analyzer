@@ -116,6 +116,52 @@ class ExerciseScreenState extends State<ExerciseScreen>
   CameraLensDirection _lensDirection = CameraLensDirection.front;
   String? _errorMessage;
 
+  // Zoom state (applies to both front and back cameras when supported).
+  double _minZoom = 1.0;
+  double _maxZoom = 1.0;
+  double _zoom = 1.0;
+  double _zoomAtGestureStart = 1.0;
+
+  Future<void> _setZoom(double value) async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+    final clamped = value.clamp(_minZoom, _maxZoom).toDouble();
+    if (mounted) setState(() => _zoom = clamped);
+    try {
+      await controller.setZoomLevel(clamped);
+    } catch (e) {
+      debugPrint('setZoomLevel failed: $e');
+    }
+  }
+
+  // Raw-pointer pinch tracking: works on both cameras and doesn't compete
+  // with the slider's own drag gesture.
+  final Map<int, Offset> _pointers = {};
+  double _pinchStartDistance = 0;
+
+  double _pointerDistance() {
+    final pts = _pointers.values.take(2).toList();
+    return (pts[0] - pts[1]).distance;
+  }
+
+  void _onPointerDown(PointerDownEvent e) {
+    _pointers[e.pointer] = e.position;
+    if (_pointers.length == 2) {
+      _pinchStartDistance = _pointerDistance();
+      _zoomAtGestureStart = _zoom;
+    }
+  }
+
+  void _onPointerMove(PointerMoveEvent e) {
+    if (!_pointers.containsKey(e.pointer)) return;
+    _pointers[e.pointer] = e.position;
+    if (_pointers.length == 2 && _pinchStartDistance > 0) {
+      _setZoom(_zoomAtGestureStart * _pointerDistance() / _pinchStartDistance);
+    }
+  }
+
+  void _onPointerEnd(PointerEvent e) => _pointers.remove(e.pointer);
+
   // Workout State
   final List<ExerciseSet> _completedSets = [];
   bool _isResting = false;
@@ -128,7 +174,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
     super.initState();
     _tts = widget.tts ?? TTSService();
     WidgetsBinding.instance.addObserver(this);
-    _statusMessage.value = widget.exercise.analyzer.statusMessage;
+    _statusMessage.value = widget.exercise.analyzer.displayMessage;
     if (widget.skipCameraInitialization) {
       _isCameraInitialized = true;
       _imageSize = widget.imageSizeForTesting;
@@ -147,11 +193,11 @@ class ExerciseScreenState extends State<ExerciseScreen>
     };
     // Cue delivery is already rate-limited, prioritised and varied by the
     // analyzer's CueEngine, so these just hand the text straight to speech.
-    widget.exercise.analyzer.onFeedback = _tts.speak;
-    widget.exercise.analyzer.onCorrection = _tts.speak;
+    widget.exercise.analyzer.onFeedback = (message) => _tts.speak(message);
+    widget.exercise.analyzer.onCorrection = (message) => _tts.speak(message);
     widget.exercise.analyzer.onSafetyAlert = (message) {
       _triggerHaptic(HapticFeedback.heavyImpact);
-      _tts.speak(message);
+      _tts.speak(message, priority: SpeechPriority.urgent);
     };
   }
 
@@ -214,6 +260,15 @@ class ExerciseScreenState extends State<ExerciseScreen>
 
         _cameraController = controller;
         await controller.initialize();
+
+        try {
+          _minZoom = await controller.getMinZoomLevel();
+          _maxZoom = await controller.getMaxZoomLevel();
+        } catch (_) {
+          _minZoom = 1.0;
+          _maxZoom = 1.0;
+        }
+        _zoom = _minZoom;
 
         _imageSize = Size(
           controller.value.previewSize!.width,
@@ -280,6 +335,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
       _setupOrientationTracker.reset();
     }
 
+    _setupSpokenAt.clear();
     _speakForIssue(initialIssue);
 
     _guidanceFallbackTimer = Timer(widget.maxGuidanceDuration, () {
@@ -289,7 +345,18 @@ class ExerciseScreenState extends State<ExerciseScreen>
     });
   }
 
+  // The framing check can flip between "step back" and "turn side-on" every
+  // few frames as the athlete settles, and each flip used to be spoken --
+  // "turn side, step back, step back, turn side" (live test 2026-09-20). The
+  // screen still updates instantly; only the voice holds each phrase back.
+  static const Duration _setupSpeechGap = Duration(seconds: 6);
+  final Map<SetupIssue, DateTime> _setupSpokenAt = {};
+
   void _speakForIssue(SetupIssue issue) {
+    final last = _setupSpokenAt[issue];
+    final now = DateTime.now();
+    if (last != null && now.difference(last) < _setupSpeechGap) return;
+    _setupSpokenAt[issue] = now;
     switch (issue) {
       case SetupIssue.notInFrame:
         _tts.speak(CameraSetupCopy.notInFrameSpoken);
@@ -358,7 +425,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
       _isSetupGuiding = false;
       _calibrationCountdown = 3;
     });
-    _tts.speak("3");
+    _tts.speak("3", priority: SpeechPriority.urgent);
 
     _calibrationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -368,11 +435,11 @@ class ExerciseScreenState extends State<ExerciseScreen>
       setState(() {
         if (_calibrationCountdown > 1) {
           _calibrationCountdown--;
-          _tts.speak("$_calibrationCountdown");
+          _tts.speak("$_calibrationCountdown", priority: SpeechPriority.urgent);
         } else {
           _isCalibrated = true;
           _calibrationTimer?.cancel();
-          _tts.speak("Go!");
+          _tts.speak("Go!", priority: SpeechPriority.urgent);
         }
       });
     });
@@ -412,7 +479,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
         for (final pose in poses) {
           widget.exercise.analyzer.processPose(pose);
         }
-        _statusMessage.value = widget.exercise.analyzer.statusMessage;
+        _statusMessage.value = widget.exercise.analyzer.displayMessage;
       }
 
       // Notifier assignment instead of setState: only the skeleton overlay
@@ -520,7 +587,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
     _repCount.value = 0;
     _setCount.value = _completedSets.length;
     widget.exercise.analyzer.reset();
-    _statusMessage.value = widget.exercise.analyzer.statusMessage;
+    _statusMessage.value = widget.exercise.analyzer.displayMessage;
     _startRest();
   }
 
@@ -592,40 +659,58 @@ class ExerciseScreenState extends State<ExerciseScreen>
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
+      body: Listener(
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerEnd,
+        onPointerCancel: _onPointerEnd,
+        child: Stack(
         fit: StackFit.expand,
         children: [
-          // Camera Preview
+          // Camera preview + pose overlay share one correctly-proportioned
+          // box so the image isn't stretched and the skeleton stays aligned.
           if (_cameraController != null)
-            CameraPreview(_cameraController!)
+            Center(
+              child: AspectRatio(
+                aspectRatio: MediaQuery.of(context).orientation ==
+                        Orientation.portrait
+                    ? 1 / _cameraController!.value.aspectRatio
+                    : _cameraController!.value.aspectRatio,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CameraPreview(_cameraController!),
+                    if (_imageSize != null)
+                      RepaintBoundary(
+                        child: ValueListenableBuilder<List<Pose>>(
+                          valueListenable: _poses,
+                          builder: (context, poses, _) {
+                            if (poses.isEmpty) return const SizedBox.shrink();
+                            return CustomPaint(
+                              painter: PosePainter(
+                                poses: poses,
+                                imageSize: _imageSize!,
+                                rotation: _imageRotation,
+                                lensDirection: _lensDirection,
+                                squatState:
+                                    widget.exercise.analyzer is SquatAnalyzer
+                                        ? (widget.exercise.analyzer
+                                                as SquatAnalyzer)
+                                            .squatState
+                                        : null,
+                                activeLandmarkTypes: widget
+                                    .exercise.analyzer.activeLandmarkTypes,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            )
           else
             const ColoredBox(color: Colors.black),
-
-          // Pose Landmarks Overlay. RepaintBoundary keeps the per-frame
-          // skeleton repaint from dirtying the camera preview behind it.
-          if (_imageSize != null)
-            RepaintBoundary(
-              child: ValueListenableBuilder<List<Pose>>(
-                valueListenable: _poses,
-                builder: (context, poses, _) {
-                  if (poses.isEmpty) return const SizedBox.shrink();
-                  return CustomPaint(
-                    painter: PosePainter(
-                      poses: poses,
-                      imageSize: _imageSize!,
-                      rotation: _imageRotation,
-                      lensDirection: _lensDirection,
-                      squatState: widget.exercise.analyzer is SquatAnalyzer
-                          ? (widget.exercise.analyzer as SquatAnalyzer)
-                              .squatState
-                          : null,
-                      activeLandmarkTypes:
-                          widget.exercise.analyzer.activeLandmarkTypes,
-                    ),
-                  );
-                },
-              ),
-            ),
 
           // Header Stats
           SafeArea(
@@ -639,7 +724,9 @@ class ExerciseScreenState extends State<ExerciseScreen>
                       ValueListenableBuilder<int>(
                         valueListenable: _repCount,
                         builder: (context, reps, _) => _StatBadge(
-                          label: 'REPS',
+                          label: widget.exercise.analyzer.isTimedHold
+                              ? 'SECONDS'
+                              : 'REPS',
                           value: '$reps',
                           isMain: true,
                         ),
@@ -666,6 +753,39 @@ class ExerciseScreenState extends State<ExerciseScreen>
 
           // Rest Overlay
           if (_isResting) _buildRestOverlay(),
+
+          // Zoom slider
+          if (_maxZoom > _minZoom)
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 132,
+              child: _GlassContainer(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.zoom_out, color: Colors.white, size: 20),
+                    Expanded(
+                      child: Slider(
+                        value: _zoom.clamp(_minZoom, _maxZoom).toDouble(),
+                        min: _minZoom,
+                        max: _maxZoom,
+                        onChanged: _setZoom,
+                      ),
+                    ),
+                    const Icon(Icons.zoom_in, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_zoom.toStringAsFixed(1)}x',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // Footer Controls
           Positioned(
@@ -724,6 +844,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
             ),
           ),
         ],
+        ),
       ),
     );
   }

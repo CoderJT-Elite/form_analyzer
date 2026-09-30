@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:form_analyzer/core/app_constants.dart';
 import 'package:form_analyzer/logic/cue_engine.dart';
 import 'package:form_analyzer/logic/exercise_analyzer.dart';
@@ -18,7 +19,7 @@ void sweepSquat(
   ExerciseAnalyzer analyzer, {
   required double from,
   required double to,
-  double backAngle = 175.0,
+  double forwardLean = 0.0,
   double lateralSpread = 0.0,
   int steps = 24,
 }) {
@@ -27,7 +28,7 @@ void sweepSquat(
     analyzer.processPose(
       PoseFixtures.squat(
         kneeAngle: angle,
-        backAngle: backAngle,
+        forwardLean: forwardLean,
         lateralSpread: lateralSpread,
       ),
     );
@@ -51,13 +52,13 @@ void sweepPushup(
 void performSquatRep(
   ExerciseAnalyzer analyzer, {
   double bottom = 80.0,
-  double backAngle = 175.0,
+  double forwardLean = 0.0,
 }) {
-  sweepSquat(analyzer, from: 175, to: bottom, backAngle: backAngle);
-  settle(analyzer, PoseFixtures.squat(kneeAngle: bottom, backAngle: backAngle),
+  sweepSquat(analyzer, from: 175, to: bottom, forwardLean: forwardLean);
+  settle(analyzer, PoseFixtures.squat(kneeAngle: bottom, forwardLean: forwardLean),
       frames: 6);
-  sweepSquat(analyzer, from: bottom, to: 175, backAngle: backAngle);
-  settle(analyzer, PoseFixtures.squat(kneeAngle: 175, backAngle: backAngle),
+  sweepSquat(analyzer, from: bottom, to: 175, forwardLean: forwardLean);
+  settle(analyzer, PoseFixtures.squat(kneeAngle: 175, forwardLean: forwardLean),
       frames: 6);
 }
 
@@ -111,25 +112,83 @@ void main() {
       expect(analyzer.repCount, 0);
     });
 
-    test('penalises a rounded back', () {
+    test('penalises a chest collapsing forward relative to the shins', () {
       settle(analyzer, PoseFixtures.squat(kneeAngle: 175));
-      performSquatRep(analyzer, backAngle: 150);
+      performSquatRep(analyzer, forwardLean: 70);
 
       expect(analyzer.repCount, 1);
-      expect(analyzer.allRepIssues.single, contains('Rounded Back'));
+      expect(analyzer.allRepIssues.single, contains('Excessive Forward Lean'));
       expect(
         analyzer.repScores.single,
-        closeTo(1.0 - AppConstants.squatRoundedBackPenalty, 0.001),
+        closeTo(1.0 - AppConstants.squatTorsoLeanPenalty, 0.001),
       );
     });
 
-    test('raises a safety alert on critical back rounding, seen side-on', () {
+    test('a deep squat with a sound torso is never called back rounding', () {
+      // Regression: shoulder-hip-knee closes to well under 145 degrees at the
+      // bottom of every deep squat (it is hip flexion), and the old check
+      // flagged each one as critical back rounding -- live tests 2026-09-13
+      // and 2026-09-20.
       final alerts = <String>[];
       analyzer.onSafetyAlert = alerts.add;
 
-      settle(analyzer, PoseFixtures.squat(kneeAngle: 175, backAngle: 130));
+      settle(analyzer, PoseFixtures.squat(kneeAngle: 175));
+      performSquatRep(analyzer, bottom: 60);
+      performSquatRep(analyzer, bottom: 60);
 
-      expect(alerts, isNotEmpty);
+      expect(analyzer.repCount, 2);
+      expect(alerts, isEmpty);
+      for (final issues in analyzer.allRepIssues) {
+        expect(issues, isNot(contains('Rounded Back')));
+        expect(issues, isNot(contains('Critical Back Rounding')));
+        expect(issues, isNot(contains('Excessive Forward Lean')));
+      }
+      expect(analyzer.repScores, everyElement(1.0));
+    });
+
+    test('works from one visible leg when the far leg is hidden', () {
+      // Side-on, the far leg is often occluded and reads low confidence.
+      settle(analyzer, PoseFixtures.squat(kneeAngle: 175));
+      var pose = PoseFixtures.squat(kneeAngle: 175);
+      Pose hideRight(Pose p) => Pose(landmarks: {
+            for (final e in p.landmarks.entries)
+              e.key: (e.key.name.startsWith('right'))
+                  ? PoseLandmark(
+                      type: e.value.type,
+                      x: e.value.x,
+                      y: e.value.y,
+                      z: e.value.z,
+                      likelihood: 0.1,
+                    )
+                  : e.value,
+          });
+      for (var i = 0; i <= 24; i++) {
+        pose = PoseFixtures.squat(kneeAngle: 175 + (80 - 175) * (i / 24));
+        analyzer.processPose(hideRight(pose));
+      }
+      for (var i = 0; i < 6; i++) {
+        analyzer.processPose(hideRight(PoseFixtures.squat(kneeAngle: 80)));
+      }
+      for (var i = 0; i <= 24; i++) {
+        pose = PoseFixtures.squat(kneeAngle: 80 + (175 - 80) * (i / 24));
+        analyzer.processPose(hideRight(pose));
+      }
+      for (var i = 0; i < 6; i++) {
+        analyzer.processPose(hideRight(PoseFixtures.squat(kneeAngle: 175)));
+      }
+
+      expect(analyzer.statusMessage, isNot('Adjust Camera'));
+      expect(analyzer.repCount, 1);
+    });
+
+    test('coaches a chest that collapses forward, seen side-on', () {
+      final corrections = <String>[];
+      analyzer.onCorrection = corrections.add;
+
+      settle(analyzer, PoseFixtures.squat(kneeAngle: 175));
+      performSquatRep(analyzer, forwardLean: 80);
+
+      expect(corrections, contains(anyOf('Keep your chest up', 'Stay more upright')));
     });
 
     test(
@@ -145,7 +204,7 @@ void main() {
       // in the image and the measured angle is meaningless.
       settle(
         analyzer,
-        PoseFixtures.squat(kneeAngle: 175, backAngle: 130, lateralSpread: 90),
+        PoseFixtures.squat(kneeAngle: 175, forwardLean: 80, lateralSpread: 90),
         frames: 30,
       );
 
@@ -173,7 +232,7 @@ void main() {
 
       // A shallow rep with a badly rounded back: no rep is counted, but the
       // issue used to linger in currentRepIssues.
-      performSquatRep(analyzer, bottom: 120, backAngle: 130);
+      performSquatRep(analyzer, bottom: 120, forwardLean: 80);
       expect(analyzer.repCount, 0);
 
       // A clean rep afterwards must score perfectly.

@@ -83,7 +83,7 @@ void main() {
 
     expect(messages.length, greaterThanOrEqualTo(3));
     // The escalated wording is more specific than the opening nudge.
-    expect(messages.last, contains('parallel'));
+    expect(messages.last, contains('come back up'));
   });
 
   test('a safety cue suppresses a lower-priority cue that follows it', () {

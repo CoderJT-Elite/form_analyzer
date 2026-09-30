@@ -78,6 +78,10 @@ class CueIds {
   static const String goDeeper = 'range.goDeeper';
   static const String lockOut = 'range.lockOut';
   static const String fullRange = 'range.full';
+  static const String raiseArms = 'range.raiseArms';
+  static const String liftHigher = 'range.liftHigher';
+  static const String curlHigher = 'range.curlHigher';
+  static const String slideUp = 'range.slideUp';
 
   static const String controlDescent = 'tempo.controlDescent';
 
@@ -192,7 +196,9 @@ const List<CueDefinition> kDefaultCues = [
     priority: CuePriority.range,
     cooldown: Duration(milliseconds: 2500),
     phrasings: ['A little deeper', 'Sink a bit lower'],
-    escalated: ['Go deeper — aim for thighs parallel'],
+    // Shared by squat, push-up and lunge, so it must not name body parts
+    // only one of them has ("thighs parallel" was said to a push-up).
+    escalated: ['Go deeper before you come back up'],
   ),
   CueDefinition(
     id: CueIds.lockOut,
@@ -205,7 +211,35 @@ const List<CueDefinition> kDefaultCues = [
     id: CueIds.fullRange,
     priority: CuePriority.range,
     cooldown: Duration(milliseconds: 2500),
-    phrasings: ['Use your full range', 'Lower a little further'],
+    // Direction-neutral: this cue is used by exercises that travel in
+    // opposite directions ("lower a little further" was said to a jumping
+    // jack, which has nothing to lower). Exercises with a definite direction
+    // have their own cues below.
+    phrasings: ['Use your full range', 'A bit more range'],
+  ),
+  CueDefinition(
+    id: CueIds.raiseArms,
+    priority: CuePriority.range,
+    cooldown: Duration(milliseconds: 2500),
+    phrasings: ['Reach your arms higher', 'Arms all the way overhead'],
+  ),
+  CueDefinition(
+    id: CueIds.liftHigher,
+    priority: CuePriority.range,
+    cooldown: Duration(milliseconds: 2500),
+    phrasings: ['Lift your hips a little higher', 'Push your hips up higher'],
+  ),
+  CueDefinition(
+    id: CueIds.curlHigher,
+    priority: CuePriority.range,
+    cooldown: Duration(milliseconds: 2500),
+    phrasings: ['Curl up a little higher', 'Bring your chest toward your knees'],
+  ),
+  CueDefinition(
+    id: CueIds.slideUp,
+    priority: CuePriority.range,
+    cooldown: Duration(milliseconds: 2500),
+    phrasings: ['Slide up a little', 'Bring your thighs up to parallel'],
   ),
   CueDefinition(
     id: CueIds.controlDescent,

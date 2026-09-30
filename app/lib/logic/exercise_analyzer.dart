@@ -4,6 +4,7 @@ import '../core/app_constants.dart';
 import '../utils/math_utils.dart';
 import 'cue_engine.dart';
 import 'pose_orientation.dart';
+import 'rep_recovery.dart';
 
 class PerformanceMetrics {
   final double averageFormScore;
@@ -112,6 +113,26 @@ abstract class ExerciseAnalyzer {
   final CueEngine cues;
   final OrientationTracker orientationTracker = OrientationTracker();
 
+  String? _lastCueMessage;
+  DateTime? _lastCueAt;
+
+  /// How long a delivered cue stays on screen.
+  static const Duration cueDisplayDuration = Duration(milliseconds: 2500);
+
+  /// What the screen should show. The state machines overwrite
+  /// [statusMessage] on every frame ("Stand tall"), which wiped out the very
+  /// cue that had just been spoken -- the athlete heard "stop and reset" while
+  /// reading "Stand tall". A cue now holds the display for a couple of seconds.
+  String get displayMessage {
+    final at = _lastCueAt;
+    if (at != null &&
+        _lastCueMessage != null &&
+        now().difference(at) < cueDisplayDuration) {
+      return _lastCueMessage!;
+    }
+    return statusMessage;
+  }
+
   final List<String> currentRepIssues = [];
   final List<RepRecord> repRecords = [];
 
@@ -128,6 +149,11 @@ abstract class ExerciseAnalyzer {
 
   Set<PoseLandmarkType> get activeLandmarkTypes;
 
+  /// True for exercises measured in held seconds rather than reps. The
+  /// counter still flows through [repCount] (one "rep" per second held), but
+  /// the UI should present it as time.
+  bool get isTimedHold => false;
+
   /// The camera view this exercise's form checks are written for.
   ViewOrientation get requiredOrientation => ViewOrientation.sideOn;
 
@@ -140,6 +166,8 @@ abstract class ExerciseAnalyzer {
     repRecords.clear();
     cues.reset();
     orientationTracker.reset();
+    _lastCueMessage = null;
+    _lastCueAt = null;
     _eccentricStartedAt = null;
     _concentricStartedAt = null;
     _cleanRepStreak = 0;
@@ -152,6 +180,8 @@ abstract class ExerciseAnalyzer {
   /// Route a cleared cue to the right callback and to the on-screen status.
   void _dispatchCue(Cue cue) {
     statusMessage = cue.message;
+    _lastCueMessage = cue.message;
+    _lastCueAt = now();
     switch (cue.priority) {
       case CuePriority.safety:
         if (onSafetyAlert != null) onSafetyAlert!(cue.message);
@@ -295,6 +325,7 @@ class SquatAnalyzer extends ExerciseAnalyzer {
   SquatState squatState = SquatState.neutral;
   bool _reachedDepth = false;
   double _deepestAngle = 180;
+  final RecoveryDetector _recovery = RecoveryDetector();
   final MovingAverageFilter _angleFilter =
       MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
   final MovingAverageFilter _asymmetryFilter =
@@ -324,6 +355,7 @@ class SquatAnalyzer extends ExerciseAnalyzer {
     _asymmetryFilter.reset();
     _landmarkSmoother.reset();
     _prevFilteredAngle = null;
+    _recovery.reset();
   }
 
   @override
@@ -335,123 +367,130 @@ class SquatAnalyzer extends ExerciseAnalyzer {
     final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
     final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
 
-    final required = [leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle];
-    if (required.any((lm) => !isLandmarkVisible(lm))) {
+    // Either leg is enough. From a side view the far leg is routinely hidden
+    // behind the near one, and demanding both meant a perfectly framed
+    // athlete got "Adjust Camera" and no reps at all.
+    final leftVisible = isLandmarkVisible(leftHip) &&
+        isLandmarkVisible(leftKnee) &&
+        isLandmarkVisible(leftAnkle);
+    final rightVisible = isLandmarkVisible(rightHip) &&
+        isLandmarkVisible(rightKnee) &&
+        isLandmarkVisible(rightAnkle);
+    if (!leftVisible && !rightVisible) {
       statusMessage = 'Adjust Camera';
       return;
     }
+    final bothVisible = leftVisible && rightVisible;
 
-    final leftHipSmooth = _smooth(leftHip!, 'leftHip');
-    final leftKneeSmooth = _smooth(leftKnee!, 'leftKnee');
-    final leftAnkleSmooth = _smooth(leftAnkle!, 'leftAnkle');
+    final leftHipSmooth = leftVisible ? _smooth(leftHip!, 'leftHip') : null;
+    final leftKneeSmooth = leftVisible ? _smooth(leftKnee!, 'leftKnee') : null;
+    final leftAnkleSmooth = leftVisible ? _smooth(leftAnkle!, 'leftAnkle') : null;
+    final rightHipSmooth = rightVisible ? _smooth(rightHip!, 'rightHip') : null;
+    final rightKneeSmooth = rightVisible ? _smooth(rightKnee!, 'rightKnee') : null;
+    final rightAnkleSmooth =
+        rightVisible ? _smooth(rightAnkle!, 'rightAnkle') : null;
 
-    final rightHipSmooth = _smooth(rightHip!, 'rightHip');
-    final rightKneeSmooth = _smooth(rightKnee!, 'rightKnee');
-    final rightAnkleSmooth = _smooth(rightAnkle!, 'rightAnkle');
+    final leftAngle = leftVisible
+        ? MathUtils.calculateAngleFromSmoothed(
+            leftHipSmooth!, leftKneeSmooth!, leftAnkleSmooth!)
+        : null;
+    final rightAngle = rightVisible
+        ? MathUtils.calculateAngleFromSmoothed(
+            rightHipSmooth!, rightKneeSmooth!, rightAnkleSmooth!)
+        : null;
 
-    final leftAngle = MathUtils.calculateAngleFromSmoothed(
-      leftHipSmooth,
-      leftKneeSmooth,
-      leftAnkleSmooth,
-    );
-    final rightAngle = MathUtils.calculateAngleFromSmoothed(
-      rightHipSmooth,
-      rightKneeSmooth,
-      rightAnkleSmooth,
-    );
-
-    final leftConfidence = leftKneeSmooth.likelihood + leftAnkleSmooth.likelihood;
-    final rightConfidence = rightKneeSmooth.likelihood + rightAnkleSmooth.likelihood;
-    final rawAngle = leftConfidence >= rightConfidence ? leftAngle : rightAngle;
+    final leftConfidence = leftVisible
+        ? leftKneeSmooth!.likelihood + leftAnkleSmooth!.likelihood
+        : -1.0;
+    final rightConfidence = rightVisible
+        ? rightKneeSmooth!.likelihood + rightAnkleSmooth!.likelihood
+        : -1.0;
+    final useLeft = leftConfidence >= rightConfidence;
+    final rawAngle = useLeft ? leftAngle! : rightAngle!;
 
     // A second angle used only for the depth check below, differing from
     // rawAngle/currentAngle in two ways:
     //
     // 1. Unsmoothed. Even rawAngle has been through one stage of exponential
     //    smoothing (LandmarkSmoother, alpha 0.35), which is enough lag to
-    //    blunt a fast rep's true bottom: confirmed against real stock footage
-    //    where a squat that hit 61-66 degrees at its actual deepest frame
-    //    only ever read 91-100 degrees through that filter, narrowly missing
-    //    squatDepthThreshold despite genuinely reaching depth. Depth is a
-    //    one-shot "did they ever get there" check, not something that needs
-    //    temporal stability the way the eccentric/concentric direction
-    //    reversal does, so it can use the unsmoothed landmarks directly.
+    //    blunt a fast rep's true bottom (real stock footage: a squat that hit
+    //    61-66 degrees only ever read 91-100 through that filter). Depth is a
+    //    one-shot "did they ever get there" check, so raw landmarks are fine.
     // 2. Takes whichever leg reads deeper, not whichever ML Kit is more
-    //    confident about. rawAngle above picks a side by confidence because
-    //    that's the right call for a single stable display angle. But a
-    //    squat's true depth is bilaterally symmetric -- both legs bend
-    //    together -- so when the two sides disagree it reflects estimation
-    //    error, not anatomy, and there's no reason the *more confident* leg
-    //    is the *more accurate* one. Confirmed against real stock footage
-    //    where the higher-confidence leg (rc ~2.0) read ~100-160 degrees
-    //    for an entire rep while the other leg (lc ~1.8, still comfortably
-    //    above the visibility gate above) read 66-95 degrees for the same
-    //    frames -- the confidence-selected side alone missed a genuinely
-    //    deep rep for its whole duration. Both legs are already confirmed
-    //    visible by the check at the top of this method, so trusting
-    //    whichever one shows real depth is safe.
+    //    confident about: both legs bend together, so a disagreement is
+    //    estimation error and the deeper reading is the one showing real depth.
     final unsmoothedAngle = math.min(
-      MathUtils.calculateAngle(leftHip, leftKnee, leftAnkle),
-      MathUtils.calculateAngle(rightHip, rightKnee, rightAnkle),
+      leftVisible
+          ? MathUtils.calculateAngle(leftHip!, leftKnee!, leftAnkle!)
+          : 180.0,
+      rightVisible
+          ? MathUtils.calculateAngle(rightHip!, rightKnee!, rightAnkle!)
+          : 180.0,
     );
 
-    // Both sides are computed anyway; comparing them is free and catches an
-    // athlete loading one leg harder than the other. Only trusted when the
-    // view is front-on, since a side view foreshortens the far leg and would
-    // report a difference that isn't there.
-    final asymmetry = _asymmetryFilter.add((leftAngle - rightAngle).abs());
+    // Left/right comparisons only make sense with both legs in view, and only
+    // front-on: a side view foreshortens the far leg and would report a
+    // difference that isn't there.
     final isFrontOn = orientationTracker.orientation == ViewOrientation.frontOn;
-    if (isFrontOn &&
-        _asymmetryFilter.isFull &&
-        asymmetry > AppConstants.asymmetryDegreesThreshold &&
-        squatState != SquatState.neutral) {
-      addIssue('Uneven Sides');
-      cues.request(CueIds.asymmetry);
-    }
+    if (bothVisible) {
+      final asymmetry = _asymmetryFilter.add((leftAngle! - rightAngle!).abs());
+      if (isFrontOn &&
+          _asymmetryFilter.isFull &&
+          asymmetry > AppConstants.asymmetryDegreesThreshold &&
+          squatState != SquatState.neutral) {
+        addIssue('Uneven Sides');
+        cues.request(CueIds.asymmetry);
+      }
 
-    // Knees drifting inward (valgus) relative to how wide the ankles are
-    // planted -- only meaningful front-on, same gating as the asymmetry
-    // check above, since a side view collapses the left/right gap entirely.
-    final kneeWidth = (leftKneeSmooth.x - rightKneeSmooth.x).abs();
-    final ankleWidth = (leftAnkleSmooth.x - rightAnkleSmooth.x).abs();
-    if (isFrontOn &&
-        squatState == SquatState.eccentric &&
-        ankleWidth > AppConstants.minMagnitude &&
-        kneeWidth / ankleWidth < AppConstants.squatKneeValgusRatio) {
-      addIssue('Knees Caving In');
-      cues.request(CueIds.kneeValgus);
-    } else if (isFrontOn) {
-      currentRepIssues.remove('Knees Caving In');
+      // Knees drifting inward (valgus) relative to how wide the ankles are
+      // planted -- front-on only, same gating as the asymmetry check.
+      final kneeWidth = (leftKneeSmooth!.x - rightKneeSmooth!.x).abs();
+      final ankleWidth = (leftAnkleSmooth!.x - rightAnkleSmooth!.x).abs();
+      if (isFrontOn &&
+          squatState == SquatState.eccentric &&
+          ankleWidth > AppConstants.minMagnitude &&
+          kneeWidth / ankleWidth < AppConstants.squatKneeValgusRatio) {
+        addIssue('Knees Caving In');
+        cues.request(CueIds.kneeValgus);
+      } else if (isFrontOn) {
+        currentRepIssues.remove('Knees Caving In');
+      }
     }
 
     final currentAngle = _angleFilter.add(rawAngle);
     lastProcessedAngle = currentAngle;
 
-    final angleDelta = _prevFilteredAngle == null ? 0.0 : currentAngle - _prevFilteredAngle!;
+    final angleDelta =
+        _prevFilteredAngle == null ? 0.0 : currentAngle - _prevFilteredAngle!;
     _prevFilteredAngle = currentAngle;
 
-    // The back-angle check measures shoulder-hip-knee on one side of the body.
-    // That is only meaningful from a side view: head-on, those three points are
-    // near-collinear in the image whatever the spine is doing, so the check
-    // would report a healthy angle and never warn. Gate it on a confirmed side
-    // view and ask the athlete to turn instead of quietly passing them.
+    // Forward lean. This used to measure shoulder-hip-knee and call anything
+    // under 145/160 degrees "back rounding" -- but that angle is hip flexion,
+    // which is *supposed* to close to 60-90 degrees at the bottom of every
+    // squat, so every deep squat was flagged critical (live tests 2026-09-13
+    // and 2026-09-20). Spinal rounding itself is not visible from these
+    // landmarks. What is visible, and does matter, is the chest collapsing
+    // forward *relative to the shins*: a sound squat keeps the torso roughly
+    // parallel to the shin, whatever the depth. Comparing the two directions
+    // also means nothing here depends on which way the camera or the athlete
+    // is facing. Needs a confirmed side view to mean anything.
     final hasSideView = updateOrientation(pose);
-
-    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
-    if (hasSideView && isLandmarkVisible(leftShoulder)) {
-      final shoulderSmooth = _smooth(leftShoulder!, 'leftShoulder');
-      final backAngle = MathUtils.calculateAngleFromSmoothed(
-        shoulderSmooth,
-        leftHipSmooth,
-        leftKneeSmooth,
+    final shoulder = pose.landmarks[
+        useLeft ? PoseLandmarkType.leftShoulder : PoseLandmarkType.rightShoulder];
+    if (hasSideView && isLandmarkVisible(shoulder)) {
+      final shoulderSmooth =
+          _smooth(shoulder!, useLeft ? 'leftShoulder' : 'rightShoulder');
+      final hipS = useLeft ? leftHipSmooth! : rightHipSmooth!;
+      final kneeS = useLeft ? leftKneeSmooth! : rightKneeSmooth!;
+      final ankleS = useLeft ? leftAnkleSmooth! : rightAnkleSmooth!;
+      final lean = MathUtils.angleBetweenSegments(
+        hipS.x, hipS.y, shoulderSmooth.x, shoulderSmooth.y,
+        ankleS.x, ankleS.y, kneeS.x, kneeS.y,
       );
-
-      if (backAngle < AppConstants.squatBackAngleCritical) {
-        addIssue('Critical Back Rounding');
-        cues.request(CueIds.criticalBackRounding);
-      } else if (backAngle < AppConstants.squatBackAngleMin) {
-        addIssue('Rounded Back');
-        cues.request(CueIds.backRounding);
+      if (squatState != SquatState.neutral &&
+          lean > AppConstants.squatTorsoLeanMaxDegrees) {
+        addIssue('Excessive Forward Lean');
+        cues.request(CueIds.torsoLean);
       }
     }
 
@@ -497,6 +536,7 @@ class SquatAnalyzer extends ExerciseAnalyzer {
         if (_reachedDepth && angleDelta > directionDelta) {
           squatState = SquatState.concentric;
           phase = RepPhase.concentric;
+          _recovery.begin(now());
           markConcentricStart();
           statusMessage = 'Drive up';
         } else if (!_reachedDepth &&
@@ -518,7 +558,21 @@ class SquatAnalyzer extends ExerciseAnalyzer {
       case SquatState.concentric:
         phase = RepPhase.concentric;
 
-        if (currentAngle >= AppConstants.squatNeutralThreshold) {
+        final verdict = currentAngle >= AppConstants.squatNeutralThreshold
+            ? RecoveryVerdict.complete
+            : _recovery.update(
+                progress: -currentAngle,
+                extreme: -_deepestAngle,
+                rest: -AppConstants.squatNeutralThreshold,
+                now: now(),
+              );
+        if (verdict == RecoveryVerdict.abandon) {
+          squatState = SquatState.neutral;
+          phase = RepPhase.neutral;
+          currentRepIssues.clear();
+          _reachedDepth = false;
+          _deepestAngle = 180;
+        } else if (verdict == RecoveryVerdict.complete) {
           squatState = SquatState.neutral;
           phase = RepPhase.neutral;
 
@@ -534,11 +588,8 @@ class SquatAnalyzer extends ExerciseAnalyzer {
             addIssue('Insufficient Depth');
             score -= AppConstants.squatInsufficientDepthPenalty;
           }
-          if (currentRepIssues.contains('Rounded Back')) {
-            score -= AppConstants.squatRoundedBackPenalty;
-          }
-          if (currentRepIssues.contains('Critical Back Rounding')) {
-            score -= AppConstants.squatCriticalBackRoundingPenalty;
+          if (currentRepIssues.contains('Excessive Forward Lean')) {
+            score -= AppConstants.squatTorsoLeanPenalty;
           }
           if (currentRepIssues.contains('Uneven Sides')) {
             score -= AppConstants.squatUnevenSidesPenalty;
@@ -597,6 +648,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
   bool _reachedDepth = false;
   double _concentricPeak = 0;
   double _deepestAngle = 180;
+  final RecoveryDetector _recovery = RecoveryDetector();
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -621,6 +673,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
     _reachedDepth = false;
     _concentricPeak = 0;
     _deepestAngle = 180;
+    _recovery.reset();
   }
 
   @override
@@ -671,10 +724,22 @@ class PushupAnalyzer extends ExerciseAnalyzer {
       // unsmoothed, stayed flagged all the way to completion).
       final backAngle = _backAngleFilter.add(MathUtils.calculateJointAngle(shoulder, hip, knee));
       if (backAngle < AppConstants.pushupBackAngleMin) {
-        final midlineY = (shoulder!.y + knee!.y) / 2;
-        final isSagging = hip!.y > midlineY;
-        addIssue(isSagging ? 'Hips Sagging' : 'Hips Piked');
-        cues.request(isSagging ? CueIds.hipsSagging : CueIds.hipsPiked);
+        final wristLandmark =
+            useLeft ? leftWrist : rightWrist;
+        final isSagging = MathUtils.isHipSagging(
+          shoulder: shoulder!,
+          hip: hip!,
+          end: knee!,
+          floorReference: isLandmarkVisible(wristLandmark) ? wristLandmark : null,
+        );
+        // A rep has one dominant hip fault. Once it is called one way the
+        // other verdict is ignored, so a borderline frame can't flip it and
+        // stack two penalties (or two contradictory cues) onto the same rep.
+        final alreadySagging = currentRepIssues.contains('Hips Sagging');
+        final alreadyPiked = currentRepIssues.contains('Hips Piked');
+        final sagging = alreadySagging || (!alreadyPiked && isSagging);
+        addIssue(sagging ? 'Hips Sagging' : 'Hips Piked');
+        cues.request(sagging ? CueIds.hipsSagging : CueIds.hipsPiked);
       } else {
         currentRepIssues.remove('Hips Sagging');
         currentRepIssues.remove('Hips Piked');
@@ -710,6 +775,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
           // otherwise the remainder of the descent is read as a failed ascent.
           phase = RepPhase.concentric;
           _concentricPeak = currentAngle;
+          _recovery.begin(now());
           markConcentricStart();
           statusMessage = 'Push up';
         } else if (!_reachedDepth &&
@@ -729,7 +795,21 @@ class PushupAnalyzer extends ExerciseAnalyzer {
         break;
 
       case RepPhase.concentric:
-        if (currentAngle >= AppConstants.pushupNeutralThreshold) {
+        final verdict = currentAngle >= AppConstants.pushupNeutralThreshold
+            ? RecoveryVerdict.complete
+            : _recovery.update(
+                progress: -currentAngle,
+                extreme: -_deepestAngle,
+                rest: -AppConstants.pushupNeutralThreshold,
+                now: now(),
+              );
+        if (verdict == RecoveryVerdict.abandon) {
+          phase = RepPhase.neutral;
+          currentRepIssues.clear();
+          _reachedDepth = false;
+          _concentricPeak = 0;
+          _deepestAngle = 180;
+        } else if (verdict == RecoveryVerdict.complete) {
           repCount++;
           double score = 1.0;
           if (!_reachedDepth || currentRepIssues.contains('Insufficient Depth')) {
@@ -790,6 +870,7 @@ class LungeAnalyzer extends ExerciseAnalyzer {
   double? _prevAngle;
   bool _reachedDepth = false;
   double _deepestAngle = 180;
+  final RecoveryDetector _recovery = RecoveryDetector();
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -810,6 +891,7 @@ class LungeAnalyzer extends ExerciseAnalyzer {
     _prevAngle = null;
     _reachedDepth = false;
     _deepestAngle = 180;
+    _recovery.reset();
   }
 
   @override
@@ -917,6 +999,7 @@ class LungeAnalyzer extends ExerciseAnalyzer {
 
         if (_reachedDepth && delta > AppConstants.angleDirectionDeltaDegrees) {
           phase = RepPhase.concentric;
+          _recovery.begin(now());
           markConcentricStart();
           statusMessage = 'Drive up';
         } else if (!_reachedDepth &&
@@ -934,7 +1017,20 @@ class LungeAnalyzer extends ExerciseAnalyzer {
         break;
 
       case RepPhase.concentric:
-        if (currentAngle >= AppConstants.lungeNeutralThreshold) {
+        final verdict = currentAngle >= AppConstants.lungeNeutralThreshold
+            ? RecoveryVerdict.complete
+            : _recovery.update(
+                progress: -currentAngle,
+                extreme: -_deepestAngle,
+                rest: -AppConstants.lungeNeutralThreshold,
+                now: now(),
+              );
+        if (verdict == RecoveryVerdict.abandon) {
+          phase = RepPhase.neutral;
+          currentRepIssues.clear();
+          _reachedDepth = false;
+          _deepestAngle = 180;
+        } else if (verdict == RecoveryVerdict.complete) {
           repCount++;
           double score = 1.0;
           if (!_reachedDepth || currentRepIssues.contains('Insufficient Depth')) {
@@ -977,6 +1073,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
   bool _reachedBottom = false;
   double _concentricPeak = 0;
   double _deepestAngle = 180;
+  final RecoveryDetector _recovery = RecoveryDetector();
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -996,6 +1093,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
     _reachedBottom = false;
     _concentricPeak = 0;
     _deepestAngle = 180;
+    _recovery.reset();
   }
 
   @override
@@ -1109,6 +1207,7 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
         if (_reachedBottom && delta > AppConstants.angleDirectionDeltaDegrees) {
           phase = RepPhase.concentric;
           _concentricPeak = currentAngle;
+          _recovery.begin(now());
           markConcentricStart();
           statusMessage = 'Press up';
         } else if (!_reachedBottom &&
@@ -1126,7 +1225,21 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
         break;
 
       case RepPhase.concentric:
-        if (currentAngle >= AppConstants.overheadPressLockoutThreshold) {
+        final verdict = currentAngle >= AppConstants.overheadPressLockoutThreshold
+            ? RecoveryVerdict.complete
+            : _recovery.update(
+                progress: -currentAngle,
+                extreme: -_deepestAngle,
+                rest: -AppConstants.overheadPressLockoutThreshold,
+                now: now(),
+              );
+        if (verdict == RecoveryVerdict.abandon) {
+          phase = RepPhase.neutral;
+          currentRepIssues.clear();
+          _reachedBottom = false;
+          _concentricPeak = 0;
+          _deepestAngle = 180;
+        } else if (verdict == RecoveryVerdict.complete) {
           repCount++;
           double score = 1.0;
           if (!_reachedBottom || currentRepIssues.contains('Insufficient Range')) {
@@ -1186,6 +1299,8 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
   double? _prevProgress;
   bool _reachedTarget = false;
   double _bestProgress = double.negativeInfinity;
+  final RecoveryDetector _recovery = RecoveryDetector(allowRocking: true);
+  DateTime? _eccentricEnteredAt;
 
   /// Angle the athlete rests at between reps.
   double get restAngle;
@@ -1230,6 +1345,10 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
   /// [checkFormIssues] don't need to override this either.
   Map<String, double> get supplementaryPenalties => const {};
 
+  /// Share of the rest-to-target range a rep must cover to count, scored as
+  /// short, rather than being discarded as an abandoned attempt.
+  double get partialRepFraction => 0.6;
+
   /// Signed so that "further into the movement" always means "larger".
   double _progress(double angle) => worksTowardSmallerAngle ? -angle : angle;
 
@@ -1242,6 +1361,8 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
     _prevProgress = null;
     _reachedTarget = false;
     _bestProgress = double.negativeInfinity;
+    _recovery.reset();
+    _eccentricEnteredAt = null;
   }
 
   @override
@@ -1273,6 +1394,7 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
           currentRepIssues.clear();
           _reachedTarget = false;
           _bestProgress = progress;
+          _eccentricEnteredAt = now();
           markEccentricStart();
           statusMessage = workingMessage;
         } else {
@@ -1290,8 +1412,15 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
         if (_reachedTarget && delta < -directionDelta) {
           // Only once the athlete has genuinely reversed.
           phase = RepPhase.concentric;
+          _recovery.begin(now());
           markConcentricStart();
           statusMessage = returningMessage;
+        } else if (_eccentricEnteredAt != null &&
+            now().difference(_eccentricEnteredAt!) > const Duration(seconds: 12)) {
+          // Wandered off mid-rep (or the athlete simply stopped); don't wait
+          // forever for a target that is not coming.
+          phase = RepPhase.neutral;
+          currentRepIssues.clear();
         } else if (!_reachedTarget && progress <= restProgress) {
           // Back to the start without completing the range — return to neutral
           // rather than stalling here forever.
@@ -1301,12 +1430,40 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
         } else if (!_reachedTarget && delta < -directionDelta) {
           addIssue(shortRangeIssue);
           cues.request(shortRangeCueId);
+          // Came most of the way and is now heading back: that is a rep, just
+          // a short one. Silently discarding it made real, repeated jacks
+          // (arms peaking ~110 of a 130 degree target) count as nothing at
+          // all. Score the shortfall instead, as the squat does for depth.
+          final partialProgress =
+              restProgress + partialRepFraction * (targetProgress - restProgress);
+          if (_bestProgress >= partialProgress &&
+              progress < _bestProgress - deadZone) {
+            phase = RepPhase.concentric;
+            _recovery.begin(now());
+            markConcentricStart();
+            statusMessage = returningMessage;
+          }
         } else {
           statusMessage = workingMessage;
         }
 
       case RepPhase.concentric:
-        if (progress <= restProgress) {
+        _bestProgress = math.max(_bestProgress, progress);
+        final verdict = progress <= restProgress
+            ? RecoveryVerdict.complete
+            : _recovery.update(
+                progress: progress,
+                extreme: _bestProgress,
+                rest: restProgress,
+                now: now(),
+              );
+        if (verdict == RecoveryVerdict.abandon) {
+          phase = RepPhase.neutral;
+          currentRepIssues.clear();
+          _reachedTarget = false;
+          _bestProgress = double.negativeInfinity;
+          statusMessage = restingMessage;
+        } else if (verdict == RecoveryVerdict.complete) {
           repCount++;
 
           var score = 1.0;
@@ -1365,6 +1522,9 @@ class HoldEvaluation {
 abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   TimedExerciseAnalyzer({super.cueEngine, super.clock});
 
+  @override
+  bool get isTimedHold => true;
+
   DateTime? _lastFrameTime;
   int _accumulatedHeldMs = 0;
   DateTime? _brokenSince;
@@ -1385,6 +1545,14 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
     final currentTime = now();
 
     if (evaluation == null) {
+      // A dropout of a second or so (a hand crossing the camera, one noisy
+      // frame) is not the athlete leaving the position. Pausing the clock on
+      // every one of them meant a ~35 second plank was credited as 14.
+      final last = _lastFrameTime;
+      if (last != null &&
+          currentTime.difference(last) < const Duration(milliseconds: 1500)) {
+        return;
+      }
       _lastFrameTime = null;
       _brokenSince = null;
       statusMessage = 'Adjust Camera';
@@ -1510,11 +1678,16 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
     lastProcessedAngle = backAngle;
 
     if (backAngle <= AppConstants.plankBackAngleMin) {
-      // Image y grows downward, so a hip below the shoulder-knee midline is a
-      // sag and a hip above it is a pike. This works regardless of which way
-      // the athlete is facing.
-      final midlineY = (shoulder.y + knee.y) / 2;
-      final isSagging = hip.y > midlineY;
+      // Sag vs pike is judged against where the floor is (the elbow), not
+      // against image-down, so it holds when the phone is on its side.
+      final floorElbow = pose.landmarks[
+          useLeft ? PoseLandmarkType.leftElbow : PoseLandmarkType.rightElbow];
+      final isSagging = MathUtils.isHipSagging(
+        shoulder: shoulder,
+        hip: hip,
+        end: knee,
+        floorReference: isLandmarkVisible(floorElbow) ? floorElbow : null,
+      );
 
       return HoldEvaluation.broken(
         issue: isSagging ? 'Hips Sagging' : 'Hips Piked',
@@ -1526,7 +1699,15 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
     // length -- checked only once the hip line itself is already good, since
     // that's the more important fault.
     final elbow = pose.landmarks[useLeft ? PoseLandmarkType.leftElbow : PoseLandmarkType.rightElbow];
-    if (isLandmarkVisible(elbow)) {
+    final wrist = pose.landmarks[useLeft ? PoseLandmarkType.leftWrist : PoseLandmarkType.rightWrist];
+    // Straight arms make a high plank, which is a legitimate plank whose
+    // elbows are by definition not "under" the shoulders in the forearm sense;
+    // only judge elbow position on a forearm (bent-elbow) plank.
+    final highPlank = isLandmarkVisible(wrist) &&
+        isLandmarkVisible(elbow) &&
+        MathUtils.calculateJointAngle(shoulder, elbow, wrist) >=
+            AppConstants.highPlankElbowAngleMin;
+    if (isLandmarkVisible(elbow) && !highPlank) {
       final torsoLength =
           math.sqrt(math.pow(shoulder.x - hip.x, 2) + math.pow(shoulder.y - hip.y, 2));
       if (MathUtils.horizontalOffsetRatio(elbow!, shoulder, torsoLength) >
@@ -1584,7 +1765,7 @@ class GluteBridgeAnalyzer extends RangeOfMotionAnalyzer {
   String get shortRangeIssue => 'Hips Not Fully Extended';
 
   @override
-  String get shortRangeCueId => CueIds.fullRange;
+  String get shortRangeCueId => CueIds.liftHigher;
 
   @override
   String get workingMessage => 'Drive your hips up';
@@ -1674,6 +1855,9 @@ class SitupAnalyzer extends RangeOfMotionAnalyzer {
 
   @override
   String get shortRangeIssue => 'Insufficient Range';
+
+  @override
+  String get shortRangeCueId => CueIds.curlHigher;
 
   @override
   String get workingMessage => 'Curl up';
@@ -1775,6 +1959,10 @@ class JumpingJackAnalyzer extends RangeOfMotionAnalyzer {
         PoseLandmarkType.rightElbow,
         PoseLandmarkType.leftHip,
         PoseLandmarkType.rightHip,
+        // Knees are drawn so the skeleton has legs; a jack is a leg movement
+        // too, and floating ankle dots read as a broken overlay.
+        PoseLandmarkType.leftKnee,
+        PoseLandmarkType.rightKnee,
         PoseLandmarkType.leftAnkle,
         PoseLandmarkType.rightAnkle,
       };
@@ -1795,7 +1983,7 @@ class JumpingJackAnalyzer extends RangeOfMotionAnalyzer {
   String get shortRangeIssue => 'Arms Not Fully Raised';
 
   @override
-  String get shortRangeCueId => CueIds.fullRange;
+  String get shortRangeCueId => CueIds.raiseArms;
 
   @override
   String get workingMessage => 'Arms all the way up';
@@ -1921,7 +2109,7 @@ class WallSitAnalyzer extends TimedExerciseAnalyzer {
       return const HoldEvaluation.broken(issue: 'Not Low Enough', cueId: CueIds.goDeeper);
     }
     if (kneeAngle < AppConstants.wallSitKneeAngleMin) {
-      return const HoldEvaluation.broken(issue: 'Too Low', cueId: CueIds.fullRange);
+      return const HoldEvaluation.broken(issue: 'Too Low', cueId: CueIds.slideUp);
     }
 
     final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
@@ -2020,8 +2208,14 @@ class SidePlankAnalyzer extends TimedExerciseAnalyzer {
     if (bodyAngle <= AppConstants.sidePlankBodyAngleMin) {
       // Same direction logic as Plank: a hip below the shoulder-ankle
       // midline is sagging toward the floor, above it is piking upward.
-      final midlineY = (shoulder.y + ankle.y) / 2;
-      final isSagging = hip.y > midlineY;
+      final supportElbow = pose.landmarks[
+          useLeft ? PoseLandmarkType.leftElbow : PoseLandmarkType.rightElbow];
+      final isSagging = MathUtils.isHipSagging(
+        shoulder: shoulder,
+        hip: hip,
+        end: ankle,
+        floorReference: isLandmarkVisible(supportElbow) ? supportElbow : null,
+      );
       return HoldEvaluation.broken(
         issue: isSagging ? 'Hips Sagging' : 'Hips Piked',
         cueId: isSagging ? CueIds.hipsSagging : CueIds.hipsPiked,

@@ -76,7 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  int get _totalReps => _sessions.fold(0, (s, e) => s + e.totalReps);
+  int get _totalReps => _sessions.fold(0, (s, e) => s + e.repsForTotals);
   int get _totalSessions => _sessions.length;
   double get _avgForm {
     final ratings = _sessions

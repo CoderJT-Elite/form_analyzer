@@ -98,6 +98,63 @@ class LandmarkSmoother {
 }
 
 class MathUtils {
+  /// Whether the hip has dropped toward the floor (true) or lifted away from
+  /// it (false), relative to the straight line from [shoulder] to [end]
+  /// (knee or ankle).
+  ///
+  /// This used to be "hip.y is greater than the midline y", which quietly
+  /// assumes the camera is upright and the floor is at the bottom of the
+  /// image. Turn the phone on its side -- as the live test did for every
+  /// floor exercise -- and the answer became arbitrary, so the same plank got
+  /// "hips up" and "lower your hips" within seconds. Here the floor is
+  /// located from where the hands or elbows are relative to the body line,
+  /// so the verdict holds when the phone is turned. When the body lies across
+  /// the image (the usual upright camera), or no hand/elbow is clearly off the
+  /// line, it uses the image-down assumption.
+  static bool isHipSagging({
+    required PoseLandmark shoulder,
+    required PoseLandmark hip,
+    required PoseLandmark end,
+    PoseLandmark? floorReference,
+  }) {
+    final dx = end.x - shoulder.x, dy = end.y - shoulder.y;
+    final len = math.sqrt(dx * dx + dy * dy);
+    final imageDown = hip.y > (shoulder.y + end.y) / 2;
+    if (len < AppConstants.minMagnitude) return imageDown;
+
+    // An upright camera puts a floor-exercise body across the image, where
+    // "image down" is a stable, well-tested floor direction (and the wrist's
+    // offset from the body line is not: it flips sign frame to frame). Only
+    // when the body reads almost exactly vertical has the phone been turned,
+    // and only then does image-down stop meaning anything.
+    // 0.35 is about 20 degrees off vertical: a camera merely looking down along
+    // the body (steep, but not vertical) stays on the image-down path.
+    if (dx.abs() >= 0.35 * dy.abs()) return imageDown;
+
+    final nx = -dy / len, ny = dx / len;
+    final hipOffset = (hip.x - shoulder.x) * nx + (hip.y - shoulder.y) * ny;
+    if (floorReference != null) {
+      final floorOffset = (floorReference.x - shoulder.x) * nx +
+          (floorReference.y - shoulder.y) * ny;
+      if (floorOffset.abs() > 0.15 * len) return hipOffset * floorOffset > 0;
+    }
+    return imageDown;
+  }
+
+  /// Angle in degrees between segment (ax,ay)->(bx,by) and segment
+  /// (cx,cy)->(dx,dy). 0 means parallel, 180 anti-parallel. Independent of how
+  /// the image is oriented, unlike anything comparing against "vertical".
+  static double angleBetweenSegments(
+    double ax, double ay, double bx, double by,
+    double cx, double cy, double dx, double dy,
+  ) {
+    final v1x = bx - ax, v1y = by - ay, v2x = dx - cx, v2y = dy - cy;
+    final m = math.sqrt(v1x * v1x + v1y * v1y) * math.sqrt(v2x * v2x + v2y * v2y);
+    if (m < AppConstants.minMagnitude) return 0;
+    final cos = ((v1x * v2x + v1y * v2y) / m).clamp(-1.0, 1.0);
+    return math.acos(cos) * 180 / math.pi;
+  }
+
   static double calculateJointAngleFromOffsets(Offset a, Offset b, Offset c) {
     final ba = Offset(a.dx - b.dx, a.dy - b.dy);
     final bc = Offset(c.dx - b.dx, c.dy - b.dy);

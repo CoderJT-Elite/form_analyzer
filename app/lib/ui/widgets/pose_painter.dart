@@ -34,15 +34,19 @@ class PosePainter extends CustomPainter {
       ..strokeWidth = 3.0
       ..color = AppColors.accentCyan;
 
-    // Femur (hip → knee): Green during concentric drive, red otherwise.
+    // Femur (hip → knee): a squat-only state readout, green during the drive
+    // up and red otherwise. For every other exercise there is no such state,
+    // and a permanently red thigh just reads as "your legs are wrong".
     final femurPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 4.0
-      ..color = squatState == SquatState.concentric
-          ? AppColors.goodGreen
-          : AppColors.badRed;
+      ..strokeWidth = squatState == null ? 3.0 : 4.0
+      ..color = squatState == null
+          ? AppColors.accentCyan
+          : (squatState == SquatState.concentric
+              ? AppColors.goodGreen
+              : AppColors.badRed);
 
     final dotPaint = Paint()
       ..style = PaintingStyle.fill

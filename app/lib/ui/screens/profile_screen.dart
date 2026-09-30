@@ -83,7 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   int get _totalReps =>
-      _sessions?.fold<int>(0, (s, e) => s + e.totalReps) ?? 0;
+      _sessions?.fold<int>(0, (s, e) => s + e.repsForTotals) ?? 0;
   int get _totalSessions => _sessions?.length ?? 0;
   double get _avgForm {
     final ratings = (_sessions ?? [])

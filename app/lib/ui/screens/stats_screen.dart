@@ -49,7 +49,7 @@ class _StatsScreenState extends State<StatsScreen>
     }
   }
 
-  int get _totalReps => _sessions.fold(0, (s, e) => s + e.totalReps);
+  int get _totalReps => _sessions.fold(0, (s, e) => s + e.repsForTotals);
 
   double get _avgRating {
     final ratings = _sessions

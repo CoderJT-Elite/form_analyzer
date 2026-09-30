@@ -15,6 +15,16 @@ enum ExerciseType {
   sidePlank,
 }
 
+/// Holds are measured in seconds, not reps. The analyzers still report the
+/// count through `totalReps` (one per second held), so anything showing or
+/// summing "reps" has to know which kind of session it is looking at.
+extension ExerciseTypeTiming on ExerciseType {
+  bool get isTimedHold =>
+      this == ExerciseType.plank ||
+      this == ExerciseType.wallSit ||
+      this == ExerciseType.sidePlank;
+}
+
 class Exercise {
   final String name;
   final String description;
@@ -127,6 +137,13 @@ class WorkoutSession {
   });
 
   int get totalReps => sets.fold(0, (sum, set) => sum + set.reps);
+
+  /// Seconds held, for timed exercises; zero otherwise.
+  int get heldSeconds => exerciseType.isTimedHold ? totalReps : 0;
+
+  /// Reps for lifetime totals. A 35 second plank is not 35 reps, and adding
+  /// its seconds in inflated the "TOTAL REPS" tiles.
+  int get repsForTotals => exerciseType.isTimedHold ? 0 : totalReps;
 
   Map<String, dynamic> toJson() => {
     'id': id,

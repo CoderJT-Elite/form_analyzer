@@ -30,6 +30,7 @@ class WorkoutSummaryDialog extends StatelessWidget {
     final rating = session.overallRating ?? 0.0;
     final int stars = rating.round().clamp(0, 5);
     final reps = _allReps;
+    final timed = session.exerciseType.isTimedHold;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -75,15 +76,28 @@ class WorkoutSummaryDialog extends StatelessWidget {
               const SizedBox(height: 8),
               _TrendLabel(current: rating, previous: previousRating!),
             ],
+            if (!timed && session.totalReps > 0 && session.totalReps < 3) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Rated on only ${session.totalReps} '
+                '${session.totalReps == 1 ? 'rep' : 'reps'} \u2014 do a few more '
+                'for a rating you can trust.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 32),
-            _buildStatRow('TOTAL REPS', '${session.totalReps}'),
+            if (timed)
+              _buildStatRow('TIME HELD', formatHold(session.heldSeconds))
+            else
+              _buildStatRow('TOTAL REPS', '${session.totalReps}'),
             if (reps.isNotEmpty) ...[
               const Divider(color: Colors.white12, height: 32),
-              _sectionLabel('REP QUALITY'),
+              _sectionLabel(timed ? 'FORM SECOND BY SECOND' : 'REP QUALITY'),
               const SizedBox(height: 12),
               _RepQualityStrip(reps: reps),
               const SizedBox(height: 12),
-              _buildRepDetail(reps),
+              timed ? _buildHoldDetail(reps) : _buildRepDetail(reps),
             ],
             const SizedBox(height: 16),
             if (session.overallFeedback.isNotEmpty) ...[
@@ -162,6 +176,27 @@ class WorkoutSummaryDialog extends StatelessWidget {
     );
   }
 
+  /// m:ss for a hold, e.g. 75 -> 1:15.
+  static String formatHold(int seconds) =>
+      '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
+
+  /// How much of a hold was spent with good form, in place of the per-rep
+  /// "best rep / weakest rep" wording that makes no sense for seconds.
+  Widget _buildHoldDetail(List<RepRecord> reps) {
+    final good = reps.where((r) => r.score >= 0.9).length;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        'Good form for $good of ${reps.length} seconds.',
+        style: GoogleFonts.inter(
+          color: Colors.white70,
+          fontSize: 13,
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+
   /// Best and worst rep, plus average tempo when it was measured.
   Widget _buildRepDetail(List<RepRecord> reps) {
     final best = reps.reduce((a, b) => b.score > a.score ? b : a);
@@ -197,6 +232,9 @@ class WorkoutSummaryDialog extends StatelessWidget {
   /// Turn the most frequent issue into one actionable thing to work on.
   static String _focusHint(String topIssue) {
     switch (topIssue) {
+      case 'Excessive Forward Lean':
+        return 'Focus next time: keep your chest up so your torso stays '
+            'roughly parallel to your shins.';
       case 'Rounded Back':
       case 'Critical Back Rounding':
         return 'Focus next time: brace your core and keep your chest up '

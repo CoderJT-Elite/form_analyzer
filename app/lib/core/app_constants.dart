@@ -33,6 +33,11 @@ class AppConstants {
 
   static const double deadliftBackAngleMin = 160.0;
 
+  /// Torso-vs-shin direction gap, in degrees, beyond which the chest is
+  /// collapsing forward. A sound squat keeps the two roughly parallel.
+  static const double squatTorsoLeanMaxDegrees = 45.0;
+  static const double squatTorsoLeanPenalty = 0.2;
+
   // Squat scoring penalties
   static const double squatRoundedBackPenalty = 0.3;
   static const double squatCriticalBackRoundingPenalty = 0.5;
@@ -105,6 +110,9 @@ class AppConstants {
   static const double sidePlankElbowOffsetRatio = 0.5;
 
   static const double plankHipAsymmetryDegreesThreshold = 15.0;
+
+  /// Elbow angle at or above which the arms count as straight (a high plank).
+  static const double highPlankElbowAngleMin = 150.0;
 
   // Wall sit
   // Knee drifting past the toe, as a fraction of shin length -- same idea as
