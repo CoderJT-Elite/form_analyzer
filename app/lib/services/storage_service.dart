@@ -42,6 +42,8 @@ class StorageService {
   static const String _routineSessionsKey = 'routine_sessions_v1';
   static const String _voiceCoachingEnabledKey = 'voice_coaching_enabled_v1';
   static const String _hapticFeedbackEnabledKey = 'haptic_feedback_enabled_v1';
+  static const String _sessionRecordingKey = 'session_recording_enabled_v1';
+  static const String _developerUnlockedKey = 'developer_options_unlocked_v1';
   static const String _disclaimerAcceptedKey = 'health_disclaimer_accepted_v1';
   static const String _profilePicturePathKey = 'profile_picture_path_v1';
   static const String _displayNameKey = 'display_name_v1';
@@ -218,6 +220,29 @@ class StorageService {
   Future<bool> isHapticFeedbackEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_hapticFeedbackEnabledKey) ?? true;
+  }
+
+  /// Whether workouts are recorded to the device for diagnosis. Off by default;
+  /// see SessionRecorder.
+  Future<bool> isSessionRecordingEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_sessionRecordingKey) ?? false;
+  }
+
+  Future<void> setSessionRecordingEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_sessionRecordingKey, enabled);
+  }
+
+  /// Whether the developer section of Profile has been revealed.
+  Future<bool> isDeveloperUnlocked() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_developerUnlockedKey) ?? false;
+  }
+
+  Future<void> setDeveloperUnlocked(bool unlocked) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_developerUnlockedKey, unlocked);
   }
 
   Future<bool> hasAcceptedHealthDisclaimer() async {

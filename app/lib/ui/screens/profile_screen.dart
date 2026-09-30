@@ -15,7 +15,9 @@ import '../../core/app_constants.dart';
 import '../../core/build_info.dart';
 import '../../models/exercise_model.dart';
 import '../../services/crash_report_service.dart';
+import '../../services/session_recorder.dart';
 import '../../services/storage_service.dart';
+import '../../services/tts_service.dart';
 import '../widgets/glass_container.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -25,7 +27,10 @@ class ProfileScreen extends StatefulWidget {
   // just duplicate it.
   final VoidCallback? onProfileTap;
 
-  const ProfileScreen({super.key, this.onProfileTap});
+  /// Speaks the voice check. Supplied by tests; the app builds its own.
+  final TTSService? tts;
+
+  const ProfileScreen({super.key, this.onProfileTap, this.tts});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -42,6 +47,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _profilePicturePath;
   bool _isTakingPhoto = false;
   String? _displayName;
+  bool _developerUnlocked = false;
+  bool _recordingEnabled = false;
+  int _footerTaps = 0;
 
   @override
   void initState() {
@@ -57,8 +65,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final hapticsEnabled = await _storageService.isHapticFeedbackEnabled();
       final picturePath = await _storageService.getProfilePicturePath();
       final displayName = await _storageService.getDisplayName();
+      final unlocked = await _storageService.isDeveloperUnlocked();
+      final recording = await _storageService.isSessionRecordingEnabled();
       if (!mounted) return;
       setState(() {
+        _developerUnlocked = unlocked;
+        _recordingEnabled = recording;
         _sessions = data;
         _voiceCoachingEnabled = voiceEnabled;
         _hapticFeedbackEnabled = hapticsEnabled;
@@ -174,11 +186,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 32),
                         _buildSettingsList(),
                         const SizedBox(height: 24),
-                        Text(
-                          BuildInfo.summary,
-                          style: GoogleFonts.inter(
-                            color: AppColors.textTertiary,
-                            fontSize: 11,
+                        GestureDetector(
+                          key: const Key('build-footer'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _onFooterTap,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            child: Text(
+                              BuildInfo.summary,
+                              style: GoogleFonts.inter(
+                                color: AppColors.textTertiary,
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -481,6 +501,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (mounted) setState(() => _hapticFeedbackEnabled = value);
           },
         ),
+        _buildActionRow(
+          icon: Icons.volume_up_rounded,
+          title: 'Test Voice',
+          onTap: _testVoice,
+        ),
+        if (_developerUnlocked) ..._buildDeveloperSection(),
         ...items.map(
           (item) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -694,6 +720,117 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('GOT IT'),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Tapping the build line five times reveals the developer section.
+  Future<void> _onFooterTap() async {
+    if (_developerUnlocked) return;
+    _footerTaps++;
+    if (_footerTaps < 5) return;
+    _footerTaps = 0;
+    await _storageService.setDeveloperUnlocked(true);
+    if (!mounted) return;
+    setState(() => _developerUnlocked = true);
+    _showMessage('Developer options unlocked.');
+  }
+
+  /// Say a phrase aloud so the athlete can check the volume and the voice
+  /// before a workout, rather than finding out mid-set that nothing is heard.
+  Future<void> _testVoice() async {
+    if (!_voiceCoachingEnabled) {
+      _showMessage('Voice Coaching is switched off. Turn it on to hear the coach.');
+      return;
+    }
+    final tts = widget.tts ?? TTSService();
+    try {
+      await tts.init();
+      tts.setEnabled(true);
+      final spoke = await tts.speak('Form Analyzer voice check. Squat down slowly.');
+      if (!spoke) _showMessage('The voice could not start. Check your volume.');
+    } catch (e) {
+      _showMessage('The voice could not start: $e');
+    }
+  }
+
+  List<Widget> _buildDeveloperSection() {
+    return [
+      _buildToggleSetting(
+        icon: Icons.fiber_manual_record_outlined,
+        title: 'Record Test Sessions',
+        value: _recordingEnabled,
+        onChanged: (value) async {
+          await _storageService.setSessionRecordingEnabled(value);
+          if (mounted) setState(() => _recordingEnabled = value);
+        },
+      ),
+      _buildActionRow(
+        icon: Icons.ios_share_rounded,
+        title: 'Share Recordings',
+        onTap: _shareRecordings,
+      ),
+      _buildActionRow(
+        icon: Icons.delete_outline_rounded,
+        title: 'Delete Recordings',
+        onTap: _deleteRecordings,
+      ),
+    ];
+  }
+
+  Future<void> _shareRecordings() async {
+    try {
+      final files = await RecordingStore.latest();
+      if (files.isEmpty) {
+        _showMessage('No recordings yet. Switch on "Record Test Sessions" and do a workout.');
+        return;
+      }
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [for (final f in files) XFile(f.path)],
+          subject: 'Form Analyzer recordings (${BuildInfo.label})',
+        ),
+      );
+    } catch (e) {
+      _showMessage('Could not share the recordings: $e');
+    }
+  }
+
+  Future<void> _deleteRecordings() async {
+    try {
+      final n = await RecordingStore.deleteAll();
+      _showMessage(n == 0 ? 'No recordings to delete.' : 'Deleted $n recording files.');
+    } catch (e) {
+      _showMessage('Could not delete the recordings: $e');
+    }
+  }
+
+  Widget _buildActionRow({
+    required IconData icon,
+    required String title,
+    required Future<void> Function() onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        onTap: () => unawaited(onTap()),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.textSecondary, size: 20),
+            const SizedBox(width: 16),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary, size: 18),
+          ],
+        ),
       ),
     );
   }

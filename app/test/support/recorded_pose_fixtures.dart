@@ -30,13 +30,18 @@ class RecordedPoseFixtures {
   /// app/test/fixtures/pose_sequences/ (with or without the .json suffix).
   static List<Pose> loadSequence(String assetName) {
     final fileName = assetName.endsWith('.json') ? assetName : '$assetName.json';
-    final file = File(path.join(
+    return loadFile(File(path.join(
       Directory.current.path,
       'test',
       'fixtures',
       'pose_sequences',
       fileName,
-    ));
+    )));
+  }
+
+  /// Load a fixture-format file from anywhere, including a `_poses.json`
+  /// written by SessionRecorder on a real phone.
+  static List<Pose> loadFile(File file) {
     final frames = jsonDecode(file.readAsStringSync()) as List<dynamic>;
 
     return frames.map((frame) {

@@ -41,10 +41,17 @@ Web changes are checked by `.github/workflows/web_ci.yml`: it fails the build if
 
 Camera frames flow through a fixed pipeline:
 
-1. `ExerciseScreen` (`lib/ui/screens/exercise_screen.dart`) owns the `CameraController`, skips every other frame (`_frameSkipInterval`) for performance, and runs a short on-screen calibration countdown before analysis starts.
-2. Each frame is converted to an ML Kit `InputImage` and run through `PoseDetectorService` (`lib/services/pose_detector_service.dart`), a thin wrapper around `google_mlkit_pose_detection`.
-3. The resulting `Pose` is handed to the active exercise's `ExerciseAnalyzer.processPose(pose)` (`lib/logic/exercise_analyzer.dart`), which does all rep-counting and form-scoring.
-4. The analyzer fires callbacks (`onRep`, `onFeedback`, `onCorrection`, `onSafetyAlert`) that `ExerciseScreen` wires up to TTS (`TTSService`), haptics, and the on-screen status/skeleton overlay (`PosePainter`).
+1. `ExerciseScreen` (`lib/ui/screens/exercise_screen.dart`) owns the `CameraController`, skips every other frame (`_frameSkipInterval`) for performance, and runs setup guidance and a short countdown before analysis starts.
+2. `DeviceGravityService` (accelerometer via `sensors_plus`) says which way is down. Each frame is converted to an ML Kit `InputImage` using a **detection rotation that follows the phone's physical orientation** (`logic/gravity_frame.dart`), then run through `PoseDetectorService` (a thin wrapper around `google_mlkit_pose_detection`). The UI is portrait-locked, so the preview is drawn in the sensor's own frame; `PosePainter` maps poses from the detection frame back to it.
+3. `PoseValidator` (`logic/pose_validity.dart`) drops detections that are not an athlete (a barbell plate, a face close-up). Survivors are levelled with `normalizePose` so that +y is gravity, which is what every analyzer assumes.
+4. The pose is handed to the active exercise's `ExerciseAnalyzer.processPose(pose)` (`lib/logic/exercise_analyzer.dart`), which does all rep-counting and form-scoring. While the phone itself is being moved (`PhoneMotionMonitor`) nothing is fed, and reps counted just before are retracted.
+5. The analyzer fires callbacks (`onRep`, `onFeedback`, `onCorrection`, `onSafetyAlert`) that `ExerciseScreen` wires up to TTS (`TTSService`), haptics, and the on-screen status/skeleton overlay (`PosePainter`). Everything spoken goes through `_say`, so the optional `SessionRecorder` can log it.
+
+Rep counting is judged against **the athlete's own range** (`logic/rep_cycle_detector.dart` for push-ups; `logic/rep_recovery.dart` for the recovery half elsewhere), never against fixed angles, and depth is *graded*, not a gate. Push-ups and sit-ups use 2D angles (`uses3dAngles => false`); ML Kit's depth estimate is noisy.
+
+**Before trusting a live test, read the build line at the bottom of Profile.** Live test #3 was recorded on a stale build. Install with `tools/install_phone.ps1`, which refuses to build from uncommitted code and stamps the APK. Turn on "Record Test Sessions" (tap the build line five times) to capture real poses; `test/support/recorded_session.dart` replays them with their real timing and gravity.
+
+Timing-dependent tests must use a simulated clock (`test/support/test_clock.dart`, `replay_harness.dart`): analyzers judge reps by duration, and a tight loop on the wall clock makes every rep last zero milliseconds.
 
 ### Exercise analyzers
 

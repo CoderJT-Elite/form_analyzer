@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
+import '../../core/build_info.dart';
 import '../../core/app_theme.dart';
 import '../../logic/cue_engine.dart';
 import '../../logic/exercise_analyzer.dart';
@@ -20,6 +21,7 @@ import '../../logic/pose_validity.dart';
 import '../../models/exercise_model.dart';
 import '../../services/device_gravity_service.dart';
 import '../../services/pose_detector_service.dart';
+import '../../services/session_recorder.dart';
 import '../../services/tts_service.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
@@ -42,6 +44,10 @@ class ExerciseScreen extends StatefulWidget {
   // exercise PoseFraming's edge/distance logic without a real camera.
   final Size? imageSizeForTesting;
 
+  /// Supplied by tests; in the app the recorder is created when recording is
+  /// switched on in Profile.
+  final SessionRecorder? recorder;
+
   const ExerciseScreen({
     super.key,
     required this.exercise,
@@ -51,6 +57,7 @@ class ExerciseScreen extends StatefulWidget {
     this.minGuidanceDuration = const Duration(milliseconds: 1500),
     this.maxGuidanceDuration = const Duration(milliseconds: 4000),
     this.imageSizeForTesting,
+    this.recorder,
   });
 
   @override
@@ -65,6 +72,11 @@ class ExerciseScreenState extends State<ExerciseScreen>
   final PoseValidator _validator = PoseValidator();
   final PresenceTracker _presence = PresenceTracker();
   late final TTSService _tts;
+
+  /// Records the workout for diagnosis when the athlete has switched that on in
+  /// Profile (off by default).
+  SessionRecorder? _recorder;
+  bool _recordingSaved = false;
   final StorageService _storage = StorageService();
 
   bool _isCameraInitialized = false;
@@ -206,6 +218,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
   @override
   void initState() {
     super.initState();
+    _recorder = widget.recorder;
     _tts = widget.tts ?? TTSService();
     WidgetsBinding.instance.addObserver(this);
     _statusMessage.value = widget.exercise.analyzer.displayMessage;
@@ -223,22 +236,48 @@ class ExerciseScreenState extends State<ExerciseScreen>
           _triggerHaptic(HapticFeedback.mediumImpact);
         }
         _repCount.value = count;
+        _recorder?.event('rep', {'count': count});
       }
     };
     // Cue delivery is already rate-limited, prioritised and varied by the
     // analyzer's CueEngine, so these just hand the text straight to speech.
-    widget.exercise.analyzer.onFeedback = (message) => _tts.speak(message);
-    widget.exercise.analyzer.onCorrection = (message) => _tts.speak(message);
+    widget.exercise.analyzer.onFeedback = (message) => _say(message, kind: 'praise');
+    widget.exercise.analyzer.onCorrection = (message) => _say(message, kind: 'correction');
     widget.exercise.analyzer.onSafetyAlert = (message) {
       _triggerHaptic(HapticFeedback.heavyImpact);
-      _tts.speak(message, priority: SpeechPriority.urgent);
+      _say(message, kind: 'safety', priority: SpeechPriority.urgent);
     };
+    _gravity.onQuadrantChanged = () {
+      // Turning the phone re-frames every coordinate; that is not the athlete
+      // teleporting.
+      _validator.reset();
+      final e = _gravity.estimate;
+      if (e != null) {
+        _recorder?.event('quadrant', {
+          'turns': e.quarterTurns,
+          'rotation': e.detectionRotation.rawValue,
+        });
+      }
+    };
+  }
+
+  /// Speak [message], noting it for the recording. Everything the athlete hears
+  /// goes through here, so the recording can show what was said and when.
+  void _say(String message, {String kind = 'speech', SpeechPriority priority = SpeechPriority.normal}) {
+    _recorder?.event('speech', {'text': message, 'kind': kind, 'urgent': priority == SpeechPriority.urgent});
+    _tts.speak(message, priority: priority);
   }
 
   Future<void> _loadFeedbackPreferences() async {
     await _tts.init();
     final voiceEnabled = await _storage.isVoiceCoachingEnabled();
     final hapticsEnabled = await _storage.isHapticFeedbackEnabled();
+    if (widget.recorder != null) {
+      _recorder = widget.recorder;
+    } else if (await _storage.isSessionRecordingEnabled()) {
+      _recorder = SessionRecorder(exercise: widget.exercise.type.name);
+    }
+    _recorder?.event('start', {'analyzer': widget.exercise.analyzer.runtimeType.toString()});
     _tts.setEnabled(voiceEnabled);
     if (mounted) {
       setState(() => _hapticsEnabled = hapticsEnabled);
@@ -425,10 +464,11 @@ class ExerciseScreenState extends State<ExerciseScreen>
     _setupSpokenAt[issue] = now;
     switch (issue) {
       case SetupIssue.notInFrame:
-        _tts.speak(CameraSetupCopy.notInFrameSpoken);
+        _say(CameraSetupCopy.notInFrameSpoken, kind: 'setup');
       case SetupIssue.wrongOrientation:
-        _tts.speak(
+        _say(
           CameraSetupCopy.spokenFor(widget.exercise.analyzer.requiredOrientation),
+          kind: 'setup',
         );
     }
   }
@@ -495,7 +535,8 @@ class ExerciseScreenState extends State<ExerciseScreen>
       _isSetupGuiding = false;
       _calibrationCountdown = 3;
     });
-    _tts.speak("3", priority: SpeechPriority.urgent);
+    _recorder?.event('countdown');
+    _say("3", kind: 'countdown', priority: SpeechPriority.urgent);
 
     _calibrationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -512,11 +553,12 @@ class ExerciseScreenState extends State<ExerciseScreen>
       setState(() {
         if (_calibrationCountdown > 1) {
           _calibrationCountdown--;
-          _tts.speak("$_calibrationCountdown", priority: SpeechPriority.urgent);
+          _say("$_calibrationCountdown", kind: 'countdown', priority: SpeechPriority.urgent);
         } else {
           _isCalibrated = true;
           _calibrationTimer?.cancel();
-          _tts.speak("Go!", priority: SpeechPriority.urgent);
+          _say("Go!", kind: 'countdown', priority: SpeechPriority.urgent);
+          _recorder?.event('go');
           _startSetWatch();
         }
       });
@@ -607,12 +649,47 @@ class ExerciseScreenState extends State<ExerciseScreen>
       // Notifier assignment instead of setState: only the skeleton overlay
       // repaints, leaving CameraPreview and the surrounding chrome alone.
       _presence.frame(athleteVisible: poses.isNotEmpty);
+      _recordFrame(detected, poses, detectionRotation);
       _posesRotation = detectionRotation;
       _poses.value = poses;
     } catch (e) {
       debugPrint('Error processing image: $e');
     } finally {
       _isProcessingFrame = false;
+    }
+  }
+
+  /// The stage of the workout, for the recording.
+  String get _stage => _isSetupGuiding
+      ? 'setup'
+      : (!_isCalibrated ? 'countdown' : (_isResting ? 'rest' : 'active'));
+
+  void _recordFrame(List<Pose> detected, List<Pose> accepted, InputImageRotation rotation) {
+    final recorder = _recorder;
+    final raw = _imageSize;
+    if (recorder == null || raw == null) return;
+    final first = detected.isEmpty ? null : detected.first;
+    recorder.frame(
+      pose: first,
+      accepted: first != null && accepted.contains(first),
+      rotation: rotation,
+      frameSize: PoseCoordinates.frameSize(raw, rotation),
+      stage: _stage,
+      gravity: _gravity.estimate,
+      accel: _gravity.lastSample,
+      phoneMoving: _gravity.phoneIsMoving,
+    );
+  }
+
+  /// Write the recording, if there is one. Saved once per visit to the screen.
+  Future<void> _saveRecording(Map<String, Object?> summary) async {
+    final recorder = _recorder;
+    if (recorder == null || _recordingSaved || recorder.isEmpty) return;
+    _recordingSaved = true;
+    try {
+      await recorder.save(await RecordingStore.directory(), summary: summary);
+    } catch (e) {
+      debugPrint('Could not save the recording: $e');
     }
   }
 
@@ -631,8 +708,10 @@ class ExerciseScreenState extends State<ExerciseScreen>
       analyzer.interrupt();
       _repCount.value = analyzer.repCount;
       _statusMessage.value = 'Phone moved - paused';
+      _recorder?.event('phone_moved', {'reps': analyzer.repCount});
     } else if (!moving && _wasPhoneMoving) {
       _statusMessage.value = analyzer.displayMessage;
+      _recorder?.event('phone_still');
     }
     _wasPhoneMoving = moving;
     return moving;
@@ -708,6 +787,15 @@ class ExerciseScreenState extends State<ExerciseScreen>
         session: session,
         previousRating: previousRating,
         onConfirm: (finalSession) async {
+          _recorder?.event('confirmed', {
+            'counted': finalSession.countedTotal,
+            'final': finalSession.totalReps,
+          });
+          unawaited(_saveRecording({
+            'counted': finalSession.countedTotal,
+            'final': finalSession.totalReps,
+            'build': BuildInfo.label,
+          }));
           // Save standalone session if not in routine mode
           if (!widget.isRoutineMode) {
             await _storage.saveSession(finalSession);
@@ -764,6 +852,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
         repRecords: List.of(widget.exercise.analyzer.repRecords),
       ),
     );
+    _recorder?.event('set_finished', {'reps': _repCount.value, 'sets': _completedSets.length});
     _repCount.value = 0;
     _setCount.value = _completedSets.length;
     _setOverHinted = false;
@@ -804,6 +893,9 @@ class ExerciseScreenState extends State<ExerciseScreen>
     _calibrationTimer?.cancel();
     _setWatchTimer?.cancel();
     _restTimer?.cancel();
+    // Screens left without finishing (back button, app killed by the phone) are
+    // still worth having a recording of.
+    unawaited(_saveRecording({'left': 'without confirming', 'build': BuildInfo.label}));
     widget.exercise.analyzer.reset();
     widget.exercise.analyzer.onRep = null;
     widget.exercise.analyzer.onFeedback = null;
