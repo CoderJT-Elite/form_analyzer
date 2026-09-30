@@ -265,34 +265,72 @@ void main() {
   });
 
   group('PlankAnalyzer', () {
+    late ManualClock clock;
     late PlankAnalyzer analyzer;
 
-    setUp(() => analyzer = PlankAnalyzer());
+    setUp(() {
+      clock = ManualClock();
+      analyzer = PlankAnalyzer(clock: clock.call);
+    });
+
+    /// Hold [pose] for [seconds] at 15 fps through the real frame path.
+    void hold(Pose pose, double seconds) {
+      for (var i = 0; i < seconds * 15; i++) {
+        clock.advance(const Duration(milliseconds: 66));
+        analyzer.processPose(pose);
+      }
+    }
+
+    /// Hold for [seconds] and return the verdict on the last frame.
+    HoldEvaluation? judgeAfter(Pose pose, double seconds) {
+      HoldEvaluation? last;
+      for (var i = 0; i < seconds * 15; i++) {
+        clock.advance(const Duration(milliseconds: 66));
+        last = analyzer.evaluateHold(pose);
+      }
+      return last;
+    }
 
     test('a straight back is a good hold', () {
-      final evaluation = analyzer.evaluateHold(PoseFixtures.plank(backAngle: 178));
+      final evaluation = judgeAfter(PoseFixtures.plank(backAngle: 178), 3);
       expect(evaluation, isNotNull);
       expect(evaluation!.isCorrect, isTrue);
     });
 
     test('sagging hips are told to lift, not lower', () {
-      final evaluation = analyzer.evaluateHold(
-        PoseFixtures.plank(backAngle: 140, sagging: true),
-      );
+      final evaluation = judgeAfter(PoseFixtures.plank(backAngle: 140, sagging: true), 3)!;
 
-      expect(evaluation!.isCorrect, isFalse);
+      expect(evaluation.isCorrect, isFalse);
       expect(evaluation.issue, 'Hips Sagging');
       expect(evaluation.cueId, CueIds.hipsSagging);
     });
 
     test('piked hips are told to lower', () {
-      final evaluation = analyzer.evaluateHold(
-        PoseFixtures.plank(backAngle: 140, sagging: false),
-      );
+      final evaluation = judgeAfter(PoseFixtures.plank(backAngle: 140, sagging: false), 3)!;
 
-      expect(evaluation!.isCorrect, isFalse);
+      expect(evaluation.isCorrect, isFalse);
       expect(evaluation.issue, 'Hips Piked');
       expect(evaluation.cueId, CueIds.hipsPiked);
+    });
+
+    test('the seconds spent lowering into position are not judged', () {
+      final first = analyzer.evaluateHold(PoseFixtures.plank(backAngle: 140, sagging: true))!;
+      expect(first.leftPosition, isTrue);
+      expect(first.cueId, isEmpty, reason: 'no cue while settling');
+    });
+
+    test('an upright body is not a plank, and is told so', () {
+      Pose upright(Pose p) => PoseFixtures.fromLandmarks([
+            for (final lm in p.landmarks.values)
+              PoseFixtures.landmark(lm.type, -lm.y, lm.x, likelihood: lm.likelihood),
+          ]);
+      final evaluation = judgeAfter(upright(PoseFixtures.plank(backAngle: 178)), 3)!;
+      expect(evaluation.leftPosition, isTrue);
+      expect(evaluation.cueId, CueIds.getInPlank);
+
+      hold(upright(PoseFixtures.plank(backAngle: 178)), 5);
+      expect(analyzer.repCount, 0, reason: 'no time credited while standing');
+      expect(analyzer.statusMessage, contains('plank'));
     });
 
     test('returns null when landmarks are missing', () {
@@ -301,38 +339,35 @@ void main() {
       expect(analyzer.statusMessage, 'Adjust Camera');
     });
 
-    test('reports held seconds through onRep so the session can be saved',
-        () async {
+    test('reports held seconds through onRep so the session can be saved', () {
       final seen = <int>[];
       analyzer.onRep = seen.add;
 
-      final good = PoseFixtures.plank(backAngle: 178);
-      analyzer.processPose(good);
-
-      // The hold clock is real time; wait past the first second boundary.
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
-      analyzer.processPose(good);
+      hold(PoseFixtures.plank(backAngle: 178), 4);
 
       expect(seen, isNotEmpty,
           reason: 'ExerciseScreen only saves a session when onRep has fired.');
-      expect(analyzer.repCount, greaterThanOrEqualTo(1));
+      expect(analyzer.repCount, greaterThanOrEqualTo(2));
       expect(analyzer.repScores, isNotEmpty);
     });
 
-    test('scores seconds held with broken form lower than clean ones',
-        () async {
-      analyzer.processPose(PoseFixtures.plank(backAngle: 178));
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
-      analyzer.processPose(PoseFixtures.plank(backAngle: 140, sagging: true));
+    test('scores seconds held with broken form lower than clean ones', () {
+      hold(PoseFixtures.plank(backAngle: 178), 3);
+      hold(PoseFixtures.plank(backAngle: 140, sagging: true), 3);
 
       expect(analyzer.repScores, isNotEmpty);
       expect(analyzer.repScores.last, lessThan(1.0));
     });
 
-    test('reset stops and zeroes the clock', () async {
-      analyzer.processPose(PoseFixtures.plank(backAngle: 178));
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
-      analyzer.processPose(PoseFixtures.plank(backAngle: 178));
+    test('a badly held plank keeps the clock running (bad form is not leaving)', () {
+      hold(PoseFixtures.plank(backAngle: 178), 3);
+      final before = analyzer.repCount;
+      hold(PoseFixtures.plank(backAngle: 140, sagging: true), 8);
+      expect(analyzer.repCount, greaterThanOrEqualTo(before + 6));
+    });
+
+    test('reset stops and zeroes the clock', () {
+      hold(PoseFixtures.plank(backAngle: 178), 4);
       expect(analyzer.repCount, greaterThanOrEqualTo(1));
 
       analyzer.reset();

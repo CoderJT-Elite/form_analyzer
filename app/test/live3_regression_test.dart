@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:form_analyzer/logic/exercise_analyzer.dart';
 
+import 'live_footage_regression_test.dart' show oppositeHipCallsWithin;
 import 'support/replay_harness.dart';
 
 /// Live test #3 (2026-09-29): ten sets recorded on the phone's front camera,
@@ -72,18 +73,18 @@ void main() {
     expect(run.issues.containsAll({'Hips Sagging', 'Hips Piked'}), isFalse);
   });
 
-  test('plank: a timed hold credited close to the real ~18 s', () {
+  test('plank: a wall lean is not credited as a floor plank, and the athlete is told', () {
     final run = replay('live3_plank', (c) => PlankAnalyzer(clock: c));
     expect(run.analyzer.isTimedHold, isTrue);
-    expect(run.analyzer.repCount, inInclusiveRange(16, 22));
-  }, skip: 'Phase 2.5: credits 12 s; landmark dropouts still eat hold time');
+    // The set was leaning on a wall, 65 degrees from horizontal. That is not a
+    // plank however straight the line, so no time is banked -- but the athlete
+    // hears why instead of watching the timer refuse to move.
+    expect(run.analyzer.repCount, lessThan(4));
+    expect(run.cues.any((c) => c.toLowerCase().contains('plank position')), isTrue);
+  });
 
-  test('plank: never calls hips both too high and too low in one hold', () {
+  test('plank: never calls the hips both too high and too low in quick succession', () {
     final run = replay('live3_plank', (c) => PlankAnalyzer(clock: c));
-    expect(run.issues.containsAll({'Hips Sagging', 'Hips Piked'}), isFalse);
-    final said = run.safety.join(' | ').toLowerCase();
-    final callsHigh = said.contains('too high') || said.contains('lower your hips');
-    final callsLow = said.contains('hips up') || said.contains('drop');
-    expect(callsHigh && callsLow, isFalse, reason: said);
-  }, skip: 'Phase 1.1 + 2.5: sideways phone flips sag/pike; needs gravity frame');
+    expect(oppositeHipCallsWithin(run, const Duration(milliseconds: 1500)), isEmpty);
+  });
 }

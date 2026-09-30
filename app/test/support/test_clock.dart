@@ -12,3 +12,13 @@ class TestClock {
 
   DateTime call() => _now = _now.add(step);
 }
+
+/// A clock that only moves when a test says so, for holds and other logic that
+/// depends on real elapsed time.
+class ManualClock {
+  DateTime _now = DateTime(2026);
+
+  DateTime call() => _now;
+
+  void advance(Duration by) => _now = _now.add(by);
+}

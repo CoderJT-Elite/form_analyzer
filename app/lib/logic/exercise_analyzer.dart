@@ -3,6 +3,7 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../core/app_constants.dart';
 import '../utils/math_utils.dart';
 import 'cue_engine.dart';
+import 'hip_line.dart';
 import 'pose_orientation.dart';
 import 'rep_cycle_detector.dart';
 import 'rep_recovery.dart';
@@ -188,8 +189,11 @@ abstract class ExerciseAnalyzer {
     _cleanRepStreak = 0;
   }
 
+  /// Landmark confidence needed before a landmark is used.
+  double get minLikelihood => AppConstants.visibilityThreshold;
+
   bool isLandmarkVisible(PoseLandmark? landmark) {
-    return landmark != null && landmark.likelihood >= AppConstants.visibilityThreshold;
+    return landmark != null && landmark.likelihood >= minLikelihood;
   }
 
   /// Route a cleared cue to the right callback and to the on-screen status.
@@ -670,6 +674,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
       ExponentialSmoothingFilter(alpha: AppConstants.repSignalSmoothingAlpha);
   final MovingAverageFilter _backAngleFilter =
       MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
+  final HipLineJudge _hipLine = HipLineJudge();
 
   /// Smallest raw elbow angle seen during the rep in progress.
   double _minRawAngle = 180;
@@ -710,6 +715,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
     _signalFilter.reset();
     _frontFilter.reset();
     _backAngleFilter.reset();
+    _hipLine.reset();
     _minRawAngle = 180;
     _headOn = false;
     _lastFrontDepth = null;
@@ -863,7 +869,6 @@ class PushupAnalyzer extends ExerciseAnalyzer {
   /// Straight shoulder-hip-knee line, same idea as plank. Only judged from the
   /// side, and only while a rep is under way.
   void _checkHipLine(Pose pose, {required bool useLeft}) {
-    if (phase == RepPhase.neutral) return;
     final shoulder =
         pose.landmarks[useLeft ? PoseLandmarkType.leftShoulder : PoseLandmarkType.rightShoulder];
     final hip = pose.landmarks[useLeft ? PoseLandmarkType.leftHip : PoseLandmarkType.rightHip];
@@ -871,30 +876,40 @@ class PushupAnalyzer extends ExerciseAnalyzer {
     if (!isLandmarkVisible(shoulder) || !isLandmarkVisible(hip) || !isLandmarkVisible(knee)) {
       return;
     }
+    // Keep the judge fed between reps too, so it has settled by the time one
+    // starts.
+    final verdict = _hipLine.update(shoulder!, hip!, knee!, now: now());
+    if (phase == RepPhase.neutral) return;
+
     // Smoothed like every other angle here: a single noisy frame must not tag
     // a whole rep as sagging, since the flag has no recovery once raised
     // (pushup_pixabay_302251 hit a one-frame dip early in a long rep).
     final backAngle = _backAngleFilter.add(MathUtils.calculateJointAngle(shoulder, hip, knee));
     if (backAngle < AppConstants.pushupBackAngleMin) {
-      final wristLandmark =
-          pose.landmarks[useLeft ? PoseLandmarkType.leftWrist : PoseLandmarkType.rightWrist];
-      final isSagging = MathUtils.isHipSagging(
-        shoulder: shoulder!,
-        hip: hip!,
-        end: knee!,
-        floorReference: isLandmarkVisible(wristLandmark) ? wristLandmark : null,
-      );
-      // A rep has one dominant hip fault. Once it is called one way the other
-      // verdict is ignored, so a borderline frame can't flip it and stack two
-      // penalties (or two contradictory cues) onto the same rep.
-      final alreadySagging = currentRepIssues.contains('Hips Sagging');
-      final alreadyPiked = currentRepIssues.contains('Hips Piked');
-      final sagging = alreadySagging || (!alreadyPiked && isSagging);
-      addIssue(sagging ? 'Hips Sagging' : 'Hips Piked');
-      cues.request(sagging ? CueIds.hipsSagging : CueIds.hipsPiked);
+      switch (verdict) {
+        case HipVerdict.sagging:
+          // A rep has one dominant hip fault; once called, the other verdict
+          // is ignored so two contradictory penalties cannot stack.
+          if (!currentRepIssues.contains('Hips Piked')) {
+            addIssue('Hips Sagging');
+            cues.request(CueIds.hipsSagging);
+          }
+        case HipVerdict.piked:
+          if (!currentRepIssues.contains('Hips Sagging')) {
+            addIssue('Hips Piked');
+            cues.request(CueIds.hipsPiked);
+          }
+        case HipVerdict.unjudgeable:
+        case HipVerdict.undecided:
+          // Leaning on a wall or a steep incline: no floor to sag toward, but
+          // the line is still broken.
+          addIssue('Body Not Straight');
+          cues.request(CueIds.straightBody);
+      }
     } else {
       currentRepIssues.remove('Hips Sagging');
       currentRepIssues.remove('Hips Piked');
+      currentRepIssues.remove('Body Not Straight');
     }
   }
 
@@ -919,6 +934,9 @@ class PushupAnalyzer extends ExerciseAnalyzer {
       score -= AppConstants.pushupHipAlignmentPenalty;
     }
     if (currentRepIssues.contains('Hips Piked')) {
+      score -= AppConstants.pushupHipAlignmentPenalty;
+    }
+    if (currentRepIssues.contains('Body Not Straight')) {
       score -= AppConstants.pushupHipAlignmentPenalty;
     }
     statusMessage = 'Rep $repCount';
@@ -1576,13 +1594,26 @@ class HoldEvaluation {
   /// Issue label recorded against the seconds held with broken form.
   final String issue;
 
+  /// True when the athlete has gone out of the exercise position altogether
+  /// (stood up, walked off) as opposed to holding it badly. The clock stops.
+  final bool leftPosition;
+
+  /// What to show while [leftPosition]; a generic prompt when null.
+  final String? message;
+
   const HoldEvaluation.good()
       : isCorrect = true,
         cueId = '',
-        issue = '';
+        issue = '',
+        leftPosition = false,
+        message = null;
 
-  const HoldEvaluation.broken({required this.cueId, required this.issue})
-      : isCorrect = false;
+  const HoldEvaluation.broken({
+    required this.cueId,
+    required this.issue,
+    this.leftPosition = false,
+    this.message,
+  }) : isCorrect = false;
 }
 
 /// Base class for exercises measured in held seconds rather than reps
@@ -1597,6 +1628,19 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
 
   @override
   bool get isTimedHold => true;
+
+  // A hold only needs approximate geometry (is the body line roughly straight?),
+  // not the precision rep counting wants, and a strict bar kept pausing the
+  // clock: on live test #3 the knees sat just under 0.7 for seconds at a time
+  // and an 18 second plank was credited as 12.
+  @override
+  double get minLikelihood => AppConstants.holdVisibilityThreshold;
+
+  /// Whether persistently broken form is read as having left the position, and
+  /// stops the clock after [AppConstants.timedHoldBreakGraceSeconds]. Holds that
+  /// can tell for themselves (see [HoldEvaluation.leftPosition]) turn this off,
+  /// so a sagging plank is still time under tension.
+  bool get stopsClockOnLongBreak => true;
 
   DateTime? _lastFrameTime;
   int _accumulatedHeldMs = 0;
@@ -1632,6 +1676,14 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
       return;
     }
 
+    if (evaluation.leftPosition) {
+      _lastFrameTime = null;
+      _brokenSince = null;
+      statusMessage = evaluation.message ?? 'Get back into position';
+      if (evaluation.cueId.isNotEmpty) cues.request(evaluation.cueId);
+      return;
+    }
+
     if (_lastFrameTime != null) {
       final deltaMs = currentTime.difference(_lastFrameTime!).inMilliseconds;
       if (deltaMs > 0 && deltaMs <= 2000) {
@@ -1652,7 +1704,8 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
     // long enough we assume they've stood up and stop counting.
     _brokenSince ??= currentTime;
     final brokenForMs = currentTime.difference(_brokenSince!).inMilliseconds;
-    if (brokenForMs >= AppConstants.timedHoldBreakGraceSeconds * 1000) {
+    if (stopsClockOnLongBreak &&
+        brokenForMs >= AppConstants.timedHoldBreakGraceSeconds * 1000) {
       _lastFrameTime = null;
     }
 
@@ -1698,6 +1751,19 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
 
 class PlankAnalyzer extends TimedExerciseAnalyzer {
   PlankAnalyzer({super.cueEngine, super.clock});
+
+  final HipLineJudge _hipLine = HipLineJudge();
+  final SettleGate _gate = SettleGate();
+
+  @override
+  bool get stopsClockOnLongBreak => false;
+
+  @override
+  void reset() {
+    super.reset();
+    _hipLine.reset();
+    _gate.reset();
+  }
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -1750,22 +1816,20 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
     final backAngle = MathUtils.calculateJointAngle(shoulder, hip, knee);
     lastProcessedAngle = backAngle;
 
-    if (backAngle <= AppConstants.plankBackAngleMin) {
-      // Sag vs pike is judged against where the floor is (the elbow), not
-      // against image-down, so it holds when the phone is on its side.
-      final floorElbow = pose.landmarks[
-          useLeft ? PoseLandmarkType.leftElbow : PoseLandmarkType.rightElbow];
-      final isSagging = MathUtils.isHipSagging(
-        shoulder: shoulder,
-        hip: hip,
-        end: knee,
-        floorReference: isLandmarkVisible(floorElbow) ? floorElbow : null,
-      );
+    // A plank is on the floor, so the body lies roughly flat once the frame is
+    // gravity-aligned. Upright is standing up (or leaning on a wall, which is
+    // not a plank however straight the line): not in position, and no time is
+    // credited. Bending the line, by contrast, is bad form, not leaving.
+    final flat =
+        HipLineJudge.tiltFromHorizontal(shoulder, knee) <= AppConstants.holdMaxTiltDegrees;
+    final settled = _gate.update(flat, now());
+    if (!flat) return _notInPlank;
+    if (!settled) return _settling;
 
-      return HoldEvaluation.broken(
-        issue: isSagging ? 'Hips Sagging' : 'Hips Piked',
-        cueId: isSagging ? CueIds.hipsSagging : CueIds.hipsPiked,
-      );
+    // Fed every frame, straight or not, so it has settled before the line breaks.
+    final verdict = _hipLine.update(shoulder, hip, knee, now: now());
+    if (backAngle <= AppConstants.plankBackAngleMin) {
+      return _brokenLine(verdict);
     }
 
     // Elbow drifting out from under the shoulder, as a fraction of torso
@@ -1805,6 +1869,70 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
     }
 
     return const HoldEvaluation.good();
+  }
+}
+
+/// Waits for an athlete to have been in position for a moment before a hold is
+/// judged, so the seconds spent lowering into a plank are not scored as a
+/// broken one ("Hips up", then "Lower your hips" 0.2 seconds later).
+class SettleGate {
+  SettleGate({this.settle = const Duration(milliseconds: 1500), this.grace = const Duration(milliseconds: 600)});
+
+  final Duration settle;
+
+  /// Brief wobbles out of position (one bad frame) do not restart the wait.
+  final Duration grace;
+
+  DateTime? _inSince;
+  DateTime? _outSince;
+
+  void reset() {
+    _inSince = null;
+    _outSince = null;
+  }
+
+  /// Returns true once the athlete has been continuously in position for
+  /// [settle].
+  bool update(bool inPosition, DateTime now) {
+    if (inPosition) {
+      _outSince = null;
+      _inSince ??= now;
+    } else {
+      _outSince ??= now;
+      if (now.difference(_outSince!) > grace) _inSince = null;
+    }
+    final since = _inSince;
+    return since != null && now.difference(since) >= settle;
+  }
+}
+
+const HoldEvaluation _settling = HoldEvaluation.broken(
+  issue: 'Settling',
+  cueId: '',
+  leftPosition: true,
+  message: 'Hold steady...',
+);
+
+const HoldEvaluation _notInPlank = HoldEvaluation.broken(
+  issue: 'Not In Position',
+  cueId: CueIds.getInPlank,
+  leftPosition: true,
+  message: 'Get into plank position on the floor',
+);
+
+/// The hold evaluation for a body line that is not straight. A direction is
+/// only given when there is one to give: sagging or piking is meaningless when
+/// leaning on a wall, and "hips up" then "hips down" within seconds of each
+/// other (live test #3) is worse than no direction at all.
+HoldEvaluation _brokenLine(HipVerdict verdict) {
+  switch (verdict) {
+    case HipVerdict.sagging:
+      return const HoldEvaluation.broken(issue: 'Hips Sagging', cueId: CueIds.hipsSagging);
+    case HipVerdict.piked:
+      return const HoldEvaluation.broken(issue: 'Hips Piked', cueId: CueIds.hipsPiked);
+    case HipVerdict.unjudgeable:
+    case HipVerdict.undecided:
+      return const HoldEvaluation.broken(issue: 'Body Not Straight', cueId: CueIds.straightBody);
   }
 }
 
@@ -2237,6 +2365,19 @@ class WallSitAnalyzer extends TimedExerciseAnalyzer {
 class SidePlankAnalyzer extends TimedExerciseAnalyzer {
   SidePlankAnalyzer({super.cueEngine, super.clock});
 
+  final HipLineJudge _hipLine = HipLineJudge();
+  final SettleGate _gate = SettleGate();
+
+  @override
+  bool get stopsClockOnLongBreak => false;
+
+  @override
+  void reset() {
+    super.reset();
+    _hipLine.reset();
+    _gate.reset();
+  }
+
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
         PoseLandmarkType.leftShoulder,
@@ -2284,21 +2425,17 @@ class SidePlankAnalyzer extends TimedExerciseAnalyzer {
     final bodyAngle = MathUtils.calculateJointAngle(shoulder, hip, ankle);
     lastProcessedAngle = bodyAngle;
 
+    final flat =
+        HipLineJudge.tiltFromHorizontal(shoulder, ankle) <= AppConstants.holdMaxTiltDegrees;
+    final settled = _gate.update(flat, now());
+    if (!flat) return _notInPlank;
+    if (!settled) return _settling;
+
+    final verdict = _hipLine.update(shoulder, hip, ankle, now: now());
     if (bodyAngle <= AppConstants.sidePlankBodyAngleMin) {
-      // Same direction logic as Plank: a hip below the shoulder-ankle
-      // midline is sagging toward the floor, above it is piking upward.
-      final supportElbow = pose.landmarks[
-          useLeft ? PoseLandmarkType.leftElbow : PoseLandmarkType.rightElbow];
-      final isSagging = MathUtils.isHipSagging(
-        shoulder: shoulder,
-        hip: hip,
-        end: ankle,
-        floorReference: isLandmarkVisible(supportElbow) ? supportElbow : null,
-      );
-      return HoldEvaluation.broken(
-        issue: isSagging ? 'Hips Sagging' : 'Hips Piked',
-        cueId: isSagging ? CueIds.hipsSagging : CueIds.hipsPiked,
-      );
+      // Same direction logic as Plank: a hip below the shoulder-ankle line is
+      // sagging toward the floor, above it is piking upward.
+      return _brokenLine(verdict);
     }
 
     // Supporting elbow drifting out from under the shoulder.

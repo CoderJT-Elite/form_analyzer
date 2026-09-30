@@ -3,21 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
+import '../../logic/gravity_frame.dart';
 
 class PosePainter extends CustomPainter {
   PosePainter({
     required this.poses,
     required this.imageSize,
     required this.rotation,
+    InputImageRotation? previewRotation,
     required this.lensDirection,
     this.lastAngle,
     this.squatState,
     this.activeLandmarkTypes,
-  });
+  }) : previewRotation = previewRotation ?? rotation;
 
   final List<Pose> poses;
   final Size imageSize;
+  /// The rotation the pose detector was given. Poses are reported in that
+  /// frame, which follows the phone's physical orientation.
   final InputImageRotation rotation;
+
+  /// The rotation the camera preview is drawn with (the sensor orientation: the
+  /// UI is locked to portrait). Equal to [rotation] unless the phone is turned.
+  final InputImageRotation previewRotation;
   final CameraLensDirection lensDirection;
   final double? lastAngle;
 
@@ -78,7 +86,7 @@ class PosePainter extends CustomPainter {
         if (activeLandmarkTypes != null && !activeLandmarkTypes!.contains(type)) {
           return;
         }
-        canvas.drawCircle(_transform(landmark.x, landmark.y, size), 4, dotPaint);
+        canvas.drawCircle(transformPoint(landmark.x, landmark.y, size), 4, dotPaint);
       });
     }
   }
@@ -94,28 +102,41 @@ class PosePainter extends CustomPainter {
     }
 
     canvas.drawLine(
-      _transform(lm1.x, lm1.y, size),
-      _transform(lm2.x, lm2.y, size),
+      transformPoint(lm1.x, lm1.y, size),
+      transformPoint(lm2.x, lm2.y, size),
       paint,
     );
   }
 
-  Offset _transform(double x, double y, Size size) {
+  /// Map a pose coordinate to widget coordinates.
+  @visibleForTesting
+  Offset transformPoint(double x, double y, Size size) {
+    // Poses come back in the frame ML Kit was told to detect in; the preview is
+    // drawn in the sensor's own portrait frame. Bring the point across first.
+    final (px, py) = PoseCoordinates.toPreviewFrame(
+      x: x,
+      y: y,
+      rawImage: imageSize,
+      poseRotation: rotation,
+      previewRotation: previewRotation,
+    );
+
     double transformedX;
     double transformedY;
 
     // The imageSize is the size of the image processing by ML Kit
     // In portrait (90 or 270), width and height are swapped relative to the UI
-    if (rotation == InputImageRotation.rotation90deg || rotation == InputImageRotation.rotation270deg) {
-      transformedX = x * size.width / imageSize.height;
-      transformedY = y * size.height / imageSize.width;
+    if (previewRotation == InputImageRotation.rotation90deg ||
+        previewRotation == InputImageRotation.rotation270deg) {
+      transformedX = px * size.width / imageSize.height;
+      transformedY = py * size.height / imageSize.width;
     } else {
-      transformedX = x * size.width / imageSize.width;
-      transformedY = y * size.height / imageSize.height;
+      transformedX = px * size.width / imageSize.width;
+      transformedY = py * size.height / imageSize.height;
     }
 
     // Handle mirrors and flips based on rotation
-    if (rotation == InputImageRotation.rotation180deg) {
+    if (previewRotation == InputImageRotation.rotation180deg) {
       transformedX = size.width - transformedX;
       transformedY = size.height - transformedY;
     }
@@ -134,6 +155,7 @@ class PosePainter extends CustomPainter {
     // flight, which suppressed repaints carrying fresh data and left the
     // skeleton visibly trailing the athlete.
     return oldDelegate.poses != poses ||
+        oldDelegate.rotation != rotation ||
         oldDelegate.lastAngle != lastAngle ||
         oldDelegate.squatState != squatState ||
         oldDelegate.activeLandmarkTypes != activeLandmarkTypes;

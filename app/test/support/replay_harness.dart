@@ -12,6 +12,9 @@ class ReplayRun {
   /// Seconds into the sequence at which each rep was counted.
   final List<double> repTimes = [];
 
+  /// Every cue delivered, with the second of the sequence it arrived.
+  final List<(double, String)> timedCues = [];
+
   Set<String> get issues => analyzer.allRepIssues.expand((i) => i).toSet();
 }
 
@@ -27,14 +30,19 @@ ReplayRun replay(
   var t = DateTime(2026);
   final analyzer = make(() => t);
   final run = ReplayRun(analyzer, []);
-  analyzer.onCorrection = run.cues.add;
-  analyzer.onFeedback = run.cues.add;
-  analyzer.onSafetyAlert = (m) {
-    run.cues.add(m);
-    run.safety.add(m);
-  };
   final step = Duration(microseconds: (1e6 / fps).round());
   var frame = 0;
+  void heard(String m) {
+    run.cues.add(m);
+    run.timedCues.add((frame / fps, m));
+  }
+
+  analyzer.onCorrection = heard;
+  analyzer.onFeedback = heard;
+  analyzer.onSafetyAlert = (m) {
+    heard(m);
+    run.safety.add(m);
+  };
   var lastCount = 0;
   for (final pose in RecordedPoseFixtures.loadSequence(fixture)) {
     t = t.add(step);

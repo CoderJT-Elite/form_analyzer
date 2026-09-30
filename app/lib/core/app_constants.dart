@@ -198,6 +198,16 @@ class AppConstants {
   static const double sidePlankBodyAngleMin = 155.0;
 
   // Timed holds (plank and friends)
+  /// Landmark confidence needed during a hold. Below the 0.7 rep counting uses
+  /// because a hold judges approximate geometry, and dropping out of it stops
+  /// the clock.
+  static const double holdVisibilityThreshold = 0.5;
+
+  /// Floor holds (plank, side plank) only count while the body lies within this
+  /// many degrees of horizontal in the gravity-aligned frame. Real floor planks
+  /// read 2-28; standing up or leaning on a wall reads 65-85.
+  static const double holdMaxTiltDegrees = 60.0;
+
   // A second held with broken form still counts toward duration but scores low.
   static const double timedHoldBrokenFormScore = 0.4;
   // How long form may stay broken before we assume the user has left the

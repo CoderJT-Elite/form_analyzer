@@ -92,6 +92,8 @@ class CueIds {
 
   static const String hipsSagging = 'hold.hipsSagging';
   static const String hipsPiked = 'hold.hipsPiked';
+  static const String straightBody = 'hold.straightBody';
+  static const String getInPlank = 'hold.getInPlank';
 
   static const String rushedTempo = 'tempo.rushed';
   static const String kneeValgus = 'form.kneeValgus';
@@ -285,6 +287,21 @@ const List<CueDefinition> kDefaultCues = [
     repeatableWithinRep: true,
     phrasings: ['Lower your hips', 'Drop your hips into line'],
     escalated: ['Hips are too high — flatten your body out'],
+  ),
+  // Body line is broken but there is no floor to say which way (leaning on a
+  // wall, a steep incline): tell them to straighten it without inventing a
+  // direction. Not a safety cue -- it must not interrupt anything.
+  CueDefinition(
+    id: CueIds.straightBody,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 5),
+    phrasings: ['Keep your body in one straight line', 'Line up your head, hips and heels'],
+  ),
+  CueDefinition(
+    id: CueIds.getInPlank,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 8),
+    phrasings: ['Get into plank position on the floor', 'Lower down into your plank'],
   ),
   CueDefinition(
     id: CueIds.rushedTempo,

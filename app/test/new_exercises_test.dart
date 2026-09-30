@@ -7,6 +7,7 @@ import 'package:form_analyzer/models/exercise_catalog.dart';
 import 'package:form_analyzer/models/exercise_model.dart';
 
 import 'support/pose_fixtures.dart';
+import 'support/test_clock.dart';
 
 /// Drive an analyzer through a smooth travel between two angles.
 void sweep(
@@ -152,18 +153,30 @@ void main() {
   });
 
   group('SidePlankAnalyzer', () {
+    /// Hold [pose] for [seconds] and return the verdict on the last frame. A
+    /// hold is not judged until the athlete has settled into position.
+    HoldEvaluation? judgeAfter(SidePlankAnalyzer analyzer, ManualClock clock, Pose pose,
+        [double seconds = 3]) {
+      HoldEvaluation? last;
+      for (var i = 0; i < seconds * 15; i++) {
+        clock.advance(const Duration(milliseconds: 66));
+        last = analyzer.evaluateHold(pose);
+      }
+      return last;
+    }
+
     test('a straight body line is a good hold', () {
-      final analyzer = SidePlankAnalyzer();
-      final evaluation =
-          analyzer.evaluateHold(PoseFixtures.sidePlank(bodyAngle: 175));
+      final clock = ManualClock();
+      final analyzer = SidePlankAnalyzer(clock: clock.call);
+      final evaluation = judgeAfter(analyzer, clock, PoseFixtures.sidePlank(bodyAngle: 175));
 
       expect(evaluation!.isCorrect, isTrue);
     });
 
     test('a dropped hip breaks the hold', () {
-      final analyzer = SidePlankAnalyzer();
-      final evaluation =
-          analyzer.evaluateHold(PoseFixtures.sidePlank(bodyAngle: 140));
+      final clock = ManualClock();
+      final analyzer = SidePlankAnalyzer(clock: clock.call);
+      final evaluation = judgeAfter(analyzer, clock, PoseFixtures.sidePlank(bodyAngle: 140));
 
       expect(evaluation!.isCorrect, isFalse);
       expect(evaluation.issue, 'Hips Sagging');

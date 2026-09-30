@@ -13,6 +13,39 @@ import 'support/replay_harness.dart';
 /// squat 2, jumping jack 2, overhead press 1, sit-up 3, push-up 0, and a
 /// plank credited as 14 "reps". Ranges rather than exact values because the
 /// fixtures come from MediaPipe, a proxy for the on-device ML Kit model.
+/// Direction of a hip cue: `up` asks for the hips to rise, `down` to lower.
+String? hipDirection(String cue) {
+  final c = cue.toLowerCase();
+  if (c.contains('hips up') || c.contains('let your hips drop') || c.contains('lift those hips')) {
+    return 'up';
+  }
+  if (c.contains('lower your hips') || c.contains('hips into line') || c.contains('too high')) {
+    return 'down';
+  }
+  return null;
+}
+
+/// Pairs of hip cues that pull in opposite directions less than [window] apart.
+///
+/// The judge itself refuses to reverse within 4 seconds of a call; this looks at
+/// delivered cues, which can trail the verdict by a cue-cooldown, so it only
+/// flags reversals too fast to be an athlete over-correcting.
+List<String> oppositeHipCallsWithin(ReplayRun run, Duration window) {
+  final clashes = <String>[];
+  (double, String, String)? previous;
+  for (final (t, cue) in run.timedCues) {
+    final d = hipDirection(cue);
+    if (d == null) continue;
+    if (previous != null &&
+        previous.$3 != d &&
+        (t - previous.$1) < window.inMilliseconds / 1000) {
+      clashes.add('${previous.$2} @${previous.$1.toStringAsFixed(1)}s then $cue @${t.toStringAsFixed(1)}s');
+    }
+    previous = (t, cue, d);
+  }
+  return clashes;
+}
+
 void main() {
   test('squat: counts the set instead of 2 of ~9, with no false back alarm', () {
     final run = replay('live2_squat', (c) => SquatAnalyzer(clock: c));
@@ -51,11 +84,16 @@ void main() {
     expect(said.contains('thighs parallel'), isFalse);
   });
 
-  test('plank: a timed hold, credited as time and not thrown away', () {
+  test('plank: a timed hold, credited as time, with no rapid hip contradictions', () {
     final run = replay('live2_plank', (c) => PlankAnalyzer(clock: c));
     expect(run.analyzer.isTimedHold, isTrue);
-    // ~36 seconds of footage with several landmark dropouts; the old code
-    // paused the clock on every dropout and credited 14.
-    expect(run.analyzer.repCount, greaterThanOrEqualTo(15));
+    // This "plank" was leaning on a wall for most of its 36 seconds (the body
+    // sits 65-85 degrees from horizontal), which is not a floor plank; only the
+    // stretch actually near the floor position is credited. The old code
+    // credited 14 for a dropout-riddled hold and called the hips both too high
+    // and too low within 0.2 seconds; the dropout side is covered in
+    // live_test_fixes_test.dart.
+    expect(run.analyzer.repCount, greaterThan(0));
+    expect(oppositeHipCallsWithin(run, const Duration(milliseconds: 1500)), isEmpty);
   });
 }

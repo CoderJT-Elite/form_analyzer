@@ -9,9 +9,12 @@ import '../../core/app_colors.dart';
 import '../../core/app_theme.dart';
 import '../../logic/cue_engine.dart';
 import '../../logic/exercise_analyzer.dart';
+import '../../logic/gravity_frame.dart';
 import '../../logic/pose_framing.dart';
+import '../../logic/pose_normalizer.dart';
 import '../../logic/pose_orientation.dart';
 import '../../models/exercise_model.dart';
+import '../../services/device_gravity_service.dart';
 import '../../services/pose_detector_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/storage_service.dart';
@@ -54,6 +57,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
     with WidgetsBindingObserver {
   CameraController? _cameraController;
   final PoseDetectorService _poseDetector = PoseDetectorService();
+  final DeviceGravityService _gravity = DeviceGravityService();
   late final TTSService _tts;
   final StorageService _storage = StorageService();
 
@@ -105,13 +109,28 @@ class ExerciseScreenState extends State<ExerciseScreen>
   final ValueNotifier<int> _repCount = ValueNotifier<int>(0);
   final ValueNotifier<int> _setCount = ValueNotifier<int>(0);
 
+  /// What the pose detector should be told: the camera's sensor rotation,
+  /// turned to match how the phone is actually lying (see [DeviceGravity]).
+  InputImageRotation get _detectionRotation =>
+      _gravity.estimate?.detectionRotation ?? _imageRotation;
+
+  /// Gravity in the frame poses are reported in.
+  GravityFrame get _gravityFrame => _gravity.estimate?.residual ?? GravityFrame.upright;
+
   Size? _imageSize;
   // Real camera init always overwrites this with the actual mapped
   // rotation; the default only matters when skipCameraInitialization skips
   // that step (tests), since the pose overlay's build() reads this
   // whenever _imageSize is set, independent of whether the camera pipeline
   // ever ran.
+  //
+  // This is the camera's own (sensor) rotation: how the preview is drawn, since
+  // the UI is locked to portrait. Detection uses [_detectionRotation], which
+  // also follows the phone's physical orientation.
   InputImageRotation _imageRotation = InputImageRotation.rotation0deg;
+
+  /// The rotation the poses currently on screen were detected in.
+  InputImageRotation _posesRotation = InputImageRotation.rotation0deg;
   late InputImageFormat _inputImageFormat;
   CameraLensDirection _lensDirection = CameraLensDirection.front;
   String? _errorMessage;
@@ -245,6 +264,11 @@ class ExerciseScreenState extends State<ExerciseScreen>
           );
         }
         _imageRotation = mappedRotation ?? InputImageRotation.rotation0deg;
+        _posesRotation = _imageRotation;
+        _gravity.start(
+          frontCamera: description.lensDirection == CameraLensDirection.front,
+          sensorOrientation: description.sensorOrientation,
+        );
         _inputImageFormat = Platform.isIOS
             ? InputImageFormat.bgra8888
             : InputImageFormat.nv21;
@@ -367,23 +391,29 @@ class ExerciseScreenState extends State<ExerciseScreen>
     }
   }
 
-  void _onPoseDuringSetup(Pose pose) {
+  void _onPoseDuringSetup(Pose pose, {InputImageRotation? poseRotation}) {
     if (!_isSetupGuiding) return;
 
     // Framing is checked first: turning side-on is meaningless advice if
     // half the athlete isn't even in the shot yet.
+    final raw = _imageSize;
     final inFrame = PoseFraming.isInFrame(
       pose: pose,
       requiredLandmarks: widget.exercise.analyzer.activeLandmarkTypes,
-      imageSize: _imageSize,
+      // Poses are in the detection frame, which is turned relative to the raw
+      // image whenever the phone is on its side.
+      imageSize: raw == null
+          ? null
+          : PoseCoordinates.frameSize(raw, poseRotation ?? _imageRotation),
     );
 
     final observed = _setupOrientationTracker.update(pose);
-    final required = widget.exercise.analyzer.requiredOrientation;
 
     final newIssue = !inFrame
         ? SetupIssue.notInFrame
-        : (observed == required ? null : SetupIssue.wrongOrientation);
+        : (widget.exercise.analyzer.acceptsOrientation(observed)
+            ? null
+            : SetupIssue.wrongOrientation);
 
     if (newIssue == _setupIssue) return;
 
@@ -461,9 +491,13 @@ class ExerciseScreenState extends State<ExerciseScreen>
         );
         return;
       }
+      // Read once: the phone can be turned while this frame is in flight, and
+      // the poses that come back belong to the rotation they were detected in.
+      final detectionRotation = _detectionRotation;
+      final gravity = _gravityFrame;
       final inputImage = _poseDetector.buildInputImage(
         image: image,
-        rotation: _imageRotation,
+        rotation: detectionRotation,
         format: _inputImageFormat,
       );
 
@@ -472,18 +506,20 @@ class ExerciseScreenState extends State<ExerciseScreen>
       if (!mounted) return;
 
       if (_isSetupGuiding && poses.isNotEmpty) {
-        _onPoseDuringSetup(poses.first);
+        _onPoseDuringSetup(poses.first, poseRotation: detectionRotation);
       }
 
       if (_isCalibrated && !_isResting) {
         for (final pose in poses) {
-          widget.exercise.analyzer.processPose(pose);
+          // Analyzers are written for an upright phone; level the pose first.
+          widget.exercise.analyzer.processPose(normalizePose(pose, gravity));
         }
         _statusMessage.value = widget.exercise.analyzer.displayMessage;
       }
 
       // Notifier assignment instead of setState: only the skeleton overlay
       // repaints, leaving CameraPreview and the surrounding chrome alone.
+      _posesRotation = detectionRotation;
       _poses.value = poses;
     } catch (e) {
       debugPrint('Error processing image: $e');
@@ -616,6 +652,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_disposeCameraController());
     _poseDetector.dispose();
+    unawaited(_gravity.dispose());
     _guidanceAdvanceTimer?.cancel();
     _guidanceFallbackTimer?.cancel();
     _calibrationTimer?.cancel();
@@ -690,7 +727,8 @@ class ExerciseScreenState extends State<ExerciseScreen>
                               painter: PosePainter(
                                 poses: poses,
                                 imageSize: _imageSize!,
-                                rotation: _imageRotation,
+                                rotation: _posesRotation,
+                                previewRotation: _imageRotation,
                                 lensDirection: _lensDirection,
                                 squatState:
                                     widget.exercise.analyzer is SquatAnalyzer
@@ -1164,6 +1202,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
   Future<void> _disposeCameraController() async {
     final controller = _cameraController;
     _cameraController = null;
+    unawaited(_gravity.stop());
     if (controller == null) return;
 
     try {
