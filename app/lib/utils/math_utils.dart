@@ -169,6 +169,32 @@ class MathUtils {
     return angle;
   }
 
+  /// Joint angle from the image-plane (x/y) positions only.
+  ///
+  /// ML Kit's depth estimate is the noisiest thing it reports. For a movement
+  /// that happens in a plane facing the camera (a side-on push-up or sit-up)
+  /// the depth term adds nothing but error: on live test #3 footage the 3D and
+  /// 2D elbow angles of the same push-up differed by 16 degrees on average and
+  /// by up to 133 in a frame, and the 3D reading hid the true bottom of reps.
+  static double calculateAngle2D(PoseLandmark a, PoseLandmark b, PoseLandmark c) {
+    return calculateAngleFromCoordinates(
+      ax: a.x,
+      ay: a.y,
+      az: 0,
+      bx: b.x,
+      by: b.y,
+      bz: 0,
+      cx: c.x,
+      cy: c.y,
+      cz: 0,
+    );
+  }
+
+  static double calculateJointAngle2D(PoseLandmark? a, PoseLandmark? b, PoseLandmark? c) {
+    if (a == null || b == null || c == null) return 0.0;
+    return calculateAngle2D(a, b, c);
+  }
+
   static double calculateJointAngle(PoseLandmark? a, PoseLandmark? b, PoseLandmark? c) {
     if (a == null || b == null || c == null) return 0.0;
     return calculateAngle(a, b, c);

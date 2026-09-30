@@ -3,6 +3,7 @@ import 'package:form_analyzer/logic/exercise_analyzer.dart';
 import 'package:form_analyzer/logic/pose_orientation.dart';
 
 import 'support/recorded_pose_fixtures.dart';
+import 'support/replay_harness.dart';
 
 /// Drives the real analyzers with landmark sequences extracted
 /// from real stock exercise footage via MediaPipe Pose (see
@@ -53,41 +54,31 @@ void main() {
 
   group('Pushup, real footage', () {
     test('a real set of push-ups is counted correctly', () {
-      final analyzer = PushupAnalyzer();
-      final frames = RecordedPoseFixtures.loadSequence('pushup_pexels_4367576');
+      final run = replay('pushup_pexels_4367576', (c) => PushupAnalyzer(clock: c), fps: 30);
+      final analyzer = run.analyzer;
 
-      for (final pose in frames) {
-        analyzer.processPose(pose);
-      }
-
-      expect(analyzer.repCount, 4);
+      // Filmed from a steep angle the tracker reads as front-on, so this runs
+      // on the head-on (shoulder-drop) signal; the elbow signal shows 6 clear
+      // descents. The old fixed-threshold machine counted 4.
+      expect(analyzer.repCount, inInclusiveRange(5, 6));
       expect(analyzer.statusMessage, isNot('Adjust Camera'));
       for (final score in analyzer.repScores) {
         expect(score, inInclusiveRange(0.0, 1.0));
       }
     });
 
-    test('genuine depth and lockout do not receive false penalties from tremor', () {
-      final analyzer = PushupAnalyzer();
-      final frames = RecordedPoseFixtures.loadSequence('pushup_pixabay_302251');
+    test('tremor does not multiply reps, and a long real set is counted', () {
+      final run = replay('pushup_pixabay_302251', (c) => PushupAnalyzer(clock: c), fps: 30);
+      final analyzer = run.analyzer;
 
-      for (final pose in frames) {
-        analyzer.processPose(pose);
+      // 24 seconds of push-ups filmed close up, with the landmarks jittering
+      // 20-30 degrees frame to frame. The old machine counted 1-2 reps here (it
+      // waited for a smoothed 90 degrees that tremor smears away); tremor must
+      // also not turn the same set into 30.
+      expect(analyzer.repCount, inInclusiveRange(6, 10));
+      for (final issues in analyzer.allRepIssues) {
+        expect(issues, isNot(contains('Incomplete Lockout')));
       }
-
-      // Athlete reaches 78 degrees depth (<= 90) and locks out to 165 degrees (>= 155).
-      // Descent or ascent tremors must not leave persistent Insufficient Depth or
-      // Incomplete Lockout penalties once depth and lockout are reached -- confirmed
-      // neither shows up in the final issue list despite the tremor.
-      //
-      // This rep does carry a genuine 'Hips Sagging' flag and a 0.75 score: the
-      // shoulder-hip-knee body line drops below plankBackAngleMin for a sustained
-      // stretch of this specific rep even after 5-frame smoothing and with recovery
-      // (the check clears the moment the line straightens back out) -- not a tremor
-      // artifact, a real body-line lapse this athlete's real footage happens to show.
-      expect(analyzer.repCount, 1);
-      expect(analyzer.repScores.first, 0.75);
-      expect(analyzer.allRepIssues.first, ['Hips Sagging']);
     });
   });
 
@@ -251,19 +242,15 @@ void main() {
       expect(analyzer.repScores.length, 4);
     });
 
-    test('situp clip 296446 counts 2 reps, one with a genuine side imbalance', () {
-      final analyzer = SitupAnalyzer();
-      final frames = RecordedPoseFixtures.loadSequence('situp_pixabay_296446');
+    test('situp clip 296446 counts the whole fast set, with a genuine side imbalance', () {
+      final run = replay('situp_pixabay_296446', (c) => SitupAnalyzer(clock: c), fps: 30);
 
-      for (final pose in frames) {
-        analyzer.processPose(pose);
-      }
-
-      expect(analyzer.repCount, 2);
-      // Rep 2 carries a real 'Uneven Sides' flag (0.85) -- the left/right
-      // shoulder-hip-knee angle genuinely diverges by more than the threshold on
-      // that rep. Rep 1 scores clean.
-      expect(analyzer.repScores, [1.0, 0.85]);
+      // 15 seconds of fast sit-ups. Run in a tight loop with no time passing
+      // this used to read as 2 reps; with real frame timing the set is 7.
+      expect(run.analyzer.repCount, inInclusiveRange(6, 9));
+      // The left/right shoulder-hip-knee angle genuinely diverges past the
+      // threshold on some reps, so the imbalance flag is real.
+      expect(run.issues, contains('Uneven Sides'));
     });
   });
 

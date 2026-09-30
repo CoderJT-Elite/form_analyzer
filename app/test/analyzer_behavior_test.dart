@@ -5,6 +5,7 @@ import 'package:form_analyzer/logic/cue_engine.dart';
 import 'package:form_analyzer/logic/exercise_analyzer.dart';
 
 import 'support/pose_fixtures.dart';
+import 'support/test_clock.dart';
 
 /// Hold a single pose for enough frames that the moving-average and
 /// exponential filters settle on it.
@@ -345,7 +346,7 @@ void main() {
   group('PushupAnalyzer', () {
     late PushupAnalyzer analyzer;
 
-    setUp(() => analyzer = PushupAnalyzer());
+    setUp(() => analyzer = PushupAnalyzer(clock: TestClock().call));
 
     test('counts a clean rep to full lockout', () {
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
@@ -357,19 +358,33 @@ void main() {
       expect(analyzer.repScores.single, 1.0);
     });
 
-    test('does not count a rep that never reaches depth', () {
+    test('counts a rep that stops short of depth, and scores it short', () {
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
-      // 120 degrees never crosses the 90 degree depth threshold.
+      // 120 degrees never crosses the 90 degree depth target, but it is 55
+      // degrees of real travel. Discarding it left athletes with an unmoving
+      // counter (live test #3); it counts, and costs score.
       sweepPushup(analyzer, from: 175, to: 120);
       sweepPushup(analyzer, from: 120, to: 175);
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175), frames: 6);
 
-      expect(analyzer.repCount, 0);
+      expect(analyzer.repCount, 1);
+      expect(analyzer.allRepIssues.single, contains('Insufficient Depth'));
+      expect(analyzer.repScores.single, lessThan(1.0));
       expect(analyzer.phase, RepPhase.neutral,
           reason: 'Must recover to neutral, not stick in eccentric.');
     });
 
-    test('recovers from a shallow rep and scores the next one cleanly', () {
+    test('does not count a wobble that is not a push-up', () {
+      settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
+      sweepPushup(analyzer, from: 175, to: 158);
+      sweepPushup(analyzer, from: 158, to: 175);
+      settle(analyzer, PoseFixtures.pushup(elbowAngle: 175), frames: 6);
+
+      expect(analyzer.repCount, 0);
+      expect(analyzer.phase, RepPhase.neutral);
+    });
+
+    test('a shallow rep does not stop the next full one scoring cleanly', () {
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
 
       sweepPushup(analyzer, from: 175, to: 120);
@@ -380,9 +395,21 @@ void main() {
       sweepPushup(analyzer, from: 70, to: 175);
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175), frames: 6);
 
-      expect(analyzer.repCount, 1);
-      expect(analyzer.allRepIssues.single, isEmpty);
-      expect(analyzer.repScores.single, 1.0);
+      expect(analyzer.repCount, 2);
+      expect(analyzer.allRepIssues.first, contains('Insufficient Depth'));
+      expect(analyzer.allRepIssues.last, isEmpty);
+      expect(analyzer.repScores.last, 1.0);
+    });
+
+    test('counts every rep of a set with no pause between them', () {
+      settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
+      for (var i = 0; i < 6; i++) {
+        sweepPushup(analyzer, from: 175, to: 70, steps: 12);
+        sweepPushup(analyzer, from: 70, to: 175, steps: 12);
+      }
+      settle(analyzer, PoseFixtures.pushup(elbowAngle: 175), frames: 6);
+
+      expect(analyzer.repCount, 6);
     });
 
     test('incomplete lockout now costs score instead of being ignored', () {

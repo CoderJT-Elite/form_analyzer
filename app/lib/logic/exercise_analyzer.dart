@@ -4,6 +4,7 @@ import '../core/app_constants.dart';
 import '../utils/math_utils.dart';
 import 'cue_engine.dart';
 import 'pose_orientation.dart';
+import 'rep_cycle_detector.dart';
 import 'rep_recovery.dart';
 
 class PerformanceMetrics {
@@ -156,6 +157,20 @@ abstract class ExerciseAnalyzer {
 
   /// The camera view this exercise's form checks are written for.
   ViewOrientation get requiredOrientation => ViewOrientation.sideOn;
+
+  /// Whether [observed] is a view this exercise can be judged from. Most
+  /// exercises need exactly [requiredOrientation]; push-ups can also be
+  /// counted from a camera on the floor facing the athlete.
+  bool acceptsOrientation(ViewOrientation observed) => observed == requiredOrientation;
+
+  /// Whether joint angles may use ML Kit's depth estimate. Exercises filmed in
+  /// a plane facing the camera measure in the image plane only.
+  bool get uses3dAngles => true;
+
+  /// Joint angle at [b], honouring [uses3dAngles].
+  double jointAngle(PoseLandmark? a, PoseLandmark? b, PoseLandmark? c) => uses3dAngles
+      ? MathUtils.calculateJointAngle(a, b, c)
+      : MathUtils.calculateJointAngle2D(a, b, c);
 
   void reset() {
     repCount = 0;
@@ -640,15 +655,27 @@ class SquatAnalyzer extends ExerciseAnalyzer {
 class PushupAnalyzer extends ExerciseAnalyzer {
   PushupAnalyzer({super.cueEngine, super.clock});
 
-  final MovingAverageFilter _angleFilter =
-      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
+  // Reps are found from the athlete's own range (see RepCycleDetector), never
+  // from "reach 90 degrees, return past 155": live test #3 saw reps whose raw
+  // elbow reached 55-80 degrees read 110-125 after smoothing and never count.
+  final RepCycleDetector _cycle =
+      RepCycleDetector(minExcursion: AppConstants.pushupMinExcursionDegrees);
+  final RepCycleDetector _frontCycle = RepCycleDetector(
+    minExcursion: AppConstants.pushupFrontMinExcursion,
+    maxExcursion: AppConstants.pushupFrontMaxExcursion,
+  );
+  final ExponentialSmoothingFilter _signalFilter =
+      ExponentialSmoothingFilter(alpha: AppConstants.repSignalSmoothingAlpha);
+  final ExponentialSmoothingFilter _frontFilter =
+      ExponentialSmoothingFilter(alpha: AppConstants.repSignalSmoothingAlpha);
   final MovingAverageFilter _backAngleFilter =
       MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
-  double? _prevAngle;
-  bool _reachedDepth = false;
-  double _concentricPeak = 0;
-  double _deepestAngle = 180;
-  final RecoveryDetector _recovery = RecoveryDetector();
+
+  /// Smallest raw elbow angle seen during the rep in progress.
+  double _minRawAngle = 180;
+  bool _headOn = false;
+  double? _lastFrontDepth;
+  DateTime? _frontLostSince;
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -664,16 +691,29 @@ class PushupAnalyzer extends ExerciseAnalyzer {
         PoseLandmarkType.rightKnee,
       };
 
+  /// A push-up is filmed from the side, or from a camera on the floor facing
+  /// the athlete (where the elbow angle barely changes but the shoulders visibly
+  /// drop toward the hands).
+  @override
+  bool acceptsOrientation(ViewOrientation observed) =>
+      observed == ViewOrientation.sideOn || observed == ViewOrientation.frontOn;
+
+  // Elbow angle is measured in the image plane only; see MathUtils.calculateAngle2D.
+  @override
+  bool get uses3dAngles => false;
+
   @override
   void reset() {
     super.reset();
-    _angleFilter.reset();
+    _cycle.reset();
+    _frontCycle.reset();
+    _signalFilter.reset();
+    _frontFilter.reset();
     _backAngleFilter.reset();
-    _prevAngle = null;
-    _reachedDepth = false;
-    _concentricPeak = 0;
-    _deepestAngle = 180;
-    _recovery.reset();
+    _minRawAngle = 180;
+    _headOn = false;
+    _lastFrontDepth = null;
+    _frontLostSince = null;
   }
 
   @override
@@ -685,180 +725,213 @@ class PushupAnalyzer extends ExerciseAnalyzer {
     final rightElbow = pose.landmarks[PoseLandmarkType.rightElbow];
     final rightWrist = pose.landmarks[PoseLandmarkType.rightWrist];
 
+    final observed = orientationTracker.update(pose);
+    final headOn = observed == ViewOrientation.frontOn;
+    if (headOn != _headOn && observed != ViewOrientation.unknown) {
+      _headOn = headOn;
+      _abandonRep();
+    }
+
+    if (_headOn) {
+      _processHeadOn(leftShoulder, rightShoulder, leftWrist, rightWrist);
+      return;
+    }
+
     if (!isLandmarkVisible(leftElbow) && !isLandmarkVisible(rightElbow)) {
       statusMessage = 'Adjust Camera';
       return;
     }
 
-    final leftAngle = MathUtils.calculateJointAngle(leftShoulder, leftElbow, leftWrist);
-    final rightAngle =
-        MathUtils.calculateJointAngle(rightShoulder, rightElbow, rightWrist);
-
+    final leftAngle = jointAngle(leftShoulder, leftElbow, leftWrist);
+    final rightAngle = jointAngle(rightShoulder, rightElbow, rightWrist);
     final leftConfidence = (leftElbow?.likelihood ?? 0) + (leftWrist?.likelihood ?? 0);
     final rightConfidence = (rightElbow?.likelihood ?? 0) + (rightWrist?.likelihood ?? 0);
-
     final useLeft = leftConfidence >= rightConfidence;
     final rawAngle = useLeft ? leftAngle : rightAngle;
-    final currentAngle = _angleFilter.add(rawAngle);
-    final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
-    _prevAngle = currentAngle;
-    lastProcessedAngle = currentAngle;
+    final angle = _signalFilter.add(rawAngle);
+    lastProcessedAngle = angle;
 
-    // Straight body line from shoulder to knee, same concept as Plank --
-    // hips sagging or piking during a push-up is a real, common fault, not
-    // just something to check in a static hold. Uses whichever side is
-    // already trusted for the elbow angle above.
-    final shoulder = useLeft ? leftShoulder : rightShoulder;
-    final hip = pose.landmarks[useLeft ? PoseLandmarkType.leftHip : PoseLandmarkType.rightHip];
-    final knee =
-        pose.landmarks[useLeft ? PoseLandmarkType.leftKnee : PoseLandmarkType.rightKnee];
-    if (phase != RepPhase.neutral &&
-        isLandmarkVisible(shoulder) &&
-        isLandmarkVisible(hip) &&
-        isLandmarkVisible(knee)) {
-      // Smoothed like every other angle here -- a single noisy frame
-      // shouldn't tag an entire rep as sagging, especially since a rep can
-      // legitimately span hundreds of frames on noisy real footage and this
-      // issue has no recovery once flagged (confirmed against real footage:
-      // pushup_pixabay_302251 hit a one-frame dip early in a long rep that,
-      // unsmoothed, stayed flagged all the way to completion).
-      final backAngle = _backAngleFilter.add(MathUtils.calculateJointAngle(shoulder, hip, knee));
-      if (backAngle < AppConstants.pushupBackAngleMin) {
-        final wristLandmark =
-            useLeft ? leftWrist : rightWrist;
-        final isSagging = MathUtils.isHipSagging(
-          shoulder: shoulder!,
-          hip: hip!,
-          end: knee!,
-          floorReference: isLandmarkVisible(wristLandmark) ? wristLandmark : null,
-        );
-        // A rep has one dominant hip fault. Once it is called one way the
-        // other verdict is ignored, so a borderline frame can't flip it and
-        // stack two penalties (or two contradictory cues) onto the same rep.
-        final alreadySagging = currentRepIssues.contains('Hips Sagging');
-        final alreadyPiked = currentRepIssues.contains('Hips Piked');
-        final sagging = alreadySagging || (!alreadyPiked && isSagging);
-        addIssue(sagging ? 'Hips Sagging' : 'Hips Piked');
-        cues.request(sagging ? CueIds.hipsSagging : CueIds.hipsPiked);
-      } else {
-        currentRepIssues.remove('Hips Sagging');
-        currentRepIssues.remove('Hips Piked');
-      }
-    }
+    _checkHipLine(pose, useLeft: useLeft);
 
-    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
+    final event = _cycle.update(-angle, now());
+    if (_cycle.isWorking) _minRawAngle = math.min(_minRawAngle, rawAngle);
 
-    switch (phase) {
-      case RepPhase.neutral:
-        if (currentAngle < AppConstants.pushupNeutralThreshold - deadZone) {
-          phase = RepPhase.eccentric;
-          currentRepIssues.clear();
-          _reachedDepth = false;
-          _deepestAngle = currentAngle;
-          markEccentricStart();
-          statusMessage = 'Lower your chest';
-        } else {
-          statusMessage = 'Lower with control';
-        }
-        break;
-
-      case RepPhase.eccentric:
-        _deepestAngle = math.min(_deepestAngle, currentAngle);
-
-        if (currentAngle <= AppConstants.pushupDepthThreshold) {
-          _reachedDepth = true;
-          currentRepIssues.remove('Insufficient Depth');
-        }
-
-        if (_reachedDepth && delta > AppConstants.angleDirectionDeltaDegrees) {
-          // Wait for an actual upward reversal, not merely touching depth —
-          // otherwise the remainder of the descent is read as a failed ascent.
-          phase = RepPhase.concentric;
-          _concentricPeak = currentAngle;
-          _recovery.begin(now());
-          markConcentricStart();
-          statusMessage = 'Push up';
-        } else if (!_reachedDepth &&
-            currentAngle >= AppConstants.pushupNeutralThreshold) {
-          // Came back up without reaching depth; return to neutral instead of
-          // staying stuck in eccentric forever.
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          cues.request(CueIds.goDeeper);
-        } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
-            currentAngle > AppConstants.pushupDepthThreshold + deadZone) {
+    switch (event) {
+      case CycleEvent.descentStarted:
+        phase = RepPhase.eccentric;
+        currentRepIssues.clear();
+        _minRawAngle = rawAngle;
+        markEccentricStart();
+        statusMessage = 'Lower your chest';
+      case CycleEvent.reversed:
+        phase = RepPhase.concentric;
+        markConcentricStart();
+        statusMessage = 'Push up';
+        if (_minRawAngle > AppConstants.pushupDepthThreshold) {
           addIssue('Insufficient Depth');
           cues.request(CueIds.goDeeper);
-        } else {
+        }
+      case CycleEvent.completed:
+        _completeRep(
+          shortOfDepth: _minRawAngle > AppConstants.pushupDepthThreshold,
+          peakAngle: _minRawAngle,
+          deficit: math.max(0, _minRawAngle - AppConstants.pushupDepthThreshold),
+          lockedOut: -(_cycle.restLevel ?? -angle) >= AppConstants.pushupLockoutCueAngle,
+        );
+      case CycleEvent.abandoned:
+        _abandonRep();
+      case CycleEvent.none:
+        if (!_cycle.isWorking) {
+          statusMessage = 'Lower with control';
+        } else if (phase == RepPhase.eccentric) {
           statusMessage = 'Lower';
         }
-        break;
-
-      case RepPhase.concentric:
-        final verdict = currentAngle >= AppConstants.pushupNeutralThreshold
-            ? RecoveryVerdict.complete
-            : _recovery.update(
-                progress: -currentAngle,
-                extreme: -_deepestAngle,
-                rest: -AppConstants.pushupNeutralThreshold,
-                now: now(),
-              );
-        if (verdict == RecoveryVerdict.abandon) {
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          _reachedDepth = false;
-          _concentricPeak = 0;
-          _deepestAngle = 180;
-        } else if (verdict == RecoveryVerdict.complete) {
-          repCount++;
-          double score = 1.0;
-          if (!_reachedDepth || currentRepIssues.contains('Insufficient Depth')) {
-            addIssue('Insufficient Depth');
-            score -= AppConstants.pushupInsufficientDepthPenalty;
-          }
-          // Not scored: 'Incomplete Lockout' has no recovery once flagged
-          // (unlike 'Insufficient Depth', which clears the moment depth is
-          // actually reached), so a single early wobble on a long, noisy
-          // concentric phase stays flagged even once a genuine full lockout
-          // is reached at completion -- confirmed on real footage
-          // (pushup_pixabay_302251: flagged at frame 99, rep didn't complete
-          // until frame 623). Scoring it would penalize a clean rep. Left as
-          // a live cue only, matching the original, already-correct
-          // behavior; a real fix needs a recovery condition, not just a
-          // score wire-up.
-          currentRepIssues.remove('Incomplete Lockout');
-          if (currentRepIssues.contains('Hips Sagging')) {
-            score -= AppConstants.pushupHipAlignmentPenalty;
-          }
-          if (currentRepIssues.contains('Hips Piked')) {
-            score -= AppConstants.pushupHipAlignmentPenalty;
-          }
-          statusMessage = 'Rep $repCount';
-          recordRep(
-            score: score,
-            peakAngle: _deepestAngle,
-            romDeficitDegrees: math.max(
-              0,
-              _deepestAngle - AppConstants.pushupDepthThreshold,
-            ),
-          );
-          _reachedDepth = false;
-          _concentricPeak = 0;
-          _deepestAngle = 180;
-          phase = RepPhase.neutral;
-          if (onRep != null) onRep!(repCount);
-        } else {
-          // Being mid-ascent is not a fault. An incomplete lockout is sinking
-          // back down from the highest point reached without ever locking out.
-          _concentricPeak = math.max(_concentricPeak, currentAngle);
-          if (currentAngle < _concentricPeak - deadZone) {
-            addIssue('Incomplete Lockout');
-            cues.request(CueIds.lockOut);
-          }
-          statusMessage = 'Lock elbows at top';
-        }
-        break;
     }
+  }
+
+  /// Camera on the floor facing the athlete. The signal is how far the
+  /// shoulders sit above the wrists, in shoulder widths: about 1.6 at the top of
+  /// a push-up and 0.4-0.6 at the bottom, whatever the camera distance.
+  void _processHeadOn(
+    PoseLandmark? leftShoulder,
+    PoseLandmark? rightShoulder,
+    PoseLandmark? leftWrist,
+    PoseLandmark? rightWrist,
+  ) {
+    // Lower bar than the side view: with the camera on the floor the athlete's
+    // face and hands swing right up to the lens, and the tracker's confidence
+    // dips exactly at the bottom of the rep.
+    bool seen(PoseLandmark? lm) =>
+        lm != null && lm.likelihood >= AppConstants.pushupFrontMinLikelihood;
+    final wrists = [leftWrist, rightWrist].where(seen).cast<PoseLandmark>().toList();
+    if (!seen(leftShoulder) || !seen(rightShoulder) || wrists.isEmpty) {
+      // A dropout in the middle of a rep means the athlete is still down there
+      // (that is when the face fills the frame), so keep feeding the last
+      // reading for a short while rather than losing the bottom of the rep.
+      final held = _lastFrontDepth;
+      final since = _frontLostSince ??= now();
+      if (held != null &&
+          _frontCycle.isWorking &&
+          now().difference(since) < AppConstants.pushupFrontDropoutHold) {
+        _frontCycle.update(held, now());
+      } else if (!_frontCycle.isWorking) {
+        statusMessage = 'Adjust Camera';
+      }
+      return;
+    }
+    _frontLostSince = null;
+    final shoulderWidth = (leftShoulder!.x - rightShoulder!.x).abs();
+    if (shoulderWidth < AppConstants.minMagnitude) {
+      statusMessage = 'Adjust Camera';
+      return;
+    }
+    final shoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    final wristY = wrists.fold<double>(0, (sum, w) => sum + w.y) / wrists.length;
+    final ratio = (wristY - shoulderY) / shoulderWidth;
+    lastProcessedAngle = null;
+
+    final depth = -_frontFilter.add(ratio * 100);
+    _lastFrontDepth = depth;
+    final event = _frontCycle.update(depth, now());
+
+    switch (event) {
+      case CycleEvent.descentStarted:
+        phase = RepPhase.eccentric;
+        currentRepIssues.clear();
+        markEccentricStart();
+        statusMessage = 'Lower your chest';
+      case CycleEvent.reversed:
+        phase = RepPhase.concentric;
+        markConcentricStart();
+        statusMessage = 'Push up';
+      case CycleEvent.completed:
+        final top = -_frontCycle.lastRest / 100;
+        final bottom = -_frontCycle.lastPeak / 100;
+        final short = top > 0 && bottom > AppConstants.pushupFrontDepthRatio * top;
+        _completeRep(shortOfDepth: short, peakAngle: null, deficit: 0, lockedOut: true);
+      case CycleEvent.abandoned:
+        _abandonRep();
+      case CycleEvent.none:
+        if (!_frontCycle.isWorking) {
+          statusMessage = 'Lower with control';
+        } else if (phase == RepPhase.eccentric) {
+          statusMessage = 'Lower';
+        }
+    }
+  }
+
+  /// Straight shoulder-hip-knee line, same idea as plank. Only judged from the
+  /// side, and only while a rep is under way.
+  void _checkHipLine(Pose pose, {required bool useLeft}) {
+    if (phase == RepPhase.neutral) return;
+    final shoulder =
+        pose.landmarks[useLeft ? PoseLandmarkType.leftShoulder : PoseLandmarkType.rightShoulder];
+    final hip = pose.landmarks[useLeft ? PoseLandmarkType.leftHip : PoseLandmarkType.rightHip];
+    final knee = pose.landmarks[useLeft ? PoseLandmarkType.leftKnee : PoseLandmarkType.rightKnee];
+    if (!isLandmarkVisible(shoulder) || !isLandmarkVisible(hip) || !isLandmarkVisible(knee)) {
+      return;
+    }
+    // Smoothed like every other angle here: a single noisy frame must not tag
+    // a whole rep as sagging, since the flag has no recovery once raised
+    // (pushup_pixabay_302251 hit a one-frame dip early in a long rep).
+    final backAngle = _backAngleFilter.add(MathUtils.calculateJointAngle(shoulder, hip, knee));
+    if (backAngle < AppConstants.pushupBackAngleMin) {
+      final wristLandmark =
+          pose.landmarks[useLeft ? PoseLandmarkType.leftWrist : PoseLandmarkType.rightWrist];
+      final isSagging = MathUtils.isHipSagging(
+        shoulder: shoulder!,
+        hip: hip!,
+        end: knee!,
+        floorReference: isLandmarkVisible(wristLandmark) ? wristLandmark : null,
+      );
+      // A rep has one dominant hip fault. Once it is called one way the other
+      // verdict is ignored, so a borderline frame can't flip it and stack two
+      // penalties (or two contradictory cues) onto the same rep.
+      final alreadySagging = currentRepIssues.contains('Hips Sagging');
+      final alreadyPiked = currentRepIssues.contains('Hips Piked');
+      final sagging = alreadySagging || (!alreadyPiked && isSagging);
+      addIssue(sagging ? 'Hips Sagging' : 'Hips Piked');
+      cues.request(sagging ? CueIds.hipsSagging : CueIds.hipsPiked);
+    } else {
+      currentRepIssues.remove('Hips Sagging');
+      currentRepIssues.remove('Hips Piked');
+    }
+  }
+
+  void _completeRep({
+    required bool shortOfDepth,
+    required double? peakAngle,
+    required double deficit,
+    required bool lockedOut,
+  }) {
+    repCount++;
+    var score = 1.0;
+    if (shortOfDepth) {
+      addIssue('Insufficient Depth');
+      score -= AppConstants.pushupInsufficientDepthPenalty;
+    } else {
+      currentRepIssues.remove('Insufficient Depth');
+    }
+    // Lockout is a live cue only, not scored: it has no recovery once flagged,
+    // so one early wobble would penalise an otherwise clean rep.
+    if (!lockedOut) cues.request(CueIds.lockOut);
+    if (currentRepIssues.contains('Hips Sagging')) {
+      score -= AppConstants.pushupHipAlignmentPenalty;
+    }
+    if (currentRepIssues.contains('Hips Piked')) {
+      score -= AppConstants.pushupHipAlignmentPenalty;
+    }
+    statusMessage = 'Rep $repCount';
+    recordRep(score: score, peakAngle: peakAngle, romDeficitDegrees: deficit);
+    phase = RepPhase.neutral;
+    _minRawAngle = 180;
+    if (onRep != null) onRep!(repCount);
+  }
+
+  void _abandonRep() {
+    phase = RepPhase.neutral;
+    currentRepIssues.clear();
+    _minRawAngle = 180;
   }
 }
 
@@ -1868,6 +1941,11 @@ class SitupAnalyzer extends RangeOfMotionAnalyzer {
   @override
   String get restingMessage => 'Lie back and start the next rep';
 
+  // Filmed lying down, side-on, often with the phone turned on its side: the
+  // movement is in the image plane, and ML Kit's depth estimate only adds noise.
+  @override
+  bool get uses3dAngles => false;
+
   @override
   double? measureAngle(Pose pose) => bestSideAngle(
         pose,
@@ -1882,6 +1960,7 @@ class SitupAnalyzer extends RangeOfMotionAnalyzer {
           PoseLandmarkType.rightHip,
           PoseLandmarkType.rightKnee,
         ],
+        angle: jointAngle,
       );
 
   @override
@@ -2252,12 +2331,14 @@ double? bestSideAngle(
   Pose pose,
   bool Function(PoseLandmark?) isVisible,
   List<PoseLandmarkType> left,
-  List<PoseLandmarkType> right,
-) {
+  List<PoseLandmarkType> right, {
+  double Function(PoseLandmark?, PoseLandmark?, PoseLandmark?) angle =
+      MathUtils.calculateJointAngle,
+}) {
   double? angleFor(List<PoseLandmarkType> side) {
     final landmarks = side.map((type) => pose.landmarks[type]).toList();
     if (landmarks.any((lm) => !isVisible(lm))) return null;
-    return MathUtils.calculateJointAngle(
+    return angle(
       landmarks[0],
       landmarks[1],
       landmarks[2],

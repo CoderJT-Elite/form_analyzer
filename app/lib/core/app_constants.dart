@@ -58,6 +58,39 @@ class AppConstants {
 
   // Push-up hip line: straight shoulder-hip-knee, same idea as plank.
   static const double pushupBackAngleMin = 155.0;
+
+  /// Smallest elbow travel, in degrees, that can be a push-up. Smaller wobbles
+  /// are tremor or a hand adjusting; a genuine shallow rep still exceeds it.
+  static const double pushupMinExcursionDegrees = 30.0;
+
+  /// Head-on push-ups (camera on the floor facing the athlete) are measured as
+  /// shoulder height above the wrists in hundredths of a shoulder width: about
+  /// 160 at the top and 40-60 at the bottom.
+  static const double pushupFrontMinExcursion = 45.0;
+
+  /// Head-on travel beyond this is tracker junk, not a push-up: the shoulders are
+  /// never more than about 2.2 shoulder widths above the wrists. (An elbow angle
+  /// is bounded to 0-180 already, so the side view needs no such limit.)
+  static const double pushupFrontMaxExcursion = 220.0;
+
+  /// Head-on landmark confidence bar, below the usual 0.7: the tracker's
+  /// confidence dips at the bottom of the rep, exactly where it is needed.
+  static const double pushupFrontMinLikelihood = 0.5;
+
+  /// How long a head-on dropout mid-rep is read as "still at the bottom".
+  static const Duration pushupFrontDropoutHold = Duration(seconds: 4);
+
+  /// A head-on rep whose bottom stays above this share of the top reading did
+  /// not go low enough.
+  static const double pushupFrontDepthRatio = 0.62;
+
+  /// At the top of a rep the elbow should be at least this straight.
+  static const double pushupLockoutCueAngle = 150.0;
+
+  /// Weight given to each new sample of a rep-counting signal. Higher follows
+  /// fast rep bottoms more closely; the old 5-sample moving average flattened
+  /// 55-80 degree bottoms to 110-125 on live footage.
+  static const double repSignalSmoothingAlpha = 0.6;
   static const double pushupHipAlignmentPenalty = 0.25;
 
   static const double lungeDepthThreshold = 100.0;

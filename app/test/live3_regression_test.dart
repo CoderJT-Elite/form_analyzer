@@ -48,7 +48,7 @@ void main() {
   test('sit-ups: the ~14-16 real reps, not 0-1', () {
     final run = replay('live3_situp', (c) => SitupAnalyzer(clock: c));
     expect(run.analyzer.repCount, inInclusiveRange(13, 17));
-  }, skip: 'Phase 2.1: counts 12; shallow reps fall under the fixed range floor');
+  });
 
   test('overhead press: no phantom rep while walking back to the phone', () {
     final run = replay('live3_overheadPress', (c) => OverheadPressAnalyzer(clock: c));
@@ -59,12 +59,12 @@ void main() {
   test('push-ups (side view): the ~10 real reps, not 1', () {
     final run = replay('live3_pushupSide', (c) => PushupAnalyzer(clock: c));
     expect(run.analyzer.repCount, inInclusiveRange(9, 13));
-  }, skip: 'Phase 1.4 + 2.1: smoothed elbow bottoms out at 110-125, never <=90');
+  });
 
   test('push-ups (head-on, phone on the floor): 4-6 reps', () {
     final run = replay('live3_pushupFront', (c) => PushupAnalyzer(clock: c));
     expect(run.analyzer.repCount, inInclusiveRange(4, 6));
-  }, skip: 'Phase 2.3: elbow angle is flat head-on; needs shoulder-drop signal');
+  });
 
   test('push-ups (phone rotated on the floor): counted, hips not contradicted', () {
     final run = replay('live3_pushupFloor', (c) => PushupAnalyzer(clock: c));
