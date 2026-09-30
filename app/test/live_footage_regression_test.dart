@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:form_analyzer/logic/exercise_analyzer.dart';
 
-import 'support/recorded_pose_fixtures.dart';
+import 'support/replay_harness.dart';
 
 /// Replays pose sequences extracted from the app's own on-phone screen
 /// recording of 2026-09-20 (see tools/extract_live_test_fixtures.py): a real
@@ -13,36 +13,6 @@ import 'support/recorded_pose_fixtures.dart';
 /// squat 2, jumping jack 2, overhead press 1, sit-up 3, push-up 0, and a
 /// plank credited as 14 "reps". Ranges rather than exact values because the
 /// fixtures come from MediaPipe, a proxy for the on-device ML Kit model.
-///
-/// Time is simulated at the extraction rate (15 fps) so the analyzers' time
-/// based logic sees realistic durations rather than a tight test loop.
-class ReplayRun {
-  ReplayRun(this.analyzer, this.cues);
-  final ExerciseAnalyzer analyzer;
-  final List<String> cues;
-  final List<String> safety = [];
-}
-
-ReplayRun replay(
-  String fixture,
-  ExerciseAnalyzer Function(DateTime Function()) make,
-) {
-  var t = DateTime(2026);
-  final analyzer = make(() => t);
-  final run = ReplayRun(analyzer, []);
-  analyzer.onCorrection = run.cues.add;
-  analyzer.onFeedback = run.cues.add;
-  analyzer.onSafetyAlert = (m) {
-    run.cues.add(m);
-    run.safety.add(m);
-  };
-  for (final pose in RecordedPoseFixtures.loadSequence(fixture)) {
-    t = t.add(const Duration(milliseconds: 66));
-    analyzer.processPose(pose);
-  }
-  return run;
-}
-
 void main() {
   test('squat: counts the set instead of 2 of ~9, with no false back alarm', () {
     final run = replay('live2_squat', (c) => SquatAnalyzer(clock: c));

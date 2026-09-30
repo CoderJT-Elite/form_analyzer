@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_constants.dart';
+import '../../core/build_info.dart';
 import '../../models/exercise_model.dart';
 import '../../services/crash_report_service.dart';
 import '../../services/storage_service.dart';
@@ -172,6 +173,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildLifetimeStats(),
                         const SizedBox(height: 32),
                         _buildSettingsList(),
+                        const SizedBox(height: 24),
+                        Text(
+                          BuildInfo.summary,
+                          style: GoogleFonts.inter(
+                            color: AppColors.textTertiary,
+                            fontSize: 11,
+                          ),
+                        ),
                       ],
                     ),
                   ),
