@@ -1,0 +1,7838 @@
+{
+  "analysedFps": 6.3715155774186,
+  "build": "a37227e",
+  "detectionFrames": 448,
+  "durationMs": 64762,
+  "events": [
+    {
+      "analyzer": "PlankAnalyzer",
+      "t": 0,
+      "type": "start"
+    },
+    {
+      "kind": "setup",
+      "t": 24,
+      "text": "Turn side-on to the camera so I can see your form",
+      "type": "speech",
+      "urgent": false
+    },
+    {
+      "rotation": 270,
+      "t": 25,
+      "turns": 0,
+      "type": "quadrant"
+    },
+    {
+      "rotation": 0,
+      "t": 2884,
+      "turns": 1,
+      "type": "quadrant"
+    },
+    {
+      "rotation": 270,
+      "t": 3074,
+      "turns": 0,
+      "type": "quadrant"
+    },
+    {
+      "rotation": 180,
+      "t": 4267,
+      "turns": 3,
+      "type": "quadrant"
+    },
+    {
+      "rotation": 270,
+      "t": 5910,
+      "turns": 0,
+      "type": "quadrant"
+    },
+    {
+      "t": 8594,
+      "type": "countdown"
+    },
+    {
+      "kind": "countdown",
+      "t": 8594,
+      "text": "3",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "kind": "countdown",
+      "t": 9596,
+      "text": "2",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "kind": "countdown",
+      "t": 10601,
+      "text": "1",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "kind": "countdown",
+      "t": 11595,
+      "text": "Go!",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "t": 11595,
+      "type": "go"
+    },
+    {
+      "kind": "correction",
+      "t": 11952,
+      "text": "Get into plank position on the floor",
+      "type": "speech",
+      "urgent": false
+    },
+    {
+      "rotation": 0,
+      "t": 18849,
+      "turns": 1,
+      "type": "quadrant"
+    },
+    {
+      "reps": 0,
+      "t": 19037,
+      "type": "phone_moved"
+    },
+    {
+      "rotation": 180,
+      "t": 19473,
+      "turns": 3,
+      "type": "quadrant"
+    },
+    {
+      "rotation": 0,
+      "t": 21146,
+      "turns": 1,
+      "type": "quadrant"
+    },
+    {
+      "t": 23584,
+      "type": "phone_still"
+    },
+    {
+      "reps": 0,
+      "t": 24016,
+      "type": "phone_moved"
+    },
+    {
+      "t": 25217,
+      "type": "phone_still"
+    },
+    {
+      "kind": "correction",
+      "t": 25218,
+      "text": "Keep your body in one straight line",
+      "type": "speech",
+      "urgent": false
+    },
+    {
+      "kind": "safety",
+      "t": 26146,
+      "text": "Lower your hips",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 1,
+      "t": 26352,
+      "type": "rep"
+    },
+    {
+      "count": 2,
+      "t": 27262,
+      "type": "rep"
+    },
+    {
+      "kind": "correction",
+      "t": 28116,
+      "text": "Keep both sides even",
+      "type": "speech",
+      "urgent": false
+    },
+    {
+      "count": 3,
+      "t": 28371,
+      "type": "rep"
+    },
+    {
+      "count": 4,
+      "t": 29252,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 29448,
+      "text": "Drop your hips into line",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 5,
+      "t": 30255,
+      "type": "rep"
+    },
+    {
+      "count": 6,
+      "t": 31414,
+      "type": "rep"
+    },
+    {
+      "count": 7,
+      "t": 32258,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 32566,
+      "text": "Hips are too high — flatten your body out",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 8,
+      "t": 33331,
+      "type": "rep"
+    },
+    {
+      "count": 9,
+      "t": 34322,
+      "type": "rep"
+    },
+    {
+      "count": 10,
+      "t": 35350,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 35654,
+      "text": "Hips are too high — flatten your body out",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 11,
+      "t": 36323,
+      "type": "rep"
+    },
+    {
+      "count": 12,
+      "t": 37304,
+      "type": "rep"
+    },
+    {
+      "kind": "correction",
+      "t": 37717,
+      "text": "Balance your weight evenly",
+      "type": "speech",
+      "urgent": false
+    },
+    {
+      "count": 13,
+      "t": 38381,
+      "type": "rep"
+    },
+    {
+      "count": 14,
+      "t": 39333,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 39494,
+      "text": "Hips up",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 15,
+      "t": 40338,
+      "type": "rep"
+    },
+    {
+      "count": 16,
+      "t": 41303,
+      "type": "rep"
+    },
+    {
+      "count": 17,
+      "t": 42286,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 42775,
+      "text": "Don't let your hips drop",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 18,
+      "t": 43460,
+      "type": "rep"
+    },
+    {
+      "count": 19,
+      "t": 44348,
+      "type": "rep"
+    },
+    {
+      "count": 20,
+      "t": 45314,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 45785,
+      "text": "Squeeze your glutes and lift those hips",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 21,
+      "t": 46407,
+      "type": "rep"
+    },
+    {
+      "count": 22,
+      "t": 47380,
+      "type": "rep"
+    },
+    {
+      "count": 23,
+      "t": 48322,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 48953,
+      "text": "Squeeze your glutes and lift those hips",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 24,
+      "t": 49349,
+      "type": "rep"
+    },
+    {
+      "count": 25,
+      "t": 50428,
+      "type": "rep"
+    },
+    {
+      "count": 26,
+      "t": 51431,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 52014,
+      "text": "Squeeze your glutes and lift those hips",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 27,
+      "t": 52366,
+      "type": "rep"
+    },
+    {
+      "count": 28,
+      "t": 53331,
+      "type": "rep"
+    },
+    {
+      "count": 29,
+      "t": 54557,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 55026,
+      "text": "Squeeze your glutes and lift those hips",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 30,
+      "t": 55485,
+      "type": "rep"
+    },
+    {
+      "kind": "safety",
+      "t": 56254,
+      "text": "Hips are too high — flatten your body out",
+      "type": "speech",
+      "urgent": true
+    },
+    {
+      "count": 31,
+      "t": 56366,
+      "type": "rep"
+    },
+    {
+      "count": 32,
+      "t": 57463,
+      "type": "rep"
+    },
+    {
+      "kind": "correction",
+      "t": 58295,
+      "text": "Lower down into your plank",
+      "type": "speech",
+      "urgent": false
+    },
+    {
+      "reps": 32,
+      "t": 62066,
+      "type": "phone_moved"
+    },
+    {
+      "rotation": 270,
+      "t": 63304,
+      "turns": 0,
+      "type": "quadrant"
+    },
+    {
+      "counted": 32,
+      "final": 32,
+      "t": 64705,
+      "type": "confirmed"
+    }
+  ],
+  "exercise": "plank",
+  "format": 1,
+  "frames": [
+    {
+      "accel": [
+        -2.46,
+        2.55,
+        8.75
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.695,
+        0.719
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 510
+    },
+    {
+      "accel": [
+        -2.56,
+        2.53,
+        8.18
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.711,
+        0.703
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 590
+    },
+    {
+      "accel": [
+        -2.68,
+        2.6,
+        8.1
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.717,
+        0.697
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 646
+    },
+    {
+      "accel": [
+        -2.55,
+        2.56,
+        8.38
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.705,
+        0.709
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 671
+    },
+    {
+      "accel": [
+        -1.65,
+        2.19,
+        8.95
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 785
+    },
+    {
+      "accel": [
+        -1.23,
+        1.97,
+        8.86
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 835
+    },
+    {
+      "accel": [
+        -0.62,
+        1.5,
+        9.69
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 919
+    },
+    {
+      "accel": [
+        -0.3,
+        1.12,
+        10.13
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 1051
+    },
+    {
+      "accel": [
+        -0.7,
+        1.03,
+        8.88
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 1129
+    },
+    {
+      "accel": [
+        -0.7,
+        0.62,
+        8.76
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 1222
+    },
+    {
+      "accel": [
+        -0.18,
+        0.44,
+        8.1
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 1390
+    },
+    {
+      "accel": [
+        0.19,
+        0.27,
+        9.77
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 1451
+    },
+    {
+      "accel": [
+        1.1,
+        -0.03,
+        12.15
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 1565
+    },
+    {
+      "accel": [
+        0.23,
+        -1.19,
+        10.35
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 1660
+    },
+    {
+      "accel": [
+        0.63,
+        1.14,
+        11.22
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 1750
+    },
+    {
+      "accel": [
+        0.52,
+        1.69,
+        8.46
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 2405
+    },
+    {
+      "accel": [
+        1.93,
+        2.34,
+        8.03
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 2511
+    },
+    {
+      "accel": [
+        2.4,
+        2.13,
+        10.35
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.699,
+        0.716
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 2672
+    },
+    {
+      "accel": [
+        3.68,
+        3.22,
+        8.0
+      ],
+      "accepted": false,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.659,
+        0.752
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 3029
+    },
+    {
+      "accel": [
+        -9.81,
+        -0.31,
+        3.73
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.032,
+        0.999
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 3,
+      "rotation": 180,
+      "stage": "setup",
+      "t": 5482
+    },
+    {
+      "accel": [
+        -0.37,
+        9.5,
+        2.25
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.039,
+        0.999
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 8285
+    },
+    {
+      "accel": [
+        -0.3,
+        9.46,
+        2.44
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.031,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "setup",
+      "t": 8512
+    },
+    {
+      "accel": [
+        -0.29,
+        9.48,
+        2.39
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.03,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 8704
+    },
+    {
+      "accel": [
+        -0.29,
+        9.47,
+        2.4
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.031,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 8820
+    },
+    {
+      "accel": [
+        -0.29,
+        9.45,
+        2.45
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.031,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 8977
+    },
+    {
+      "accel": [
+        -0.27,
+        9.46,
+        2.46
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.029,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 9079
+    },
+    {
+      "accel": [
+        -0.27,
+        9.46,
+        2.45
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.028,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 9325
+    },
+    {
+      "accel": [
+        -0.26,
+        9.46,
+        2.46
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.028,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 9502
+    },
+    {
+      "accel": [
+        -0.26,
+        9.46,
+        2.46
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.027,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 9677
+    },
+    {
+      "accel": [
+        -0.26,
+        9.46,
+        2.47
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.028,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 9908
+    },
+    {
+      "accel": [
+        -0.25,
+        9.44,
+        2.5
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.026,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 10077
+    },
+    {
+      "accel": [
+        -0.25,
+        9.43,
+        2.53
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.026,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 10293
+    },
+    {
+      "accel": [
+        -0.24,
+        9.44,
+        2.52
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.026,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 10426
+    },
+    {
+      "accel": [
+        -0.24,
+        9.43,
+        2.54
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.026,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 10614
+    },
+    {
+      "accel": [
+        -0.24,
+        9.43,
+        2.55
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.026,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 10747
+    },
+    {
+      "accel": [
+        -0.23,
+        9.42,
+        2.59
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.024,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 10981
+    },
+    {
+      "accel": [
+        -0.23,
+        9.42,
+        2.59
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.024,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 11069
+    },
+    {
+      "accel": [
+        -0.22,
+        9.41,
+        2.62
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.023,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 11296
+    },
+    {
+      "accel": [
+        -0.21,
+        9.41,
+        2.63
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.023,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 11448
+    },
+    {
+      "accel": [
+        -0.21,
+        9.41,
+        2.64
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.022,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "countdown",
+      "t": 11577
+    },
+    {
+      "accel": [
+        -0.21,
+        9.4,
+        2.65
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.022,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 11752
+    },
+    {
+      "accel": [
+        -0.2,
+        9.4,
+        2.66
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.022,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 11952
+    },
+    {
+      "accel": [
+        -0.2,
+        9.4,
+        2.67
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.021,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 12122
+    },
+    {
+      "accel": [
+        -0.2,
+        9.39,
+        2.68
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.021,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 12301
+    },
+    {
+      "accel": [
+        -0.2,
+        9.39,
+        2.69
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.021,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 12498
+    },
+    {
+      "accel": [
+        -0.19,
+        9.39,
+        2.7
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.02,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 12637
+    },
+    {
+      "accel": [
+        -0.19,
+        9.39,
+        2.7
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.02,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 12812
+    },
+    {
+      "accel": [
+        -0.18,
+        9.39,
+        2.7
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.02,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 12977
+    },
+    {
+      "accel": [
+        -0.18,
+        9.38,
+        2.73
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.019,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 13094
+    },
+    {
+      "accel": [
+        -0.18,
+        9.38,
+        2.73
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.02,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 13229
+    },
+    {
+      "accel": [
+        -0.18,
+        9.37,
+        2.75
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.019,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 13406
+    },
+    {
+      "accel": [
+        -0.18,
+        9.37,
+        2.75
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.019,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 13438
+    },
+    {
+      "accel": [
+        -0.18,
+        9.37,
+        2.77
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.019,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 13643
+    },
+    {
+      "accel": [
+        -0.17,
+        9.37,
+        2.78
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.018,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 13832
+    },
+    {
+      "accel": [
+        -0.17,
+        9.37,
+        2.78
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.018,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 14024
+    },
+    {
+      "accel": [
+        -0.16,
+        9.36,
+        2.79
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.018,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 14150
+    },
+    {
+      "accel": [
+        -0.16,
+        9.36,
+        2.8
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.017,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 14271
+    },
+    {
+      "accel": [
+        -0.16,
+        9.36,
+        2.81
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.017,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 14464
+    },
+    {
+      "accel": [
+        -0.16,
+        9.35,
+        2.82
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.017,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 14622
+    },
+    {
+      "accel": [
+        -0.16,
+        9.35,
+        2.82
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.017,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 14732
+    },
+    {
+      "accel": [
+        -0.16,
+        9.35,
+        2.83
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.017,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 14883
+    },
+    {
+      "accel": [
+        -0.15,
+        9.35,
+        2.83
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.016,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 15020
+    },
+    {
+      "accel": [
+        -0.15,
+        9.35,
+        2.84
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.016,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 15171
+    },
+    {
+      "accel": [
+        -0.15,
+        9.35,
+        2.85
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.016,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 15322
+    },
+    {
+      "accel": [
+        -0.15,
+        9.34,
+        2.85
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.016,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 15440
+    },
+    {
+      "accel": [
+        -0.15,
+        9.34,
+        2.86
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.016,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 15621
+    },
+    {
+      "accel": [
+        -0.15,
+        9.34,
+        2.87
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.016,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 15812
+    },
+    {
+      "accel": [
+        -0.14,
+        9.34,
+        2.87
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.015,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 15957
+    },
+    {
+      "accel": [
+        -0.14,
+        9.33,
+        2.89
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.015,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 16235
+    },
+    {
+      "accel": [
+        -0.14,
+        9.33,
+        2.89
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.015,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 16424
+    },
+    {
+      "accel": [
+        -0.14,
+        9.33,
+        2.9
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.015,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 16535
+    },
+    {
+      "accel": [
+        -0.14,
+        9.33,
+        2.9
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.015,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 16649
+    },
+    {
+      "accel": [
+        -0.13,
+        9.33,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 16785
+    },
+    {
+      "accel": [
+        -0.13,
+        9.33,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 16923
+    },
+    {
+      "accel": [
+        -0.13,
+        9.32,
+        2.92
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17028
+    },
+    {
+      "accel": [
+        -0.13,
+        9.32,
+        2.92
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17117
+    },
+    {
+      "accel": [
+        -0.13,
+        9.32,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17197
+    },
+    {
+      "accel": [
+        -0.13,
+        9.32,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17289
+    },
+    {
+      "accel": [
+        -0.13,
+        9.32,
+        2.94
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17407
+    },
+    {
+      "accel": [
+        -0.11,
+        9.32,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.012,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17531
+    },
+    {
+      "accel": [
+        -0.12,
+        9.32,
+        2.94
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.013,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17621
+    },
+    {
+      "accel": [
+        -0.12,
+        9.32,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.012,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17719
+    },
+    {
+      "accel": [
+        -0.18,
+        9.29,
+        2.82
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.019,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17783
+    },
+    {
+      "accel": [
+        -0.14,
+        9.3,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.015,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17882
+    },
+    {
+      "accel": [
+        -0.14,
+        9.31,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.015,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 17949
+    },
+    {
+      "accel": [
+        -0.13,
+        9.3,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 18039
+    },
+    {
+      "accel": [
+        -0.13,
+        9.3,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 18149
+    },
+    {
+      "accel": [
+        -0.13,
+        9.31,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.014,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 18276
+    },
+    {
+      "accel": [
+        -0.11,
+        9.28,
+        3.06
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.012,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 18427
+    },
+    {
+      "accel": [
+        -0.11,
+        9.28,
+        3.06
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.012,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 18491
+    },
+    {
+      "accel": [
+        -0.11,
+        9.26,
+        3.1
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.012,
+        1.0
+      ],
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 18654
+    },
+    {
+      "accel": [
+        3.94,
+        1.14,
+        8.92
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.277,
+        0.961
+      ],
+      "quarterTurns": 1,
+      "rotation": 270,
+      "stage": "active",
+      "t": 18870
+    },
+    {
+      "accel": [
+        6.86,
+        -2.09,
+        6.66
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.291,
+        0.957
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 19255
+    },
+    {
+      "accel": [
+        3.03,
+        -1.59,
+        8.46
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.496,
+        0.868
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 19368
+    },
+    {
+      "accel": [
+        -4.64,
+        -1.98,
+        10.12
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.393,
+        0.92
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 3,
+      "rotation": 0,
+      "stage": "active",
+      "t": 19525
+    },
+    {
+      "accel": [
+        -1.69,
+        -2.05,
+        9.95
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.833,
+        0.554
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 3,
+      "rotation": 180,
+      "stage": "active",
+      "t": 19656
+    },
+    {
+      "accel": [
+        -0.83,
+        -1.81,
+        9.74
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.833,
+        0.554
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 3,
+      "rotation": 180,
+      "stage": "active",
+      "t": 19837
+    },
+    {
+      "accel": [
+        -0.6,
+        -1.69,
+        9.66
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.833,
+        0.554
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 3,
+      "rotation": 180,
+      "stage": "active",
+      "t": 19962
+    },
+    {
+      "accel": [
+        -0.27,
+        -1.7,
+        9.63
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.833,
+        0.554
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 3,
+      "rotation": 180,
+      "stage": "active",
+      "t": 20347
+    },
+    {
+      "accel": [
+        10.74,
+        -0.6,
+        1.96
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.056,
+        0.998
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 21878
+    },
+    {
+      "accel": [
+        9.71,
+        -0.17,
+        2.75
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.018,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 22004
+    },
+    {
+      "accel": [
+        9.63,
+        -0.19,
+        2.26
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.019,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 22132
+    },
+    {
+      "accel": [
+        9.44,
+        -0.14,
+        2.55
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 22308
+    },
+    {
+      "accel": [
+        9.36,
+        -0.14,
+        2.8
+      ],
+      "accepted": false,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 22486
+    },
+    {
+      "accel": [
+        8.93,
+        -0.16,
+        4.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.018,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 22974
+    },
+    {
+      "accel": [
+        8.91,
+        -0.16,
+        4.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.018,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 23123
+    },
+    {
+      "accel": [
+        8.94,
+        -0.17,
+        4.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.019,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 23269
+    },
+    {
+      "accel": [
+        8.91,
+        -0.15,
+        4.11
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.017,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 23367
+    },
+    {
+      "accel": [
+        9.2,
+        -0.15,
+        3.26
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 23584
+    },
+    {
+      "accel": [
+        9.45,
+        -0.17,
+        2.33
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.018,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 23711
+    },
+    {
+      "accel": [
+        9.7,
+        -0.19,
+        1.24
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.02,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 23883
+    },
+    {
+      "accel": [
+        9.74,
+        -0.13,
+        0.7
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.013,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 24016
+    },
+    {
+      "accel": [
+        9.74,
+        -0.12,
+        0.78
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.012,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 24077
+    },
+    {
+      "accel": [
+        9.66,
+        -0.11,
+        1.42
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.012,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 24245
+    },
+    {
+      "accel": [
+        9.38,
+        -0.13,
+        2.79
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 24472
+    },
+    {
+      "accel": [
+        9.36,
+        -0.13,
+        2.85
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 24581
+    },
+    {
+      "accel": [
+        9.35,
+        -0.13,
+        2.88
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 24745
+    },
+    {
+      "accel": [
+        9.35,
+        -0.13,
+        2.89
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 24878
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.9
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 25218
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.9
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 25391
+    },
+    {
+      "accel": [
+        9.34,
+        -0.13,
+        2.9
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 25600
+    },
+    {
+      "accel": [
+        9.34,
+        -0.13,
+        2.9
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 25662
+    },
+    {
+      "accel": [
+        9.34,
+        -0.13,
+        2.9
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 25727
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.9
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 25800
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 25963
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 26146
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 26352
+    },
+    {
+      "accel": [
+        9.35,
+        -0.13,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 26478
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 26665
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 26728
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 26838
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 27020
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 27263
+    },
+    {
+      "accel": [
+        9.34,
+        -0.13,
+        2.92
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 27408
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 27463
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.91
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 27580
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.92
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 27758
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.92
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 27936
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.92
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 28116
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.92
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 28371
+    },
+    {
+      "accel": [
+        9.34,
+        -0.13,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 28489
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.92
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 28608
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 28741
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 28832
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29001
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29124
+    },
+    {
+      "accel": [
+        9.34,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29252
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29448
+    },
+    {
+      "accel": [
+        9.33,
+        -0.15,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29603
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29715
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29811
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29909
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 29996
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 30097
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.94
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 30255
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 30443
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.94
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 30604
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.93
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 30711
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.94
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 30834
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.94
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 30938
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.94
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 30991
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 31206
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 31414
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 31517
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 31614
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 31783
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 31912
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 32074
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 32258
+    },
+    {
+      "accel": [
+        9.34,
+        -0.13,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 32365
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 32492
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 32566
+    },
+    {
+      "accel": [
+        9.33,
+        -0.13,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 32696
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 32823
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 32928
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 33090
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 33189
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.95
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 33331
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 33440
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 33611
+    },
+    {
+      "accel": [
+        9.33,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 33782
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 34010
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 34123
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 34323
+    },
+    {
+      "accel": [
+        9.32,
+        -0.15,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 34493
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 34621
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 34835
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 34958
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 35105
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 35350
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.96
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 35434
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 35576
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 35654
+    },
+    {
+      "accel": [
+        9.32,
+        -0.15,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 35763
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 35949
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 36033
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 36104
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 36323
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 36477
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 36591
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 36686
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 36854
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 37113
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 37178
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 37304
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 37344
+    },
+    {
+      "accel": [
+        9.32,
+        -0.13,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 37510
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 37666
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.97
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 37718
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 37962
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 38085
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 38243
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 38381
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 38425
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 38530
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 38633
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 38749
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 38878
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39039
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39173
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39252
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39333
+    },
+    {
+      "accel": [
+        9.33,
+        -0.13,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39440
+    },
+    {
+      "accel": [
+        9.32,
+        -0.13,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39494
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39546
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39681
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39772
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 39871
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40001
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40048
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.98
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40168
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40252
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40338
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40381
+    },
+    {
+      "accel": [
+        9.31,
+        -0.15,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40498
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40590
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40699
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 40860
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 41104
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 41130
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 41303
+    },
+    {
+      "accel": [
+        9.31,
+        -0.15,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 41462
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 41626
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 41756
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 41800
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 41921
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42003
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42091
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42162
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42286
+    },
+    {
+      "accel": [
+        9.32,
+        -0.13,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42433
+    },
+    {
+      "accel": [
+        9.32,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42510
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42648
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42775
+    },
+    {
+      "accel": [
+        9.31,
+        -0.15,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 42916
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 43014
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 43089
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 43269
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 43460
+    },
+    {
+      "accel": [
+        9.3,
+        -0.15,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 43547
+    },
+    {
+      "accel": [
+        9.31,
+        -0.15,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 43667
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 43799
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 43929
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        2.99
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 44043
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 44163
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 44348
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 44492
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 44658
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 44787
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 44887
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 44994
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 45126
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 45233
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 45314
+    },
+    {
+      "accel": [
+        9.3,
+        -0.15,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 45417
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 45586
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 45716
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 45785
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.0
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 45876
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 46186
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 46248
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 46407
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 46558
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 46696
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 46885
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 46982
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 47028
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 47174
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 47380
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 47471
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 47611
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 47756
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 47930
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48053
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48095
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48234
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48322
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48424
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48587
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48718
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48763
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 48953
+    },
+    {
+      "accel": [
+        9.32,
+        -0.13,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 49040
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 49191
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 49349
+    },
+    {
+      "accel": [
+        9.3,
+        -0.15,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 49498
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 49681
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 49797
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 49880
+    },
+    {
+      "accel": [
+        9.3,
+        -0.15,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 49960
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 50036
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 50188
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 50428
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 50632
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 50762
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.02
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 50867
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 51040
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 51269
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 51431
+    },
+    {
+      "accel": [
+        9.31,
+        -0.13,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.014,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 51530
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 51655
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 51851
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 52014
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 52190
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 52245
+    },
+    {
+      "accel": [
+        9.31,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 52366
+    },
+    {
+      "accel": [
+        9.3,
+        -0.15,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 52519
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 52736
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 52844
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 53060
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 53135
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 53331
+    },
+    {
+      "accel": [
+        9.29,
+        -0.15,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 53478
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 53695
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 53844
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 53980
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 54091
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 54264
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 54557
+    },
+    {
+      "accel": [
+        9.29,
+        -0.15,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.017,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 54677
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 54938
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 55026
+    },
+    {
+      "accel": [
+        9.3,
+        -0.15,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 55194
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 55291
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 55485
+    },
+    {
+      "accel": [
+        9.29,
+        -0.16,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.017,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 55572
+    },
+    {
+      "accel": [
+        9.3,
+        -0.15,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 55750
+    },
+    {
+      "accel": [
+        9.3,
+        -0.15,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 55937
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 56050
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 56254
+    },
+    {
+      "accel": [
+        9.29,
+        -0.15,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 56366
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 56545
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 56638
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 56698
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 57008
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 57163
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 57463
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 57552
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 57705
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 57804
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 57959
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 58041
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 58151
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 58296
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 58489
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.016,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 58700
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 58836
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.03
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 58947
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 59123
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 59301
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 59427
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 59510
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 59584
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.04
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 59695
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 59818
+    },
+    {
+      "accel": [
+        9.29,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 59948
+    },
+    {
+      "accel": [
+        9.29,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 60095
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 60174
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 60283
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 60520
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 60701
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 60739
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 60877
+    },
+    {
+      "accel": [
+        9.3,
+        -0.14,
+        3.06
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 61018
+    },
+    {
+      "accel": [
+        9.6,
+        -0.15,
+        1.69
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.015,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 61230
+    },
+    {
+      "accel": [
+        9.54,
+        0.01,
+        2.06
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.001,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 61460
+    },
+    {
+      "accel": [
+        9.53,
+        0.07,
+        2.12
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.007,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 61534
+    },
+    {
+      "accel": [
+        9.48,
+        0.1,
+        2.23
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.011,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 61642
+    },
+    {
+      "accel": [
+        9.59,
+        0.09,
+        2.78
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.009,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 61774
+    },
+    {
+      "accel": [
+        8.8,
+        -0.05,
+        5.52
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.006,
+        1.0
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 61853
+    },
+    {
+      "accel": [
+        8.1,
+        -0.43,
+        7.09
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        0.053,
+        0.999
+      ],
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 61919
+    },
+    {
+      "accel": [
+        3.46,
+        1.5,
+        8.63
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.398,
+        0.918
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 62066
+    },
+    {
+      "accel": [
+        3.94,
+        5.3,
+        7.01
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.802,
+        0.597
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 62318
+    },
+    {
+      "accel": [
+        1.47,
+        1.94,
+        9.43
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.68,
+        0.733
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 62577
+    },
+    {
+      "accel": [
+        2.13,
+        1.38,
+        10.07
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.68,
+        0.733
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 62727
+    },
+    {
+      "accel": [
+        1.5,
+        1.55,
+        9.39
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.68,
+        0.733
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 62847
+    },
+    {
+      "accel": [
+        1.62,
+        1.65,
+        9.75
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.68,
+        0.733
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 62917
+    },
+    {
+      "accel": [
+        1.3,
+        1.73,
+        10.05
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.68,
+        0.733
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 63017
+    },
+    {
+      "accel": [
+        1.0,
+        1.76,
+        9.82
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.68,
+        0.733
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 63040
+    },
+    {
+      "accel": [
+        -0.84,
+        2.16,
+        9.27
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.68,
+        0.733
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 63158
+    },
+    {
+      "accel": [
+        -1.03,
+        3.15,
+        9.3
+      ],
+      "accepted": true,
+      "frameH": 480,
+      "frameW": 720,
+      "gravity": [
+        -0.68,
+        0.733
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 1,
+      "rotation": 0,
+      "stage": "active",
+      "t": 63283
+    },
+    {
+      "accel": [
+        0.29,
+        4.65,
+        8.57
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        0.063,
+        0.998
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 63497
+    },
+    {
+      "accel": [
+        -2.96,
+        5.54,
+        6.22
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.472,
+        0.882
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 63717
+    },
+    {
+      "accel": [
+        -1.6,
+        6.08,
+        7.1
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.254,
+        0.967
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 63941
+    },
+    {
+      "accel": [
+        -1.07,
+        6.07,
+        7.45
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.173,
+        0.985
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 63996
+    },
+    {
+      "accel": [
+        0.21,
+        5.88,
+        8.05
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        0.036,
+        0.999
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 64123
+    },
+    {
+      "accel": [
+        -0.22,
+        5.8,
+        7.55
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.038,
+        0.999
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 64288
+    },
+    {
+      "accel": [
+        -0.46,
+        5.65,
+        8.01
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.082,
+        0.997
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 64424
+    },
+    {
+      "accel": [
+        -0.42,
+        5.36,
+        7.95
+      ],
+      "accepted": true,
+      "frameH": 720,
+      "frameW": 480,
+      "gravity": [
+        -0.079,
+        0.997
+      ],
+      "phoneMoving": true,
+      "quarterTurns": 0,
+      "rotation": 270,
+      "stage": "active",
+      "t": 64545
+    }
+  ],
+  "framesWithPose": 409,
+  "startedAt": "2026-10-02T18:15:53.791890",
+  "summary": {
+    "build": "a37227e",
+    "counted": 32,
+    "final": 32
+  }
+}
