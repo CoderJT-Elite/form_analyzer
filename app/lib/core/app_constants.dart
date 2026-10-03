@@ -49,7 +49,9 @@ class AppConstants {
   // Only meaningful front-on, same as the existing asymmetry check.
   static const double squatKneeValgusRatio = 0.65;
 
-  static const double pushupDepthThreshold = 90.0;
+  /// Elbow angle at the bottom of a full push-up. Real reps in live test #5
+  /// bottomed at 38-66 degrees; this leaves room for a shorter athlete's range.
+  static const double pushupDepthThreshold = 100.0;
   static const double pushupNeutralThreshold = 155.0;
   static const double pushupInsufficientDepthPenalty = 0.35;
 
@@ -307,6 +309,46 @@ class AppConstants {
   /// stand all the way up between reps, but their hips still rise to ~0.8-0.9.
   static const double lungeReturnHeight = 0.80;
   static const double lungeBounceDrop = 0.10;
+
+
+  // Push-up gates (side view). Elbow angle in the image plane.
+  /// A rep attempt opens when the elbow bends below this...
+  static const double pushupAttemptElbow = 130.0;
+
+  /// ...is turned down ("not deep enough") if it never gets below this...
+  static const double pushupNoRepElbow = 115.0;
+
+  /// ...and the elbow must rise this far from the bottom to be pushing back up.
+  static const double pushupReversalRise = 25.0;
+
+  /// The rep completes when the arms are this straight again (real tops: 160-170).
+  static const double pushupLockoutAngle = 150.0;
+
+  /// Dropping this far again, before locking out, is a half rep.
+  static const double pushupBounceDrop = 25.0;
+  static const Duration pushupAttemptTimeout = Duration(seconds: 10);
+
+  /// A push-up (bottom and back to lockout) takes longer than this; anything
+  /// quicker is the tracker flickering.
+  static const Duration pushupMinRepDuration = Duration(milliseconds: 800);
+
+  /// Hip offset from the shoulder-ankle line as a share of body length, positive
+  /// toward the floor. 0.10 is about 157 degrees at the hip, the same line the
+  /// old shoulder-hip-knee check drew at 155.
+  static const double pushupSagOffset = 0.10;
+  static const double pushupPikeOffset = -0.12;
+
+  /// Hip-knee-ankle angle at or below which the knees are on the floor.
+  static const double pushupKneesDownAngle = 135.0;
+
+  /// Share of a rep's good frames that must show sag or pike to turn the rep
+  /// down (a milder share only costs score).
+  static const double pushupHardFault = 0.4;
+
+  /// Head-on: the top reading (shoulder widths of shoulder-above-wrist) must
+  /// reach this, and the bottom must get below this share of it.
+  static const double pushupFrontMinTop = 1.25;
+  static const double pushupFrontNoRepRatio = 0.75;
 
   // Backward compatibility aliases
   static const double squatDepthMin = 70;

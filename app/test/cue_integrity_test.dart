@@ -28,7 +28,7 @@ final Map<String, Set<String>> _allowed = {
   },
   'pushup': {
     CueIds.goDeeper, CueIds.lockOut, CueIds.hipsSagging, CueIds.hipsPiked,
-    CueIds.straightBody, CueIds.controlDescent, ..._praise,
+    CueIds.straightBody, CueIds.controlDescent, ..._praise, ..._depthPraise,
   },
   'lunge': {
     CueIds.goDeeper, CueIds.torsoLean, CueIds.controlDescent, CueIds.lungeDeeper,

@@ -425,13 +425,12 @@ void main() {
       expect(analyzer.repScores.single, 1.0);
     });
 
-    test('counts a rep that stops short of depth, and scores it short', () {
+    test('counts a rep that stops a little short of depth, and scores it short', () {
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
-      // 120 degrees never crosses the 90 degree depth target, but it is 55
-      // degrees of real travel. Discarding it left athletes with an unmoving
-      // counter (live test #3); it counts, and costs score.
-      sweepPushup(analyzer, from: 175, to: 120);
-      sweepPushup(analyzer, from: 120, to: 175);
+      // 110 degrees misses the 100 degree depth target by a few degrees but is
+      // 65 degrees of real travel: it counts, and costs score.
+      sweepPushup(analyzer, from: 175, to: 110);
+      sweepPushup(analyzer, from: 110, to: 175);
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175), frames: 6);
 
       expect(analyzer.repCount, 1);
@@ -439,6 +438,31 @@ void main() {
       expect(analyzer.repScores.single, lessThan(1.0));
       expect(analyzer.phase, RepPhase.neutral,
           reason: 'Must recover to neutral, not stick in eccentric.');
+    });
+
+    test('turns down a rep that only bends to 125 degrees, and says so', () {
+      final reasons = <String>[];
+      analyzer.onNoRep = (reason, spoken) => reasons.add(reason);
+      settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
+      sweepPushup(analyzer, from: 175, to: 125);
+      sweepPushup(analyzer, from: 125, to: 175);
+      settle(analyzer, PoseFixtures.pushup(elbowAngle: 175), frames: 6);
+
+      expect(analyzer.repCount, 0);
+      expect(reasons, ['not deep enough']);
+      expect(analyzer.phase, RepPhase.neutral);
+    });
+
+    test('turns down a rep that never locks out and drops again', () {
+      settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
+      sweepPushup(analyzer, from: 175, to: 70);
+      sweepPushup(analyzer, from: 70, to: 125); // halfway up...
+      sweepPushup(analyzer, from: 125, to: 70); // ...and back down: a pulse
+      sweepPushup(analyzer, from: 70, to: 175);
+      settle(analyzer, PoseFixtures.pushup(elbowAngle: 175), frames: 6);
+
+      expect(analyzer.repCount, 1, reason: 'only the final full rep counts');
+      expect(analyzer.noRepRecords.map((r) => r.noRepReason), ['No Full Lockout']);
     });
 
     test('does not count a wobble that is not a push-up', () {
@@ -454,8 +478,8 @@ void main() {
     test('a shallow rep does not stop the next full one scoring cleanly', () {
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175));
 
-      sweepPushup(analyzer, from: 175, to: 120);
-      sweepPushup(analyzer, from: 120, to: 175);
+      sweepPushup(analyzer, from: 175, to: 110);
+      sweepPushup(analyzer, from: 110, to: 175);
       settle(analyzer, PoseFixtures.pushup(elbowAngle: 175), frames: 6);
 
       sweepPushup(analyzer, from: 175, to: 70);

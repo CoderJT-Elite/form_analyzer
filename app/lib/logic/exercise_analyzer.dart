@@ -996,28 +996,37 @@ class SquatAnalyzer extends ExerciseAnalyzer {
   }
 }
 
+/// A push-up counts when the elbows bend to depth, the arms lock out again, and
+/// the body holds a line between shoulders and ankles throughout.
+///
+/// Live test #5 counted push-ups with sagging hips, knees on the floor and no
+/// lockout, because every one of those faults only lowered a score and the hip
+/// flags were erased the moment the back straightened at the top. Faults are now
+/// weighed over the whole rep (the share of good frames showing them), and a
+/// serious one turns the rep down. Depth and lockout are gates, not grades.
 class PushupAnalyzer extends ExerciseAnalyzer {
   PushupAnalyzer({super.cueEngine, super.clock});
 
-  // Reps are found from the athlete's own range (see RepCycleDetector), never
-  // from "reach 90 degrees, return past 155": live test #3 saw reps whose raw
-  // elbow reached 55-80 degrees read 110-125 after smoothing and never count.
-  final RepCycleDetector _cycle =
-      RepCycleDetector(minExcursion: AppConstants.pushupMinExcursionDegrees);
+  // Side view: judged from the elbow angle in the image plane.
+  final MedianFilter _elbowFilter = MedianFilter(3);
+  final MedianFilter _offsetFilter = MedianFilter(5);
+  final MedianFilter _kneeBendFilter = MedianFilter(3);
+  final AttemptEvidence _evidence = AttemptEvidence();
+
+  // Head-on: shoulders above wrists, in shoulder widths. Reps are segmented
+  // from the athlete's own range (the elbow angle barely changes from there).
   final RepCycleDetector _frontCycle = RepCycleDetector(
     minExcursion: AppConstants.pushupFrontMinExcursion,
     maxExcursion: AppConstants.pushupFrontMaxExcursion,
   );
-  final ExponentialSmoothingFilter _signalFilter =
-      ExponentialSmoothingFilter(alpha: AppConstants.repSignalSmoothingAlpha);
   final ExponentialSmoothingFilter _frontFilter =
       ExponentialSmoothingFilter(alpha: AppConstants.repSignalSmoothingAlpha);
-  final MovingAverageFilter _backAngleFilter =
-      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
-  final HipLineJudge _hipLine = HipLineJudge();
 
-  /// Smallest raw elbow angle seen during the rep in progress.
-  double _minRawAngle = 180;
+  double _minElbow = 180;
+  double _maxElbowSinceReversal = 0;
+  DateTime? _attemptStartedAt;
+  DateTime? _reversedAt;
+  DateTime? _droppedSince;
   bool _headOn = false;
   double? _lastFrontDepth;
   DateTime? _frontLostSince;
@@ -1050,16 +1059,30 @@ class PushupAnalyzer extends ExerciseAnalyzer {
   @override
   void reset() {
     super.reset();
-    _cycle.reset();
+    _elbowFilter.reset();
+    _offsetFilter.reset();
+    _kneeBendFilter.reset();
     _frontCycle.reset();
-    _signalFilter.reset();
     _frontFilter.reset();
-    _backAngleFilter.reset();
-    _hipLine.reset();
-    _minRawAngle = 180;
+    _clearAttempt();
     _headOn = false;
     _lastFrontDepth = null;
     _frontLostSince = null;
+  }
+
+  void _clearAttempt() {
+    _evidence.reset();
+    _minElbow = 180;
+    _maxElbowSinceReversal = 0;
+    _attemptStartedAt = null;
+    _reversedAt = null;
+    _droppedSince = null;
+  }
+
+  void _abandonRep() {
+    phase = RepPhase.neutral;
+    currentRepIssues.clear();
+    _clearAttempt();
   }
 
   @override
@@ -1093,51 +1116,220 @@ class PushupAnalyzer extends ExerciseAnalyzer {
     final leftConfidence = (leftElbow?.likelihood ?? 0) + (leftWrist?.likelihood ?? 0);
     final rightConfidence = (rightElbow?.likelihood ?? 0) + (rightWrist?.likelihood ?? 0);
     final useLeft = leftConfidence >= rightConfidence;
-    final rawAngle = useLeft ? leftAngle : rightAngle;
-    final angle = _signalFilter.add(rawAngle);
-    lastProcessedAngle = angle;
+    final elbow = _elbowFilter.add(useLeft ? leftAngle : rightAngle);
+    lastProcessedAngle = elbow;
 
-    _checkHipLine(pose, useLeft: useLeft);
+    // Body line, judged every frame so it has settled when a rep begins; only
+    // frames inside a rep count as evidence.
+    final faults = _bodyLineFaults(pose, useLeft: useLeft);
 
-    final event = _cycle.update(-angle, now());
-    if (_cycle.isWorking) _minRawAngle = math.min(_minRawAngle, rawAngle);
-
-    switch (event) {
-      case CycleEvent.descentStarted:
-        phase = RepPhase.eccentric;
-        currentRepIssues.clear();
-        _minRawAngle = rawAngle;
-        markEccentricStart();
-        statusMessage = 'Lower your chest';
-      case CycleEvent.reversed:
-        phase = RepPhase.concentric;
-        markConcentricStart();
-        statusMessage = 'Push up';
-        if (_minRawAngle > AppConstants.pushupDepthThreshold) {
-          addIssue('Insufficient Depth');
-          cues.request(CueIds.goDeeper);
-        }
-      case CycleEvent.completed:
-        _completeRep(
-          shortOfDepth: _minRawAngle > AppConstants.pushupDepthThreshold,
-          peakAngle: _minRawAngle,
-          deficit: math.max(0, _minRawAngle - AppConstants.pushupDepthThreshold),
-          lockedOut: -(_cycle.restLevel ?? -angle) >= AppConstants.pushupLockoutCueAngle,
-        );
-      case CycleEvent.abandoned:
-        _abandonRep();
-      case CycleEvent.none:
-        if (!_cycle.isWorking) {
+    switch (phase) {
+      case RepPhase.neutral:
+        if (elbow <= AppConstants.pushupAttemptElbow) {
+          _clearAttempt();
+          phase = RepPhase.eccentric;
+          currentRepIssues.clear();
+          _attemptStartedAt = now();
+          _minElbow = elbow;
+          markEccentricStart();
+          statusMessage = 'Lower your chest';
+        } else {
           statusMessage = 'Lower with control';
-        } else if (phase == RepPhase.eccentric) {
+        }
+
+      case RepPhase.eccentric:
+        _minElbow = math.min(_minElbow, elbow);
+        _note(faults);
+        if (elbow >= _minElbow + AppConstants.pushupReversalRise) {
+          phase = RepPhase.concentric;
+          _reversedAt = now();
+          _maxElbowSinceReversal = elbow;
+          markConcentricStart();
+          statusMessage = 'Push up';
+          if (_minElbow > AppConstants.pushupDepthThreshold) {
+            cues.request(CueIds.goDeeper);
+          }
+        } else if (now().difference(_attemptStartedAt!) > AppConstants.pushupAttemptTimeout) {
+          noteIgnored('stalled');
+          _abandonRep();
+        } else {
           statusMessage = 'Lower';
+        }
+
+      case RepPhase.concentric:
+        _minElbow = math.min(_minElbow, elbow);
+        _maxElbowSinceReversal = math.max(_maxElbowSinceReversal, elbow);
+        _note(faults);
+        if (elbow >= AppConstants.pushupLockoutAngle) {
+          _finishSide();
+        } else if (_sustainedDrop(elbow, _maxElbowSinceReversal, AppConstants.pushupBounceDrop)) {
+          // Back down before the arms ever locked out: a half rep, not a push-up.
+          _rejectIncompleteLockout();
+          _abandonRep();
+        } else if (now().difference(_reversedAt!) > AppConstants.pushupAttemptTimeout) {
+          noteIgnored('stalled');
+          _abandonRep();
+        } else {
+          statusMessage = 'Push up';
         }
     }
   }
 
+  bool _sustainedDrop(double value, double best, double drop) {
+    if (value > best - drop) {
+      _droppedSince = null;
+      return false;
+    }
+    _droppedSince ??= now();
+    return now().difference(_droppedSince!) >= AppConstants.bounceHold;
+  }
+
+  /// Which body-line faults this frame shows (side view), with live cues. The
+  /// verdict is reached over the whole rep, never from one frame.
+  Set<String> _bodyLineFaults(Pose pose, {required bool useLeft}) {
+    final faults = <String>{};
+    PoseLandmark? lm(PoseLandmarkType left, PoseLandmarkType right) =>
+        pose.landmarks[useLeft ? left : right] ?? pose.landmarks[useLeft ? right : left];
+    final shoulder = lm(PoseLandmarkType.leftShoulder, PoseLandmarkType.rightShoulder);
+    final hip = lm(PoseLandmarkType.leftHip, PoseLandmarkType.rightHip);
+    final knee = lm(PoseLandmarkType.leftKnee, PoseLandmarkType.rightKnee);
+    final ankle = lm(PoseLandmarkType.leftAnkle, PoseLandmarkType.rightAnkle);
+    if (!isLandmarkVisible(shoulder) || !isLandmarkVisible(hip)) return faults;
+
+    // Shoulder to ankle is the body line; the knee stands in when the feet are
+    // out of frame. Measuring to the knee alone missed sag from the knees down.
+    final end = isLandmarkVisible(ankle) ? ankle! : (isLandmarkVisible(knee) ? knee : null);
+    if (end != null) {
+      final raw = HipLineJudge.offsetRatio(shoulder!, hip!, end);
+      if (raw != null) {
+        final offset = _offsetFilter.add(raw);
+        if (offset >= AppConstants.pushupSagOffset) faults.add('Hips Sagging');
+        if (offset <= AppConstants.pushupPikeOffset) faults.add('Hips Piked');
+      }
+    }
+
+    // Knees on the floor: the leg folds behind the athlete.
+    if (isLandmarkVisible(hip) && isLandmarkVisible(knee) && isLandmarkVisible(ankle)) {
+      final bend = _kneeBendFilter.add(angle2D(hip!, knee!, ankle!));
+      if (bend <= AppConstants.pushupKneesDownAngle) faults.add('Knees Down');
+    }
+
+    if (phase != RepPhase.neutral) {
+      if (faults.contains('Hips Sagging')) cues.request(CueIds.hipsSagging);
+      if (faults.contains('Hips Piked')) cues.request(CueIds.hipsPiked);
+    }
+    return faults;
+  }
+
+  void _note(Set<String> faults) {
+    _evidence.note(good: true, faults: faults);
+    for (final fault in faults) {
+      if (_evidence.confirmed(fault, minFrames: 3, minFraction: 0.25)) addIssue(fault);
+    }
+  }
+
+  void _rejectIncompleteLockout() {
+    if (_minElbow <= AppConstants.pushupNoRepElbow && _evidence.goodFrames >= 3) {
+      recordNoRep(
+        reason: 'lock your arms out at the top',
+        label: 'No Full Lockout',
+        peakAngle: _minElbow,
+      );
+    } else {
+      noteIgnored('half rep');
+    }
+  }
+
+  void _finishSide() {
+    // Nobody pushes up in under a second: a quicker "rep" is landmark jitter
+    // (stock clip pushup_pixabay_302251 flickers 20-30 degrees frame to frame).
+    final took = now().difference(_attemptStartedAt ?? now());
+    if (took < AppConstants.pushupMinRepDuration) {
+      noteIgnored('too quick');
+      _abandonRep();
+      return;
+    }
+    final depth = _minElbow;
+    final deficit = math.max(0.0, depth - AppConstants.pushupDepthThreshold);
+    final uncertain = _evidence.goodFrames >= 3 && !_evidence.sufficient;
+
+    String? noRepReason;
+    String? noRepLabel;
+    if (depth > AppConstants.pushupNoRepElbow) {
+      noRepReason = 'not deep enough';
+      noRepLabel = 'Not Deep Enough';
+    } else if (_evidence.confirmed('Knees Down', minFrames: 3, minFraction: 0.5)) {
+      noRepReason = 'knees on the floor';
+      noRepLabel = 'Knees Down';
+    } else if (_evidence.confirmed('Hips Sagging', minFrames: 3, minFraction: AppConstants.pushupHardFault)) {
+      noRepReason = 'hips sagged';
+      noRepLabel = 'Hips Sagging';
+    } else if (_evidence.confirmed('Hips Piked', minFrames: 3, minFraction: AppConstants.pushupHardFault)) {
+      noRepReason = 'hips too high';
+      noRepLabel = 'Hips Piked';
+    }
+
+    if (_evidence.goodFrames < 3) {
+      noteIgnored('lost tracking');
+    } else if (noRepReason != null) {
+      recordNoRep(
+        reason: noRepReason,
+        label: noRepLabel!,
+        peakAngle: depth,
+        romDeficitDegrees: deficit,
+        announce: !uncertain,
+      );
+    } else {
+      final fullDepth = depth <= AppConstants.pushupDepthThreshold;
+      _countRep(
+        shortOfDepth: !fullDepth,
+        peakAngle: depth,
+        deficit: deficit,
+        uncertain: uncertain,
+      );
+    }
+    _abandonRep();
+  }
+
+  void _countRep({
+    required bool shortOfDepth,
+    required double? peakAngle,
+    required double deficit,
+    bool uncertain = false,
+  }) {
+    repCount++;
+    var score = 1.0;
+    if (shortOfDepth) {
+      addIssue('Insufficient Depth');
+      score -= AppConstants.pushupInsufficientDepthPenalty;
+    } else {
+      currentRepIssues.remove('Insufficient Depth');
+    }
+    // Faults too mild to turn the rep down still cost score and are reported.
+    for (final fault in const ['Hips Sagging', 'Hips Piked']) {
+      if (_evidence.confirmed(fault, minFrames: 3, minFraction: 0.25)) {
+        addIssue(fault);
+        score -= AppConstants.pushupHipAlignmentPenalty;
+      } else {
+        currentRepIssues.remove(fault);
+      }
+    }
+    statusMessage = 'Rep $repCount';
+    recordRep(
+      score: score,
+      peakAngle: peakAngle,
+      romDeficitDegrees: deficit,
+      fullDepth: !shortOfDepth,
+      uncertain: uncertain,
+    );
+    phase = RepPhase.neutral;
+    if (onRep != null) onRep!(repCount);
+  }
+
   /// Camera on the floor facing the athlete. The signal is how far the
   /// shoulders sit above the wrists, in shoulder widths: about 1.6 at the top of
-  /// a push-up and 0.4-0.6 at the bottom, whatever the camera distance.
+  /// a push-up and 0.4-0.6 at the bottom, whatever the camera distance. Hips
+  /// cannot be judged from the front, so only depth and lockout are gated.
   void _processHeadOn(
     PoseLandmark? leftShoulder,
     PoseLandmark? rightShoulder,
@@ -1193,8 +1385,21 @@ class PushupAnalyzer extends ExerciseAnalyzer {
       case CycleEvent.completed:
         final top = -_frontCycle.lastRest / 100;
         final bottom = -_frontCycle.lastPeak / 100;
-        final short = top > 0 && bottom > AppConstants.pushupFrontDepthRatio * top;
-        _completeRep(shortOfDepth: short, peakAngle: null, deficit: 0, lockedOut: true);
+        final bottomShare = top > 0 ? bottom / top : 0.0;
+        if (top > 0 && top < AppConstants.pushupFrontMinTop) {
+          recordNoRep(reason: 'lock your arms out at the top', label: 'No Full Lockout');
+          phase = RepPhase.neutral;
+        } else if (bottomShare > AppConstants.pushupFrontNoRepRatio) {
+          recordNoRep(reason: 'not deep enough', label: 'Not Deep Enough');
+          phase = RepPhase.neutral;
+        } else {
+          _evidence.reset();
+          _countRep(
+            shortOfDepth: bottomShare > AppConstants.pushupFrontDepthRatio,
+            peakAngle: null,
+            deficit: 0,
+          );
+        }
       case CycleEvent.abandoned:
         _abandonRep();
       case CycleEvent.none:
@@ -1205,102 +1410,8 @@ class PushupAnalyzer extends ExerciseAnalyzer {
         }
     }
   }
-
-  /// Straight shoulder-hip-knee line, same idea as plank. Only judged from the
-  /// side, and only while a rep is under way.
-  void _checkHipLine(Pose pose, {required bool useLeft}) {
-    final shoulder =
-        pose.landmarks[useLeft ? PoseLandmarkType.leftShoulder : PoseLandmarkType.rightShoulder];
-    final hip = pose.landmarks[useLeft ? PoseLandmarkType.leftHip : PoseLandmarkType.rightHip];
-    final knee = pose.landmarks[useLeft ? PoseLandmarkType.leftKnee : PoseLandmarkType.rightKnee];
-    if (!isLandmarkVisible(shoulder) || !isLandmarkVisible(hip) || !isLandmarkVisible(knee)) {
-      return;
-    }
-    // Keep the judge fed between reps too, so it has settled by the time one
-    // starts.
-    final verdict = _hipLine.update(shoulder!, hip!, knee!, now: now());
-    if (phase == RepPhase.neutral) return;
-
-    // Smoothed like every other angle here: a single noisy frame must not tag
-    // a whole rep as sagging, since the flag has no recovery once raised
-    // (pushup_pixabay_302251 hit a one-frame dip early in a long rep).
-    final backAngle = _backAngleFilter.add(MathUtils.calculateJointAngle(shoulder, hip, knee));
-    if (backAngle < AppConstants.pushupBackAngleMin) {
-      switch (verdict) {
-        case HipVerdict.sagging:
-          // A rep has one dominant hip fault; once called, the other verdict
-          // is ignored so two contradictory penalties cannot stack.
-          if (!currentRepIssues.contains('Hips Piked')) {
-            addIssue('Hips Sagging');
-            cues.request(CueIds.hipsSagging);
-          }
-        case HipVerdict.piked:
-          if (!currentRepIssues.contains('Hips Sagging')) {
-            addIssue('Hips Piked');
-            cues.request(CueIds.hipsPiked);
-          }
-        case HipVerdict.unjudgeable:
-        case HipVerdict.undecided:
-          // Leaning on a wall or a steep incline: no floor to sag toward, but
-          // the line is still broken.
-          addIssue('Body Not Straight');
-          cues.request(CueIds.straightBody);
-      }
-    } else {
-      currentRepIssues.remove('Hips Sagging');
-      currentRepIssues.remove('Hips Piked');
-      currentRepIssues.remove('Body Not Straight');
-    }
-  }
-
-  void _completeRep({
-    required bool shortOfDepth,
-    required double? peakAngle,
-    required double deficit,
-    required bool lockedOut,
-  }) {
-    repCount++;
-    var score = 1.0;
-    if (shortOfDepth) {
-      addIssue('Insufficient Depth');
-      score -= AppConstants.pushupInsufficientDepthPenalty;
-    } else {
-      currentRepIssues.remove('Insufficient Depth');
-    }
-    // Lockout is a live cue only, not scored: it has no recovery once flagged,
-    // so one early wobble would penalise an otherwise clean rep.
-    if (!lockedOut) cues.request(CueIds.lockOut);
-    if (currentRepIssues.contains('Hips Sagging')) {
-      score -= AppConstants.pushupHipAlignmentPenalty;
-    }
-    if (currentRepIssues.contains('Hips Piked')) {
-      score -= AppConstants.pushupHipAlignmentPenalty;
-    }
-    if (currentRepIssues.contains('Body Not Straight')) {
-      score -= AppConstants.pushupHipAlignmentPenalty;
-    }
-    statusMessage = 'Rep $repCount';
-    recordRep(score: score, peakAngle: peakAngle, romDeficitDegrees: deficit);
-    phase = RepPhase.neutral;
-    _minRawAngle = 180;
-    if (onRep != null) onRep!(repCount);
-  }
-
-  void _abandonRep() {
-    phase = RepPhase.neutral;
-    currentRepIssues.clear();
-    _minRawAngle = 180;
-  }
 }
 
-/// A lunge counts when the front hip drops to a real lunge depth and the athlete
-/// stands back up, counted at the moment they are tall again. Depth is the
-/// front leg's hip height (see [LegSample.hipHeight]); live test #5 counted
-/// thirteen "lunges" of which three were deep and the rest were small knee dips.
-///
-/// The old "knee past your toes" check is gone: it is a myth that knee travel
-/// over the toes is dangerous, and enforcing it only shifts load to the hips and
-/// lower back (it was also said five times to a set that was simply too shallow).
 class LungeAnalyzer extends ExerciseAnalyzer {
   LungeAnalyzer({super.cueEngine, super.clock});
 
