@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,8 @@ import 'package:form_analyzer/ui/screens/session_detail_screen.dart';
 import 'package:form_analyzer/ui/widgets/set_report.dart';
 import 'package:form_analyzer/ui/widgets/workout_summary_dialog.dart';
 import 'package:path/path.dart' as path;
+import 'package:form_analyzer/services/storage_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/recorded_pose_fixtures.dart';
 import 'support/recorded_session.dart';
@@ -55,6 +58,8 @@ Future<void> pumpDialog(WidgetTester tester, WorkoutSession s) async {
   );
   await tester.pump();
 }
+
+String _json(WorkoutSession s) => jsonEncode(s.toJson());
 
 void main() {
   group('feedback copy', () {
@@ -374,6 +379,60 @@ void main() {
       expect(metrics.totalReps, 1);
       expect(metrics.noRepCount, 4);
       expect(metrics.averageFormScore, closeTo(1.0, 1e-9), reason: 'one clean rep out of five attempts: 1/5 of 5 stars');
+    });
+  });
+
+  group('personal bests', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    WorkoutSession withReps(int reps, {int version = WorkoutSession.currentScoringVersion}) => WorkoutSession(
+          id: 'old$reps',
+          date: DateTime(2026, 9, 1),
+          exerciseType: ExerciseType.squat,
+          sets: [ExerciseSet(reps: reps, timestamp: DateTime(2026, 9, 1), rating: 4)],
+          scoringVersion: version,
+        );
+
+    test('a set that beats every comparable set is a personal best', () async {
+      final storage = StorageService();
+      await storage.saveSession(withReps(8));
+      expect(await storage.wouldBePersonalRecord(ExerciseType.squat, 9), isTrue);
+      expect(await storage.wouldBePersonalRecord(ExerciseType.squat, 8), isFalse);
+      expect(await storage.wouldBePersonalRecord(ExerciseType.pushup, 1), isTrue, reason: 'a different exercise');
+    });
+
+    test('an inflated record from the lenient counter cannot block a real best', () async {
+      // Live test #5's squat set counted 19 for about 8 real ones. Under the old
+      // rules that would have made a personal best unreachable.
+      SharedPreferences.setMockInitialValues({
+        'workout_sessions_v2': '[${_json(withReps(19, version: 1))}]',
+      });
+      final storage = StorageService();
+      expect(await storage.wouldBePersonalRecord(ExerciseType.squat, 9), isTrue);
+    });
+
+    test('saving keeps the scoring version', () async {
+      final storage = StorageService();
+      await storage.saveSession(withReps(5));
+      final saved = (await storage.loadSessions()).single;
+      expect(saved.scoringVersion, WorkoutSession.currentScoringVersion);
+    });
+
+    testWidgets('the summary celebrates one', (tester) async {
+      tester.view.physicalSize = const Size(900, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final session = sessionOf(ExerciseType.squat, [counted(0, 1.0), counted(1, 1.0)]);
+      await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.dark,
+        home: Scaffold(body: WorkoutSummaryDialog(session: session, onConfirm: (_) {}, personalBest: true)),
+      ));
+      await tester.pump();
+      expect(find.byKey(const Key('personal-best')), findsOneWidget);
+      expect(find.text('NEW PERSONAL BEST'), findsOneWidget);
     });
   });
 

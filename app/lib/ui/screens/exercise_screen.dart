@@ -851,6 +851,12 @@ class ExerciseScreenState extends State<ExerciseScreen>
     final previousRating = await _previousRatingForExercise();
 
     if (!mounted) return;
+    final bestSet = sets.fold<int>(0, (best, set) => set.reps > best ? set.reps : best);
+    final personalBest = bestSet > 0 &&
+        sets.any((set) => set.counted > 0) &&
+        await _storage.wouldBePersonalRecord(widget.exercise.type, bestSet);
+    if (!mounted) return;
+
     // The session is saved when the athlete confirms, so a corrected rep count
     // is what is stored (the counter's own number is kept with it).
     showDialog(
@@ -859,6 +865,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
       builder: (context) => WorkoutSummaryDialog(
         session: session,
         previousRating: previousRating,
+        personalBest: personalBest,
         onConfirm: (finalSession) async {
           _recorder?.event('confirmed', {
             'counted': finalSession.countedTotal,

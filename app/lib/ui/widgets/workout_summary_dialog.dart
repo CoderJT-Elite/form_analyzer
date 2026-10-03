@@ -20,11 +20,15 @@ class WorkoutSummaryDialog extends StatefulWidget {
   /// first time doing it.
   final double? previousRating;
 
+  /// True when this workout holds a new personal best for the exercise.
+  final bool personalBest;
+
   const WorkoutSummaryDialog({
     super.key,
     required this.session,
     required this.onConfirm,
     this.previousRating,
+    this.personalBest = false,
   });
 
   @override
@@ -101,6 +105,34 @@ class _WorkoutSummaryDialogState extends State<WorkoutSummaryDialog> {
                 fontWeight: FontWeight.w900,
               ),
             ),
+            if (widget.personalBest && session.countedTotal > 0) ...[
+              const SizedBox(height: 12),
+              Container(
+                key: const Key('personal-best'),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accentGold.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.emoji_events_rounded, color: AppColors.accentGold, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'NEW PERSONAL BEST',
+                      style: GoogleFonts.outfit(
+                        color: AppColors.accentGold,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             if (showStars) ...[
               Row(

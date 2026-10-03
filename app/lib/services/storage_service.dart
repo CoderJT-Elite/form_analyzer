@@ -83,6 +83,8 @@ class StorageService {
       sets: updatedSets,
       overallRating: session.overallRating,
       overallFeedback: session.overallFeedback,
+      // Carried across: it says which scoring rules the rating came from.
+      scoringVersion: session.scoringVersion,
     );
 
     sessions.insert(0, updatedSession);
@@ -95,12 +97,25 @@ class StorageService {
     ExerciseType type,
     ExerciseSet newSet,
   ) {
-    for (var session in history.where((s) => s.exerciseType == type)) {
+    // Only sets counted under today's rules can stand in the way: the lenient
+    // counter inflated reps (19 "squats" for a set of 8), and an old record like
+    // that would make a personal best unreachable for good.
+    final comparable = history.where((s) =>
+        s.exerciseType == type &&
+        s.scoringVersion >= WorkoutSession.currentScoringVersion);
+    for (var session in comparable) {
       for (var set in session.sets) {
         if (set.reps >= newSet.reps) return false;
       }
     }
     return newSet.reps > 0 || (newSet.duration?.inSeconds ?? 0) > 0;
+  }
+
+  /// Whether a set of [reps] would be a new personal best for [type], for the
+  /// summary to celebrate before the session is saved.
+  Future<bool> wouldBePersonalRecord(ExerciseType type, int reps) async {
+    final sessions = await loadSessions();
+    return _isPersonalRecord(sessions, type, ExerciseSet(reps: reps, timestamp: DateTime.now()));
   }
 
   Future<List<WorkoutSession>> loadSessions() async {
