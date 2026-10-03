@@ -113,9 +113,23 @@ void main() {
       expect(analyzer.repCount, 0);
     });
 
-    test('penalises a chest collapsing forward relative to the shins', () {
+    test('turns down a squat folded over at the bottom, and says why', () {
+      // A torso 70 degrees from vertical is a hip hinge or a crouch to the
+      // floor, not a squat: live test #5 counted and praised eight of them.
+      final reasons = <String>[];
+      analyzer.onNoRep = (reason, spoken) => reasons.add(reason);
       settle(analyzer, PoseFixtures.squat(kneeAngle: 175));
       performSquatRep(analyzer, forwardLean: 70);
+
+      expect(analyzer.repCount, 0);
+      expect(analyzer.noRepCount, 1);
+      expect(reasons.single, contains('chest up'));
+      expect(analyzer.noRepRecords.single.counted, isFalse);
+    });
+
+    test('penalises a chest collapsing forward relative to the shins', () {
+      settle(analyzer, PoseFixtures.squat(kneeAngle: 175));
+      performSquatRep(analyzer, forwardLean: 50);
 
       expect(analyzer.repCount, 1);
       expect(analyzer.allRepIssues.single, contains('Excessive Forward Lean'));

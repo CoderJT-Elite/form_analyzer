@@ -18,6 +18,7 @@ enum CuePriority {
   tempo,
   range,
   setup,
+  verdict,
   safety,
 }
 
@@ -88,7 +89,11 @@ class CueIds {
   static const String asymmetry = 'form.asymmetry';
 
   static const String goodRep = 'praise.goodRep';
+  static const String goodDepth = 'praise.goodDepth';
   static const String streak = 'praise.streak';
+
+  /// A rep that did not count, and why ("No rep, hips sagged").
+  static const String noRep = 'verdict.noRep';
 
   static const String hipsSagging = 'hold.hipsSagging';
   static const String hipsPiked = 'hold.hipsPiked';
@@ -102,6 +107,12 @@ class CueIds {
   static const String straightenLegs = 'form.straightenLegs';
   static const String feetNotSpread = 'form.feetNotSpread';
   static const String elbowsOut = 'form.elbowsOut';
+  static const String stackWrists = 'form.stackWrists';
+  static const String legDrive = 'form.legDrive';
+
+  /// Nudges for an athlete who keeps moving without making an attempt.
+  static const String sitDown = 'start.sitDown';
+  static const String lungeDeeper = 'start.lungeDeeper';
 }
 
 /// Setup guidance copy for camera orientation before exercise start.
@@ -264,7 +275,27 @@ const List<CueDefinition> kDefaultCues = [
     id: CueIds.goodRep,
     priority: CuePriority.encouragement,
     cooldown: Duration(seconds: 6),
-    phrasings: ['Nice rep', 'That one was clean', 'Good depth'],
+    // Deliberately says nothing about depth: this is shared by every exercise,
+    // and "Good depth" was heard on jumping jacks and overhead presses (and on
+    // a lunge that had just been told to go deeper). See goodDepth.
+    phrasings: ['Nice rep', 'That one was clean', 'Solid'],
+  ),
+  // Only requested by exercises with a depth target that this rep fully met.
+  CueDefinition(
+    id: CueIds.goodDepth,
+    priority: CuePriority.encouragement,
+    cooldown: Duration(seconds: 6),
+    phrasings: ['Good depth', 'Right down to depth'],
+  ),
+  // The athlete is told, at the moment it happens, that a rep did not count and
+  // why. Always carries a detail; the bare phrasing is the short form used when
+  // the fault was just spoken as a live cue.
+  CueDefinition(
+    id: CueIds.noRep,
+    priority: CuePriority.verdict,
+    cooldown: Duration(milliseconds: 1500),
+    repeatableWithinRep: true,
+    phrasings: ['No rep'],
   ),
   CueDefinition(
     id: CueIds.streak,
@@ -348,6 +379,36 @@ const List<CueDefinition> kDefaultCues = [
     cooldown: Duration(seconds: 4),
     phrasings: ['Elbows under your shoulders', 'Stack your elbows under you'],
   ),
+  CueDefinition(
+    id: CueIds.stackWrists,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 4),
+    phrasings: ['Stack your wrists over your elbows', 'Keep the bar over your elbows'],
+  ),
+  CueDefinition(
+    id: CueIds.sitDown,
+    priority: CuePriority.setup,
+    cooldown: Duration(seconds: 12),
+    phrasings: [
+      'Bend your knees and sit down into the squat',
+      'Keep your chest up and sit your hips back and down',
+    ],
+  ),
+  CueDefinition(
+    id: CueIds.lungeDeeper,
+    priority: CuePriority.setup,
+    cooldown: Duration(seconds: 12),
+    phrasings: [
+      'Step out further and drop your back knee toward the floor',
+      'Lower until your front thigh is level with the ground',
+    ],
+  ),
+  CueDefinition(
+    id: CueIds.legDrive,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 5),
+    phrasings: ['Keep your legs still and press with your arms', 'No leg drive — strict press'],
+  ),
 ];
 
 class _CueState {
@@ -356,6 +417,10 @@ class _CueState {
   int phrasingIndex = 0;
   bool emittedThisRep = false;
 }
+
+/// Priorities that mean "this rep had something wrong with it".
+bool _isFaultPriority(CuePriority p) =>
+    p == CuePriority.range || p == CuePriority.safety || p == CuePriority.verdict;
 
 /// Decides which coaching cues actually reach the athlete.
 class CueEngine {
@@ -372,6 +437,7 @@ class CueEngine {
   void Function(Cue cue)? onCue;
 
   final Map<String, _CueState> _states = {};
+  bool _faultCuedThisRep = false;
   DateTime? _lastEmitAt;
   CuePriority? _lastEmitPriority;
 
@@ -423,6 +489,7 @@ class CueEngine {
     state.timesEmitted++;
     state.lastEmittedAt = timestamp;
     state.emittedThisRep = true;
+    if (_isFaultPriority(definition.priority)) _faultCuedThisRep = true;
 
     _lastEmitAt = timestamp;
     _lastEmitPriority = definition.priority;
@@ -437,8 +504,16 @@ class CueEngine {
     return cue;
   }
 
+  /// Whether a range, safety or verdict cue was delivered since the current rep
+  /// began. A rep that was just told to go deeper must not also be praised.
+  bool get faultCuedThisRep => _faultCuedThisRep;
+
+  /// When [id] last reached the athlete, or null.
+  DateTime? lastEmittedAt(String id) => _states[id]?.lastEmittedAt;
+
   /// Clear per-rep suppression. Called when a new rep starts.
   void beginRep() {
+    _faultCuedThisRep = false;
     for (final state in _states.values) {
       state.emittedThisRep = false;
     }
@@ -447,6 +522,7 @@ class CueEngine {
   /// Full reset between sets.
   void reset() {
     _states.clear();
+    _faultCuedThisRep = false;
     _lastEmitAt = null;
     _lastEmitPriority = null;
   }

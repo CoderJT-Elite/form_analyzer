@@ -2,11 +2,13 @@ import 'dart:math' as math;
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../core/app_constants.dart';
 import '../utils/math_utils.dart';
+import 'body_signals.dart';
 import 'cue_engine.dart';
 import 'hip_line.dart';
 import 'pose_orientation.dart';
 import 'rep_cycle_detector.dart';
 import 'rep_recovery.dart';
+import 'signal_filters.dart';
 
 /// Issues that cannot both be the headline of the same set.
 const Map<String, String> _contradictions = {
@@ -22,18 +24,26 @@ class PerformanceMetrics {
   final int perfectReps;
   final int totalReps;
 
+  /// Attempts that did not count, by the reason they were turned down.
+  final Map<String, int> noReps;
+
   PerformanceMetrics({
     required this.averageFormScore,
     required this.commonIssues,
     required this.perfectReps,
     required this.totalReps,
+    this.noReps = const {},
   });
+
+  /// Attempts that did not count.
+  int get noRepCount => noReps.values.fold(0, (sum, n) => sum + n);
 
   Map<String, dynamic> toJson() => {
     'averageFormScore': averageFormScore,
     'commonIssues': commonIssues,
     'perfectReps': perfectReps,
     'totalReps': totalReps,
+    if (noReps.isNotEmpty) 'noReps': noReps,
   };
 
   factory PerformanceMetrics.fromJson(Map<String, dynamic> json) =>
@@ -42,7 +52,52 @@ class PerformanceMetrics {
         commonIssues: List<String>.from(json['commonIssues']),
         perfectReps: json['perfectReps'],
         totalReps: json['totalReps'],
+        noReps: {
+          for (final e in ((json['noReps'] as Map?) ?? const {}).entries)
+            e.key as String: (e.value as num).toInt(),
+        },
       );
+
+  /// Summarise any collection of attempt records (one set, or a whole
+  /// workout). Rep records that did not count are scored as zero in the
+  /// average, so a set of mostly rejected attempts cannot earn five stars.
+  factory PerformanceMetrics.fromRecords(Iterable<RepRecord> records) {
+    final counted = records.where((r) => r.counted).toList();
+    final rejected = records.where((r) => !r.counted).toList();
+
+    final issueCounts = <String, int>{};
+    for (final record in counted) {
+      for (final issue in record.issues) {
+        issueCounts[issue] = (issueCounts[issue] ?? 0) + 1;
+      }
+    }
+    final sorted = issueCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    // A summary that says the hips both sagged and piked reads as a broken
+    // app. Keep whichever was more common.
+    final common = <String>[];
+    for (final entry in sorted) {
+      final rival = _contradictions[entry.key];
+      if (rival != null && common.contains(rival)) continue;
+      common.add(entry.key);
+      if (common.length == 3) break;
+    }
+
+    final noReps = <String, int>{};
+    for (final r in rejected) {
+      final reason = r.noRepReason ?? 'Did not count';
+      noReps[reason] = (noReps[reason] ?? 0) + 1;
+    }
+    final attempts = counted.length + rejected.length;
+    final total = counted.fold<double>(0, (sum, r) => sum + r.score);
+    return PerformanceMetrics(
+      averageFormScore: attempts == 0 ? 0.0 : (total / attempts) * 5.0,
+      commonIssues: common,
+      perfectReps: counted.where((r) => r.score > 0.9).length,
+      totalReps: counted.length,
+      noReps: noReps,
+    );
+  }
 }
 
 /// Everything worth knowing about one completed rep.
@@ -69,6 +124,18 @@ class RepRecord {
   /// the target was met.
   final double romDeficitDegrees;
 
+  /// False for an attempt that was turned down. Such a record carries the
+  /// reason in [noRepReason] and a score of zero; it is not in the rep count.
+  final bool counted;
+
+  /// Why an attempt did not count ("hips sagged"), when [counted] is false.
+  final String? noRepReason;
+
+  /// True when the measurement behind this rep was shaky (heavy tracking
+  /// noise), so it was counted without praise or a capped score rather than
+  /// judged harshly.
+  final bool uncertain;
+
   const RepRecord({
     required this.index,
     required this.score,
@@ -77,6 +144,9 @@ class RepRecord {
     this.concentricMs = 0,
     this.peakAngle,
     this.romDeficitDegrees = 0,
+    this.counted = true,
+    this.noRepReason,
+    this.uncertain = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -87,6 +157,9 @@ class RepRecord {
         'concentricMs': concentricMs,
         if (peakAngle != null) 'peakAngle': peakAngle,
         'romDeficitDegrees': romDeficitDegrees,
+        if (!counted) 'counted': false,
+        if (noRepReason != null) 'noRepReason': noRepReason,
+        if (uncertain) 'uncertain': true,
       };
 
   factory RepRecord.fromJson(Map<String, dynamic> json) => RepRecord(
@@ -98,6 +171,10 @@ class RepRecord {
         peakAngle: (json['peakAngle'] as num?)?.toDouble(),
         romDeficitDegrees:
             (json['romDeficitDegrees'] as num?)?.toDouble() ?? 0,
+        // Sessions saved before no-reps existed have no flag: they all counted.
+        counted: json['counted'] as bool? ?? true,
+        noRepReason: json['noRepReason'] as String?,
+        uncertain: json['uncertain'] as bool? ?? false,
       );
 }
 
@@ -116,6 +193,11 @@ abstract class ExerciseAnalyzer {
   Function(String)? onFeedback;
   Function(String)? onCorrection;
   Function(String)? onSafetyAlert;
+
+  /// Fired when an attempt is turned down. [reason] is short and lower-case
+  /// ("hips sagged"); [spoken] is what was said aloud, or null when it was only
+  /// shown (the fault cue had just been spoken, or a safety cue was talking).
+  void Function(String reason, String? spoken)? onNoRep;
 
   /// Injectable clock, so tempo and cue cooldowns are testable.
   final DateTime Function() now;
@@ -146,6 +228,40 @@ abstract class ExerciseAnalyzer {
 
   final List<String> currentRepIssues = [];
   final List<RepRecord> repRecords = [];
+
+  /// Attempts that were turned down, in order. Not part of [repCount] or
+  /// [repRecords]; see [attemptRecords] for both together.
+  final List<RepRecord> noRepRecords = [];
+  final List<DateTime> _noRepTimes = [];
+
+  /// Movements that were never a rep attempt (a stretch, walking about, a
+  /// toe-touch before the set began). Silent; only counted for the recorder and
+  /// for the nudge below.
+  int ignoredAttempts = 0;
+  final List<DateTime> _recentIgnored = [];
+
+  /// Cue to give when the athlete keeps moving without ever making an attempt
+  /// ("Bend your knees and sit down into the squat"), or null for none.
+  String? get notAnAttemptCueId => null;
+
+  /// Why the most recent attempt was ignored, for the recorder.
+  String? lastIgnoredReason;
+
+  /// Every attempt, counted or not, in the order it happened.
+  List<RepRecord> get attemptRecords {
+    final all = <(DateTime, RepRecord)>[
+      for (var i = 0; i < repRecords.length; i++)
+        (
+          i < _repTimes.length ? _repTimes[i] : DateTime.fromMillisecondsSinceEpoch(0),
+          repRecords[i]
+        ),
+      for (var i = 0; i < noRepRecords.length; i++) (_noRepTimes[i], noRepRecords[i]),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
+    return [for (final e in all) e.$2];
+  }
+
+  /// How many attempts were turned down.
+  int get noRepCount => noRepRecords.length;
 
   /// When each entry of [repRecords] was completed. Kept alongside rather than
   /// inside [RepRecord] so stored sessions are unchanged; used to take back reps
@@ -202,6 +318,11 @@ abstract class ExerciseAnalyzer {
     currentRepIssues.clear();
     repRecords.clear();
     _repTimes.clear();
+    noRepRecords.clear();
+    _noRepTimes.clear();
+    ignoredAttempts = 0;
+    _recentIgnored.clear();
+    lastIgnoredReason = null;
     cues.reset();
     orientationTracker.reset();
     _lastCueMessage = null;
@@ -229,6 +350,10 @@ abstract class ExerciseAnalyzer {
         if (onSafetyAlert != null) onSafetyAlert!(cue.message);
       case CuePriority.encouragement:
         if (onFeedback != null) onFeedback!(cue.message);
+      case CuePriority.verdict:
+        // Spoken by the exercise screen through onNoRep, with the reason; the
+        // generic channel would speak it twice.
+        break;
       case CuePriority.setup:
       case CuePriority.range:
       case CuePriority.tempo:
@@ -265,12 +390,25 @@ abstract class ExerciseAnalyzer {
     return false;
   }
 
-  /// Called by subclasses when the lowering phase begins.
-  void markEccentricStart() {
+  /// Called by subclasses when the lowering phase begins. [newRep] is false for
+  /// exercises whose lowering comes after the working phase, so the per-rep cue
+  /// suppression is not reset halfway through a rep.
+  void markEccentricStart({bool newRep = true}) {
     _eccentricStartedAt = now();
+    _concentricStartedAt = null;
+    if (newRep) cues.beginRep();
+  }
+
+  /// Called when a rep begins without a lowering phase to time (the working
+  /// phase of a glute bridge or sit-up, where lowering is the return).
+  void markRepStart() {
+    _eccentricStartedAt = null;
     _concentricStartedAt = null;
     cues.beginRep();
   }
+
+  /// Whether the tempo cue ("slow the way down") applies to this exercise.
+  bool get coachesLowering => true;
 
   /// Called by subclasses when the athlete reverses and drives back up.
   void markConcentricStart() {
@@ -282,6 +420,8 @@ abstract class ExerciseAnalyzer {
     required double score,
     double? peakAngle,
     double romDeficitDegrees = 0,
+    bool fullDepth = false,
+    bool uncertain = false,
   }) {
     final timestamp = now();
     final eccentricMs = _eccentricStartedAt == null
@@ -293,7 +433,10 @@ abstract class ExerciseAnalyzer {
         ? 0
         : timestamp.difference(_concentricStartedAt!).inMilliseconds;
 
-    final clamped = score.clamp(0.0, 1.0);
+    // A shaky measurement counts the rep but never earns a perfect score.
+    final clamped = uncertain
+        ? score.clamp(0.0, AppConstants.uncertainRepScoreCap)
+        : score.clamp(0.0, 1.0);
 
     _repTimes.add(timestamp);
     repRecords.add(
@@ -305,6 +448,7 @@ abstract class ExerciseAnalyzer {
         concentricMs: concentricMs,
         peakAngle: peakAngle,
         romDeficitDegrees: romDeficitDegrees,
+        uncertain: uncertain,
       ),
     );
 
@@ -318,21 +462,101 @@ abstract class ExerciseAnalyzer {
     // "rushed" purely from test-loop speed. Left as a cue, matching the
     // pre-existing (already correct, wall-clock-driven in the real app)
     // behavior.
-    if (eccentricMs > 0 && eccentricMs < AppConstants.minEccentricMillis) {
+    if (coachesLowering &&
+        eccentricMs > 0 &&
+        eccentricMs < AppConstants.minEccentricMillis) {
       cues.request(CueIds.controlDescent);
     }
 
-    if (clamped > AppConstants.cleanRepScore) {
+    // Praise only a rep that was clean *and* not told off while it happened:
+    // live test #5 heard "Go deeper" and "Good depth" inside the same set.
+    if (clamped > AppConstants.cleanRepScore && !uncertain) {
       _cleanRepStreak++;
-      if (_cleanRepStreak >= AppConstants.praiseStreakLength) {
-        cues.request(CueIds.streak);
-      } else {
-        cues.request(CueIds.goodRep);
+      if (!cues.faultCuedThisRep) {
+        if (_cleanRepStreak >= AppConstants.praiseStreakLength) {
+          cues.request(CueIds.streak);
+        } else if (fullDepth) {
+          cues.request(CueIds.goodDepth) ?? cues.request(CueIds.goodRep);
+        } else {
+          cues.request(CueIds.goodRep);
+        }
       }
     } else {
       _cleanRepStreak = 0;
     }
 
+    currentRepIssues.clear();
+    _eccentricStartedAt = null;
+    _concentricStartedAt = null;
+  }
+
+  /// Turn an attempt down. It is not counted, not scored, and is announced at
+  /// once ("No rep, hips sagged") so the athlete knows why the counter did not
+  /// move. [reason] is the short lower-case phrase; [label] the issue name shown
+  /// in the summary.
+  void recordNoRep({
+    required String reason,
+    required String label,
+    double? peakAngle,
+    double romDeficitDegrees = 0,
+    bool announce = true,
+  }) {
+    final timestamp = now();
+    final eccentricMs = _eccentricStartedAt == null
+        ? 0
+        : (_concentricStartedAt ?? timestamp)
+            .difference(_eccentricStartedAt!)
+            .inMilliseconds;
+    _noRepTimes.add(timestamp);
+    noRepRecords.add(
+      RepRecord(
+        index: repCount + noRepRecords.length,
+        score: 0,
+        issues: [label],
+        eccentricMs: eccentricMs,
+        peakAngle: peakAngle,
+        romDeficitDegrees: romDeficitDegrees,
+        counted: false,
+        noRepReason: label,
+      ),
+    );
+    _cleanRepStreak = 0;
+
+    String? spoken;
+    if (announce) {
+      // If the fault was just coached aloud ("A little deeper"), a bare "No rep"
+      // is enough; otherwise say why.
+      final cue = cues.request(
+        CueIds.noRep,
+        detail: cues.faultCuedThisRep ? null : reason,
+      );
+      spoken = cue?.message;
+    }
+    final shown = spoken ?? 'No rep, $reason';
+    statusMessage = shown;
+    _lastCueMessage = shown;
+    _lastCueAt = now();
+    if (announce) onNoRep?.call(reason, spoken);
+
+    currentRepIssues.clear();
+    _eccentricStartedAt = null;
+    _concentricStartedAt = null;
+  }
+
+  /// Note that a movement was not an attempt at all. Silent, except that three
+  /// of them within ten seconds earn one coaching cue about how to start.
+  void noteIgnored(String reason) {
+    ignoredAttempts++;
+    lastIgnoredReason = reason;
+    final timestamp = now();
+    _recentIgnored
+      ..add(timestamp)
+      ..removeWhere((t) => timestamp.difference(t) > const Duration(seconds: 10));
+    final cue = notAnAttemptCueId;
+    if (cue != null && _recentIgnored.length >= 3) {
+      cues.request(cue);
+      _recentIgnored.clear();
+    }
     currentRepIssues.clear();
     _eccentricStartedAt = null;
     _concentricStartedAt = null;
@@ -348,6 +572,11 @@ abstract class ExerciseAnalyzer {
   /// were removed. Timed holds record no rep times and are unaffected.
   int retractRepsSince(DateTime since) {
     var removed = 0;
+    // Rejected attempts from the same stretch were walking about too.
+    while (_noRepTimes.isNotEmpty && !_noRepTimes.last.isBefore(since)) {
+      _noRepTimes.removeLast();
+      if (noRepRecords.isNotEmpty) noRepRecords.removeLast();
+    }
     while (_repTimes.isNotEmpty && !_repTimes.last.isBefore(since)) {
       _repTimes.removeLast();
       if (repRecords.isNotEmpty) repRecords.removeLast();
@@ -367,47 +596,23 @@ abstract class ExerciseAnalyzer {
     final count = repCount;
     final records = List<RepRecord>.of(repRecords);
     final times = List<DateTime>.of(_repTimes);
+    final noReps = List<RepRecord>.of(noRepRecords);
+    final noRepTimes = List<DateTime>.of(_noRepTimes);
+    final ignored = ignoredAttempts;
     final streak = _cleanRepStreak;
     reset();
     repCount = count;
     repRecords.addAll(records);
     _repTimes.addAll(times);
+    noRepRecords.addAll(noReps);
+    _noRepTimes.addAll(noRepTimes);
+    ignoredAttempts = ignored;
     _cleanRepStreak = streak;
     statusMessage = 'Paused';
   }
 
-  PerformanceMetrics getPerformanceMetrics() {
-    final Map<String, int> issueCounts = {};
-    for (var record in repRecords) {
-      for (var issue in record.issues) {
-        issueCounts[issue] = (issueCounts[issue] ?? 0) + 1;
-      }
-    }
-
-    final sortedIssues = issueCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    // A summary that says the hips both sagged and piked reads as a broken
-    // app. Keep whichever was more common.
-    final commonIssues = <String>[];
-    for (final entry in sortedIssues) {
-      final rival = _contradictions[entry.key];
-      if (rival != null && commonIssues.contains(rival)) continue;
-      commonIssues.add(entry.key);
-      if (commonIssues.length == 3) break;
-    }
-    final scores = repScores;
-    final avgScore = scores.isEmpty
-        ? 0.0
-        : (scores.reduce((a, b) => a + b) / scores.length) * 5.0;
-
-    return PerformanceMetrics(
-      averageFormScore: avgScore,
-      commonIssues: commonIssues,
-      perfectReps: scores.where((s) => s > 0.9).length,
-      totalReps: repCount,
-    );
-  }
+  PerformanceMetrics getPerformanceMetrics() =>
+      PerformanceMetrics.fromRecords(attemptRecords);
 
   void addIssue(String issue) {
     if (!currentRepIssues.contains(issue)) {
@@ -416,19 +621,33 @@ abstract class ExerciseAnalyzer {
   }
 }
 
+/// A squat counts only when the hips genuinely drop to depth *and* the athlete
+/// stays a squatter: chest not folded over the knees, feet where they started,
+/// and then stands back up. Judged from hip height (see [LegSample.hipHeight]),
+/// not a knee angle, because a knee angle read a toe-touch as a squat.
 class SquatAnalyzer extends ExerciseAnalyzer {
   SquatAnalyzer({super.cueEngine, super.clock});
 
   SquatState squatState = SquatState.neutral;
-  bool _reachedDepth = false;
-  double _deepestAngle = 180;
-  final RecoveryDetector _recovery = RecoveryDetector();
-  final MovingAverageFilter _angleFilter =
-      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
+
+  final MedianFilter _heightFilter = MedianFilter(3);
+  final MedianFilter _kneeFilter = MedianFilter(3);
+  final ScaleWatch _scale = ScaleWatch();
+  final AttemptEvidence _evidence = AttemptEvidence();
   final MovingAverageFilter _asymmetryFilter =
       MovingAverageFilter(windowSize: AppConstants.asymmetryWindow);
   final LandmarkSmoother _landmarkSmoother = LandmarkSmoother();
-  double? _prevFilteredAngle;
+
+  double _minHeight = 1;
+  double _minKnee = 180;
+  double _maxHeightSinceReversal = 0;
+  double? _startAnkleX;
+  double _maxAnkleTravel = 0;
+  DateTime? _attemptStartedAt;
+  DateTime? _reversedAt;
+  DateTime? _droppedSince;
+  bool _drifted = false;
+  final List<(double, double)> _bottomSamples = []; // (hipHeight, torso)
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -442,171 +661,106 @@ class SquatAnalyzer extends ExerciseAnalyzer {
         PoseLandmarkType.rightAnkle,
       };
 
+  // Measured in the image plane: ML Kit's depth estimate is noisy and a squat is
+  // filmed side-on.
+  @override
+  bool get uses3dAngles => false;
+
+  @override
+  String? get notAnAttemptCueId => CueIds.sitDown;
+
   @override
   void reset() {
     super.reset();
     squatState = SquatState.neutral;
-    _reachedDepth = false;
-    _deepestAngle = 180;
-    _angleFilter.reset();
+    _heightFilter.reset();
+    _kneeFilter.reset();
+    _scale.reset();
     _asymmetryFilter.reset();
     _landmarkSmoother.reset();
-    _prevFilteredAngle = null;
-    _recovery.reset();
+    _clearAttempt();
+    _drifted = false;
+  }
+
+  void _clearAttempt() {
+    _evidence.reset();
+    _minHeight = 1;
+    _minKnee = 180;
+    _maxHeightSinceReversal = 0;
+    _startAnkleX = null;
+    _maxAnkleTravel = 0;
+    _attemptStartedAt = null;
+    _reversedAt = null;
+    _droppedSince = null;
+    _bottomSamples.clear();
+  }
+
+  void _endAttempt() {
+    squatState = SquatState.neutral;
+    phase = RepPhase.neutral;
+    _clearAttempt();
   }
 
   @override
   void processPose(Pose pose) {
-    final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
-    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
-    final leftAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
-    final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
-    final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
-    final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
-
-    // Either leg is enough. From a side view the far leg is routinely hidden
-    // behind the near one, and demanding both meant a perfectly framed
-    // athlete got "Adjust Camera" and no reps at all.
-    final leftVisible = isLandmarkVisible(leftHip) &&
-        isLandmarkVisible(leftKnee) &&
-        isLandmarkVisible(leftAnkle);
-    final rightVisible = isLandmarkVisible(rightHip) &&
-        isLandmarkVisible(rightKnee) &&
-        isLandmarkVisible(rightAnkle);
-    if (!leftVisible && !rightVisible) {
+    final leg = sampleLeg(pose, minLikelihood);
+    if (leg == null) {
       statusMessage = 'Adjust Camera';
       return;
     }
-    final bothVisible = leftVisible && rightVisible;
 
-    final leftHipSmooth = leftVisible ? _smooth(leftHip!, 'leftHip') : null;
-    final leftKneeSmooth = leftVisible ? _smooth(leftKnee!, 'leftKnee') : null;
-    final leftAnkleSmooth = leftVisible ? _smooth(leftAnkle!, 'leftAnkle') : null;
-    final rightHipSmooth = rightVisible ? _smooth(rightHip!, 'rightHip') : null;
-    final rightKneeSmooth = rightVisible ? _smooth(rightKnee!, 'rightKnee') : null;
-    final rightAnkleSmooth =
-        rightVisible ? _smooth(rightAnkle!, 'rightAnkle') : null;
+    final height = _heightFilter.add(leg.hipHeight);
+    final knee = _kneeFilter.add(leg.kneeAngle);
+    lastProcessedAngle = knee;
+    final hasSideView = updateOrientation(pose);
+    final isFrontOn = orientationTracker.orientation == ViewOrientation.frontOn;
 
-    final leftAngle = leftVisible
-        ? MathUtils.calculateAngleFromSmoothed(
-            leftHipSmooth!, leftKneeSmooth!, leftAnkleSmooth!)
-        : null;
-    final rightAngle = rightVisible
-        ? MathUtils.calculateAngleFromSmoothed(
-            rightHipSmooth!, rightKneeSmooth!, rightAnkleSmooth!)
-        : null;
-
-    final leftConfidence = leftVisible
-        ? leftKneeSmooth!.likelihood + leftAnkleSmooth!.likelihood
-        : -1.0;
-    final rightConfidence = rightVisible
-        ? rightKneeSmooth!.likelihood + rightAnkleSmooth!.likelihood
-        : -1.0;
-    final useLeft = leftConfidence >= rightConfidence;
-    final rawAngle = useLeft ? leftAngle! : rightAngle!;
-
-    // A second angle used only for the depth check below, differing from
-    // rawAngle/currentAngle in two ways:
-    //
-    // 1. Unsmoothed. Even rawAngle has been through one stage of exponential
-    //    smoothing (LandmarkSmoother, alpha 0.35), which is enough lag to
-    //    blunt a fast rep's true bottom (real stock footage: a squat that hit
-    //    61-66 degrees only ever read 91-100 through that filter). Depth is a
-    //    one-shot "did they ever get there" check, so raw landmarks are fine.
-    // 2. Takes whichever leg reads deeper, not whichever ML Kit is more
-    //    confident about: both legs bend together, so a disagreement is
-    //    estimation error and the deeper reading is the one showing real depth.
-    final unsmoothedAngle = math.min(
-      leftVisible
-          ? MathUtils.calculateAngle(leftHip!, leftKnee!, leftAnkle!)
-          : 180.0,
-      rightVisible
-          ? MathUtils.calculateAngle(rightHip!, rightKnee!, rightAnkle!)
-          : 180.0,
-    );
+    // Standing tall is the only moment leg length is comparable frame to frame,
+    // so it is also when the athlete is checked for wandering off the mark.
+    if (leg.hipHeight >= 0.93 && leg.kneeAngle >= 160) {
+      if (_scale.updateStanding(leg.legLength)) {
+        // Walking toward the phone: whatever just counted was not a squat.
+        retractRepsSince(now().subtract(AppConstants.phoneMotionRetractWindow));
+        _endAttempt();
+      }
+    }
+    if (_scale.drifted != _drifted) {
+      _drifted = _scale.drifted;
+      statusMessage = _drifted ? 'Step back to your spot' : 'Squat down slowly';
+    }
+    if (_drifted) {
+      if (squatState != SquatState.neutral) _endAttempt();
+      return;
+    }
 
     // Left/right comparisons only make sense with both legs in view, and only
     // front-on: a side view foreshortens the far leg and would report a
     // difference that isn't there.
-    final isFrontOn = orientationTracker.orientation == ViewOrientation.frontOn;
-    if (bothVisible) {
-      final asymmetry = _asymmetryFilter.add((leftAngle! - rightAngle!).abs());
-      if (isFrontOn &&
-          _asymmetryFilter.isFull &&
-          asymmetry > AppConstants.asymmetryDegreesThreshold &&
-          squatState != SquatState.neutral) {
-        addIssue('Uneven Sides');
-        cues.request(CueIds.asymmetry);
-      }
-
-      // Knees drifting inward (valgus) relative to how wide the ankles are
-      // planted -- front-on only, same gating as the asymmetry check.
-      final kneeWidth = (leftKneeSmooth!.x - rightKneeSmooth!.x).abs();
-      final ankleWidth = (leftAnkleSmooth!.x - rightAnkleSmooth!.x).abs();
-      if (isFrontOn &&
-          squatState == SquatState.eccentric &&
-          ankleWidth > AppConstants.minMagnitude &&
-          kneeWidth / ankleWidth < AppConstants.squatKneeValgusRatio) {
-        addIssue('Knees Caving In');
-        cues.request(CueIds.kneeValgus);
-      } else if (isFrontOn) {
-        currentRepIssues.remove('Knees Caving In');
-      }
+    final faults = <String>{};
+    if (squatState != SquatState.neutral && isFrontOn) {
+      _frontOnChecks(pose, faults);
     }
 
-    final currentAngle = _angleFilter.add(rawAngle);
-    lastProcessedAngle = currentAngle;
-
-    final angleDelta =
-        _prevFilteredAngle == null ? 0.0 : currentAngle - _prevFilteredAngle!;
-    _prevFilteredAngle = currentAngle;
-
-    // Forward lean. This used to measure shoulder-hip-knee and call anything
-    // under 145/160 degrees "back rounding" -- but that angle is hip flexion,
-    // which is *supposed* to close to 60-90 degrees at the bottom of every
-    // squat, so every deep squat was flagged critical (live tests 2026-09-13
-    // and 2026-09-20). Spinal rounding itself is not visible from these
-    // landmarks. What is visible, and does matter, is the chest collapsing
-    // forward *relative to the shins*: a sound squat keeps the torso roughly
-    // parallel to the shin, whatever the depth. Comparing the two directions
-    // also means nothing here depends on which way the camera or the athlete
-    // is facing. Needs a confirmed side view to mean anything.
-    final hasSideView = updateOrientation(pose);
-    final shoulder = pose.landmarks[
-        useLeft ? PoseLandmarkType.leftShoulder : PoseLandmarkType.rightShoulder];
-    if (hasSideView && isLandmarkVisible(shoulder)) {
-      final shoulderSmooth =
-          _smooth(shoulder!, useLeft ? 'leftShoulder' : 'rightShoulder');
-      final hipS = useLeft ? leftHipSmooth! : rightHipSmooth!;
-      final kneeS = useLeft ? leftKneeSmooth! : rightKneeSmooth!;
-      final ankleS = useLeft ? leftAnkleSmooth! : rightAnkleSmooth!;
+    // Forward lean relative to the shin: a sound squat keeps the torso roughly
+    // parallel to the shin whatever the depth. Needs a confirmed side view.
+    if (squatState != SquatState.neutral && hasSideView && leg.shoulder != null) {
       final lean = MathUtils.angleBetweenSegments(
-        hipS.x, hipS.y, shoulderSmooth.x, shoulderSmooth.y,
-        ankleS.x, ankleS.y, kneeS.x, kneeS.y,
+        leg.hip.x, leg.hip.y, leg.shoulder!.x, leg.shoulder!.y,
+        leg.ankle.x, leg.ankle.y, leg.knee.x, leg.knee.y,
       );
-      if (squatState != SquatState.neutral &&
-          lean > AppConstants.squatTorsoLeanMaxDegrees) {
+      if (lean > AppConstants.squatTorsoLeanMaxDegrees) {
+        faults.add('Excessive Forward Lean');
         addIssue('Excessive Forward Lean');
         cues.request(CueIds.torsoLean);
       }
     }
 
-    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
-    final directionDelta = AppConstants.angleDirectionDeltaDegrees;
-
     switch (squatState) {
       case SquatState.neutral:
         phase = RepPhase.neutral;
-        if (currentAngle < AppConstants.squatNeutralThreshold - deadZone) {
-          squatState = SquatState.eccentric;
-          phase = RepPhase.eccentric;
-          // Clear on entry (as pushup/lunge/OHP do) so issues from an aborted
-          // rep can't carry over and penalise the next one.
-          currentRepIssues.clear();
-          _reachedDepth = false;
-          _deepestAngle = unsmoothedAngle;
-          markEccentricStart();
-          statusMessage = 'Lower with control';
+        if (height <= AppConstants.squatAttemptHeight &&
+            knee <= AppConstants.squatAttemptKneeAngle) {
+          _beginAttempt(leg, height, knee);
         } else {
           statusMessage = 'Squat down slowly';
         }
@@ -614,100 +768,52 @@ class SquatAnalyzer extends ExerciseAnalyzer {
 
       case SquatState.eccentric:
         phase = RepPhase.eccentric;
-        // Depth is checked against unsmoothedAngle, not the smoothed
-        // currentAngle used everywhere else in this method. A fast rep's true
-        // bottom can last just 1-2 frames -- confirmed against real stock
-        // footage where a squat that hit 61-66 degrees at its actual deepest
-        // frame only ever read 91-100 degrees through the smoothing pipeline,
-        // narrowly missing squatDepthThreshold despite genuinely reaching
-        // depth (see stock_footage_regression_test.dart). Depth is a one-shot
-        // "did they ever get there" check, not something that needs temporal
-        // stability the way the direction-reversal check below does, so it
-        // can safely use the unsmoothed landmarks directly.
-        _deepestAngle = math.min(_deepestAngle, unsmoothedAngle);
-
-        if (unsmoothedAngle <= AppConstants.squatDepthThreshold) {
-          _reachedDepth = true;
+        _trackFrame(leg, height, knee, faults);
+        if (_travelledTooFar(leg)) {
+          noteIgnored('moved');
+          _endAttempt();
+          break;
         }
-
-        if (_reachedDepth && angleDelta > directionDelta) {
+        if (height >= _minHeight + AppConstants.squatReversalRise) {
           squatState = SquatState.concentric;
           phase = RepPhase.concentric;
-          _recovery.begin(now());
+          _reversedAt = now();
+          _maxHeightSinceReversal = height;
           markConcentricStart();
+          if (_minHeight > AppConstants.squatFullHeight) {
+            cues.request(CueIds.goDeeper, detail: _depthShortfall(_minKnee));
+          }
           statusMessage = 'Drive up';
-        } else if (!_reachedDepth &&
-            currentAngle >= AppConstants.squatNeutralThreshold) {
-          // Stood back up without ever hitting depth. Without this branch the
-          // analyzer stays in eccentric forever, so the next descent never
-          // clears the issue list and no further rep is ever scored cleanly.
-          squatState = SquatState.neutral;
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          cues.request(CueIds.goDeeper, detail: _depthShortfall(_deepestAngle));
-        } else if (!_reachedDepth && angleDelta > directionDelta) {
-          cues.request(CueIds.goDeeper, detail: _depthShortfall(unsmoothedAngle));
+        } else if (now().difference(_attemptStartedAt!) >
+            AppConstants.repAttemptTimeout) {
+          noteIgnored('stalled');
+          _endAttempt();
         } else {
-          statusMessage = _reachedDepth ? 'Great depth, stand up' : 'Lower';
+          statusMessage =
+              _minHeight <= AppConstants.squatFullHeight ? 'Great depth, stand up' : 'Lower';
         }
         break;
 
       case SquatState.concentric:
         phase = RepPhase.concentric;
-
-        final verdict = currentAngle >= AppConstants.squatNeutralThreshold
-            ? RecoveryVerdict.complete
-            : _recovery.update(
-                progress: -currentAngle,
-                extreme: -_deepestAngle,
-                rest: -AppConstants.squatNeutralThreshold,
-                now: now(),
-              );
-        if (verdict == RecoveryVerdict.abandon) {
-          squatState = SquatState.neutral;
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          _reachedDepth = false;
-          _deepestAngle = 180;
-        } else if (verdict == RecoveryVerdict.complete) {
-          squatState = SquatState.neutral;
-          phase = RepPhase.neutral;
-
-          // Every rep that reverses direction and returns to standing counts,
-          // the same as push-up/lunge/overhead press -- depth is a scored
-          // fault here now, not a silent non-count. (A squat that never even
-          // reverses -- stands back up mid-descent -- still isn't counted;
-          // see the eccentric-phase branch above, unchanged and consistent
-          // with every other exercise's equivalent "abandoned rep" case.)
-          repCount++;
-          double score = 1.0;
-          if (!_reachedDepth) {
-            addIssue('Insufficient Depth');
-            score -= AppConstants.squatInsufficientDepthPenalty;
-          }
-          if (currentRepIssues.contains('Excessive Forward Lean')) {
-            score -= AppConstants.squatTorsoLeanPenalty;
-          }
-          if (currentRepIssues.contains('Uneven Sides')) {
-            score -= AppConstants.squatUnevenSidesPenalty;
-          }
-          if (currentRepIssues.contains('Knees Caving In')) {
-            score -= AppConstants.squatKneeValgusPenalty;
-          }
-
-          statusMessage = 'Rep $repCount';
-          recordRep(
-            score: score,
-            peakAngle: _deepestAngle,
-            romDeficitDegrees: math.max(
-              0,
-              _deepestAngle - AppConstants.squatDepthThreshold,
-            ),
-          );
-          if (onRep != null) onRep!(repCount);
-
-          _reachedDepth = false;
-          _deepestAngle = 180;
+        _trackFrame(leg, height, knee, faults);
+        _maxHeightSinceReversal = math.max(_maxHeightSinceReversal, height);
+        if (_travelledTooFar(leg)) {
+          noteIgnored('moved');
+          _endAttempt();
+          break;
+        }
+        if (height >= AppConstants.squatReturnHeight) {
+          _finishAttempt(leg);
+        } else if (_sustainedDrop(
+            height, _maxHeightSinceReversal, AppConstants.squatBounceDrop)) {
+          // Heading back down without ever standing up: a pulse at the bottom,
+          // not a rep. The old 85%-recovery rule counted every one of them.
+          _rejectIncompleteStand();
+          _beginAttempt(leg, height, knee);
+        } else if (now().difference(_reversedAt!) > AppConstants.repAttemptTimeout) {
+          noteIgnored('stalled');
+          _endAttempt();
         } else {
           statusMessage = 'Stand tall';
         }
@@ -715,22 +821,178 @@ class SquatAnalyzer extends ExerciseAnalyzer {
     }
   }
 
-  /// Human-readable magnitude for a depth cue, e.g. "about 15 degrees short".
-  /// Returns null when the gap is small enough not to be worth quantifying.
-  static String? _depthShortfall(double angle) {
-    final deficit = angle - AppConstants.squatDepthThreshold;
-    if (deficit < 5) return null;
-    return 'about ${deficit.round()} degrees short';
+  /// True once [height] has stayed [drop] below the best reached since the
+  /// reversal for [AppConstants.bounceHold]: a pulse, not a tracking blip.
+  bool _sustainedDrop(double height, double best, double drop) {
+    if (height > best - drop) {
+      _droppedSince = null;
+      return false;
+    }
+    _droppedSince ??= now();
+    return now().difference(_droppedSince!) >= AppConstants.bounceHold;
   }
 
-  SmoothedLandmark _smooth(PoseLandmark landmark, String key) {
-    return _landmarkSmoother.smooth(
-      key: key,
-      x: landmark.x,
-      y: landmark.y,
-      z: landmark.z,
-      likelihood: landmark.likelihood,
-    );
+  void _beginAttempt(LegSample leg, double height, double knee) {
+    _clearAttempt();
+    squatState = SquatState.eccentric;
+    phase = RepPhase.eccentric;
+    currentRepIssues.clear();
+    _attemptStartedAt = now();
+    _startAnkleX = leg.ankle.x;
+    _minHeight = height;
+    _minKnee = knee;
+    markEccentricStart();
+    statusMessage = 'Lower with control';
+  }
+
+  void _trackFrame(LegSample leg, double height, double knee, Set<String> faults) {
+    _minHeight = math.min(_minHeight, height);
+    _minKnee = math.min(_minKnee, knee);
+    final startX = _startAnkleX;
+    if (startX != null) {
+      _maxAnkleTravel =
+          math.max(_maxAnkleTravel, (leg.ankle.x - startX).abs() / leg.legLength);
+    }
+    final torso = leg.torsoFromVertical;
+    if (torso != null) _bottomSamples.add((height, torso));
+    final good = leg.minLikelihood >= minLikelihood;
+    _evidence.note(good: good, faults: faults);
+  }
+
+  bool _travelledTooFar(LegSample leg) =>
+      _maxAnkleTravel > AppConstants.squatMaxAnkleTravel;
+
+  void _frontOnChecks(Pose pose, Set<String> faults) {
+    final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
+    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
+    final leftAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
+    final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
+    final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
+    final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
+    if (!isLandmarkVisible(leftHip) ||
+        !isLandmarkVisible(leftKnee) ||
+        !isLandmarkVisible(leftAnkle) ||
+        !isLandmarkVisible(rightHip) ||
+        !isLandmarkVisible(rightKnee) ||
+        !isLandmarkVisible(rightAnkle)) {
+      return;
+    }
+    final leftAngle = angle2D(leftHip!, leftKnee!, leftAnkle!);
+    final rightAngle = angle2D(rightHip!, rightKnee!, rightAnkle!);
+    final asymmetry = _asymmetryFilter.add((leftAngle - rightAngle).abs());
+    if (_asymmetryFilter.isFull && asymmetry > AppConstants.asymmetryDegreesThreshold) {
+      faults.add('Uneven Sides');
+      addIssue('Uneven Sides');
+      cues.request(CueIds.asymmetry);
+    }
+    // Knees drifting inward (valgus) relative to how wide the ankles are planted.
+    final kneeWidth = (leftKnee.x - rightKnee.x).abs();
+    final ankleWidth = (leftAnkle.x - rightAnkle.x).abs();
+    if (squatState == SquatState.eccentric &&
+        ankleWidth > AppConstants.minMagnitude &&
+        kneeWidth / ankleWidth < AppConstants.squatKneeValgusRatio) {
+      faults.add('Knees Caving In');
+      addIssue('Knees Caving In');
+      cues.request(CueIds.kneeValgus);
+    }
+  }
+
+  /// Torso lean at the bottom of the rep: the median over the frames spent near
+  /// the lowest hip height, so one flipped shoulder cannot decide it.
+  double? _torsoAtBottom() {
+    final near = [
+      for (final (h, torso) in _bottomSamples)
+        if (h <= _minHeight + 0.06) torso,
+    ];
+    if (near.length < 2) return null;
+    return medianOf(near);
+  }
+
+  void _rejectIncompleteStand() {
+    if (_minHeight <= AppConstants.squatIgnoreHeight && _evidence.sufficient) {
+      recordNoRep(
+        reason: 'stand all the way up',
+        label: 'Incomplete Stand',
+        peakAngle: _minKnee,
+      );
+    } else {
+      noteIgnored('bounce');
+    }
+    squatState = SquatState.neutral;
+    phase = RepPhase.neutral;
+  }
+
+  void _finishAttempt(LegSample leg) {
+    final minHeight = _minHeight;
+    final torso = _torsoAtBottom();
+    final uncertain = _evidence.goodFrames >= 3 && !_evidence.sufficient;
+    final deficit = math.max(0.0, _minKnee - AppConstants.squatFullKneeAngle);
+
+    if (_evidence.goodFrames < 3) {
+      noteIgnored('lost tracking');
+    } else if (minHeight > AppConstants.squatIgnoreHeight) {
+      // Never got low enough to be a squat attempt at all (a stance adjustment,
+      // a bend to tie a shoe): not worth a verdict.
+      noteIgnored('not a squat');
+    } else if (minHeight > AppConstants.squatNoRepHeight) {
+      recordNoRep(
+        reason: 'not deep enough',
+        label: 'Not Deep Enough',
+        peakAngle: _minKnee,
+        romDeficitDegrees: deficit,
+        announce: !uncertain,
+      );
+    } else if (torso != null && torso >= AppConstants.squatHingeTorsoDegrees) {
+      // Deep, but folded over: a hip hinge or a crouch to the floor, not a squat.
+      recordNoRep(
+        reason: 'chest up, sit back instead of bending over',
+        label: 'Chest Collapsed',
+        peakAngle: _minKnee,
+        announce: !uncertain,
+      );
+    } else {
+      final fullDepth = minHeight <= AppConstants.squatFullHeight &&
+          _minKnee <= AppConstants.squatFullKneeAngle;
+      repCount++;
+      var score = 1.0;
+      if (!fullDepth) {
+        addIssue('Insufficient Depth');
+        score -= AppConstants.squatInsufficientDepthPenalty;
+      }
+      if (_evidence.confirmed('Excessive Forward Lean')) {
+        score -= AppConstants.squatTorsoLeanPenalty;
+      } else {
+        currentRepIssues.remove('Excessive Forward Lean');
+      }
+      if (_evidence.confirmed('Uneven Sides')) {
+        score -= AppConstants.squatUnevenSidesPenalty;
+      } else {
+        currentRepIssues.remove('Uneven Sides');
+      }
+      if (_evidence.confirmed('Knees Caving In')) {
+        score -= AppConstants.squatKneeValgusPenalty;
+      } else {
+        currentRepIssues.remove('Knees Caving In');
+      }
+      statusMessage = 'Rep $repCount';
+      recordRep(
+        score: score,
+        peakAngle: _minKnee,
+        romDeficitDegrees: deficit,
+        fullDepth: fullDepth,
+        uncertain: uncertain,
+      );
+      if (onRep != null) onRep!(repCount);
+    }
+    _endAttempt();
+  }
+
+  /// Human-readable magnitude for a depth cue, e.g. "about 15 degrees short".
+  /// Returns null when the gap is small enough not to be worth quantifying.
+  static String? _depthShortfall(double kneeAngle) {
+    final deficit = kneeAngle - AppConstants.squatFullKneeAngle;
+    if (deficit < 5) return null;
+    return 'about ${deficit.round()} degrees short';
   }
 }
 
@@ -1031,15 +1293,28 @@ class PushupAnalyzer extends ExerciseAnalyzer {
   }
 }
 
+/// A lunge counts when the front hip drops to a real lunge depth and the athlete
+/// stands back up, counted at the moment they are tall again. Depth is the
+/// front leg's hip height (see [LegSample.hipHeight]); live test #5 counted
+/// thirteen "lunges" of which three were deep and the rest were small knee dips.
+///
+/// The old "knee past your toes" check is gone: it is a myth that knee travel
+/// over the toes is dangerous, and enforcing it only shifts load to the hips and
+/// lower back (it was also said five times to a set that was simply too shallow).
 class LungeAnalyzer extends ExerciseAnalyzer {
   LungeAnalyzer({super.cueEngine, super.clock});
 
-  final MovingAverageFilter _angleFilter =
-      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
-  double? _prevAngle;
-  bool _reachedDepth = false;
-  double _deepestAngle = 180;
-  final RecoveryDetector _recovery = RecoveryDetector();
+  final MedianFilter _frontHeightFilter = MedianFilter(3);
+  final MedianFilter _meanHeightFilter = MedianFilter(3);
+  final AttemptEvidence _evidence = AttemptEvidence();
+
+  double _minFrontHeight = 1;
+  double _minFrontKnee = 180;
+  double _maxMeanSinceReversal = 0;
+  double _minMean = 1;
+  DateTime? _attemptStartedAt;
+  DateTime? _reversedAt;
+  DateTime? _droppedSince;
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -1053,183 +1328,194 @@ class LungeAnalyzer extends ExerciseAnalyzer {
         PoseLandmarkType.rightAnkle,
       };
 
+  // Measured in the image plane, like the other side-on exercises.
+  @override
+  bool get uses3dAngles => false;
+
+  @override
+  String? get notAnAttemptCueId => CueIds.lungeDeeper;
+
   @override
   void reset() {
     super.reset();
-    _angleFilter.reset();
-    _prevAngle = null;
-    _reachedDepth = false;
-    _deepestAngle = 180;
-    _recovery.reset();
+    _frontHeightFilter.reset();
+    _meanHeightFilter.reset();
+    _clearAttempt();
+  }
+
+  void _clearAttempt() {
+    _evidence.reset();
+    _minFrontHeight = 1;
+    _minFrontKnee = 180;
+    _maxMeanSinceReversal = 0;
+    _minMean = 1;
+    _attemptStartedAt = null;
+    _reversedAt = null;
+    _droppedSince = null;
+  }
+
+  void _endAttempt() {
+    phase = RepPhase.neutral;
+    _clearAttempt();
+  }
+
+  bool _sustainedDrop(double height, double best, double drop) {
+    if (height > best - drop) {
+      _droppedSince = null;
+      return false;
+    }
+    _droppedSince ??= now();
+    return now().difference(_droppedSince!) >= AppConstants.bounceHold;
   }
 
   @override
   void processPose(Pose pose) {
-    final leftShoulderLandmark = pose.landmarks[PoseLandmarkType.leftShoulder];
-    final leftHipLandmark = pose.landmarks[PoseLandmarkType.leftHip];
-    final leftKneeLandmark = pose.landmarks[PoseLandmarkType.leftKnee];
-    final leftAnkleLandmark = pose.landmarks[PoseLandmarkType.leftAnkle];
-    final rightShoulderLandmark = pose.landmarks[PoseLandmarkType.rightShoulder];
-    final rightHipLandmark = pose.landmarks[PoseLandmarkType.rightHip];
-    final rightKneeLandmark = pose.landmarks[PoseLandmarkType.rightKnee];
-    final rightAnkleLandmark = pose.landmarks[PoseLandmarkType.rightAnkle];
-
-    final leftVisible = isLandmarkVisible(leftHipLandmark) &&
-        isLandmarkVisible(leftKneeLandmark) &&
-        isLandmarkVisible(leftAnkleLandmark);
-    final rightVisible = isLandmarkVisible(rightHipLandmark) &&
-        isLandmarkVisible(rightKneeLandmark) &&
-        isLandmarkVisible(rightAnkleLandmark);
-
-    if (!leftVisible && !rightVisible) {
+    final legs = sampleLegs(pose, minLikelihood);
+    if (legs.isEmpty) {
       statusMessage = 'Adjust Camera';
       return;
     }
 
-    final leftKnee = leftVisible
-        ? MathUtils.calculateJointAngle(leftHipLandmark, leftKneeLandmark, leftAnkleLandmark)
-        : 180.0;
-    final rightKnee = rightVisible
-        ? MathUtils.calculateJointAngle(rightHipLandmark, rightKneeLandmark, rightAnkleLandmark)
-        : 180.0;
+    // The front leg is the one that is more bent; with one leg in view it is
+    // simply that leg.
+    final front = legs.reduce((a, b) => a.kneeAngle <= b.kneeAngle ? a : b);
+    final frontHeight = _frontHeightFilter.add(front.hipHeight);
+    final meanHeight =
+        _meanHeightFilter.add(legs.fold<double>(0, (s, l) => s + l.hipHeight) / legs.length);
+    lastProcessedAngle = front.kneeAngle;
+    updateOrientation(pose);
 
-    // Both legs bend in a lunge. Depth is satisfied if either visible knee dips
-    // below the depth threshold. For standing lockout / neutral, the athlete
-    // recovers when the standing/supporting leg reaches extension.
-    final frontIsLeft = leftVisible && (!rightVisible || leftKnee <= rightKnee);
-    final depthAngle = (leftVisible && rightVisible)
-        ? math.min(leftKnee, rightKnee)
-        : (leftVisible ? leftKnee : rightKnee);
-    final standingAngle = (leftVisible && rightVisible)
-        ? math.max(leftKnee, rightKnee)
-        : (leftVisible ? leftKnee : rightKnee);
-
-    final currentAngle = _angleFilter.add(standingAngle);
-    final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
-    _prevAngle = currentAngle;
-    lastProcessedAngle = currentAngle;
-
-    // Front (more bent) knee drifting past the toe -- classic lunge fault,
-    // measured as a fraction of shin length so it holds at any camera
-    // distance. Only checked once genuinely working the rep.
-    final frontKnee = frontIsLeft ? leftKneeLandmark : rightKneeLandmark;
-    final frontAnkle = frontIsLeft ? leftAnkleLandmark : rightAnkleLandmark;
-    if (phase == RepPhase.eccentric && frontKnee != null && frontAnkle != null) {
-      final shinLength = math.sqrt(
-        math.pow(frontKnee.x - frontAnkle.x, 2) + math.pow(frontKnee.y - frontAnkle.y, 2),
-      );
-      if (MathUtils.horizontalOffsetRatio(frontKnee, frontAnkle, shinLength) >
-          AppConstants.lungeKneePastToeRatio) {
-        addIssue('Knee Past Toe');
-        cues.request(CueIds.kneePastToe);
-      } else {
-        currentRepIssues.remove('Knee Past Toe');
-      }
-    }
-
+    final faults = <String>{};
     // Torso should stay upright, not pitch forward or back into the lunge.
-    final leanShoulder = frontIsLeft ? leftShoulderLandmark : rightShoulderLandmark;
-    final leanHip = frontIsLeft ? leftHipLandmark : rightHipLandmark;
-    if (phase == RepPhase.eccentric &&
-        isLandmarkVisible(leanShoulder) &&
-        isLandmarkVisible(leanHip)) {
-      final lean = MathUtils.degreesFromVertical(leanShoulder!, leanHip!);
-      if (lean > AppConstants.lungeTorsoLeanMaxDegrees) {
+    if (phase != RepPhase.neutral && front.shoulder != null) {
+      if (degreesFromUp(front.shoulder!, front.hip) > AppConstants.lungeTorsoLeanMaxDegrees) {
+        faults.add('Torso Lean');
         addIssue('Torso Lean');
         cues.request(CueIds.torsoLean);
-      } else {
-        currentRepIssues.remove('Torso Lean');
       }
     }
-
-    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
 
     switch (phase) {
       case RepPhase.neutral:
-        if (currentAngle < AppConstants.lungeNeutralThreshold - deadZone) {
+        if (meanHeight <= AppConstants.lungeAttemptHeight &&
+            front.kneeAngle <= AppConstants.lungeAttemptKneeAngle) {
+          _clearAttempt();
           phase = RepPhase.eccentric;
           currentRepIssues.clear();
-          _reachedDepth = false;
-          _deepestAngle = depthAngle;
+          _attemptStartedAt = now();
+          _minFrontHeight = frontHeight;
+          _minFrontKnee = front.kneeAngle;
+          _minMean = meanHeight;
           markEccentricStart();
           statusMessage = 'Lower into lunge';
         } else {
           statusMessage = 'Step forward and lower';
         }
-        break;
 
       case RepPhase.eccentric:
-        _deepestAngle = math.min(_deepestAngle, depthAngle);
-
-        if (depthAngle <= AppConstants.lungeDepthThreshold) {
-          _reachedDepth = true;
-          currentRepIssues.remove('Insufficient Depth');
-        }
-
-        if (_reachedDepth && delta > AppConstants.angleDirectionDeltaDegrees) {
+        _track(front, frontHeight, meanHeight, faults);
+        if (meanHeight >= _minMean + AppConstants.lungeReversalRise) {
           phase = RepPhase.concentric;
-          _recovery.begin(now());
+          _reversedAt = now();
+          _maxMeanSinceReversal = meanHeight;
           markConcentricStart();
+          if (_minFrontHeight > AppConstants.lungeFullHeight) {
+            cues.request(CueIds.goDeeper);
+          }
           statusMessage = 'Drive up';
-        } else if (!_reachedDepth &&
-            currentAngle >= AppConstants.lungeNeutralThreshold) {
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          cues.request(CueIds.goDeeper);
-        } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
-            depthAngle > AppConstants.lungeDepthThreshold + deadZone) {
-          addIssue('Insufficient Depth');
-          cues.request(CueIds.goDeeper);
+        } else if (now().difference(_attemptStartedAt!) > AppConstants.repAttemptTimeout) {
+          noteIgnored('stalled');
+          _endAttempt();
         } else {
           statusMessage = 'Lower';
         }
-        break;
 
       case RepPhase.concentric:
-        final verdict = currentAngle >= AppConstants.lungeNeutralThreshold
-            ? RecoveryVerdict.complete
-            : _recovery.update(
-                progress: -currentAngle,
-                extreme: -_deepestAngle,
-                rest: -AppConstants.lungeNeutralThreshold,
-                now: now(),
-              );
-        if (verdict == RecoveryVerdict.abandon) {
-          phase = RepPhase.neutral;
+        _track(front, frontHeight, meanHeight, faults);
+        _maxMeanSinceReversal = math.max(_maxMeanSinceReversal, meanHeight);
+        if (meanHeight >= AppConstants.lungeReturnHeight) {
+          _finishAttempt();
+        } else if (_sustainedDrop(
+            meanHeight, _maxMeanSinceReversal, AppConstants.lungeBounceDrop)) {
+          // Dropping again without standing: a pulse, not a rep.
+          _rejectIncompleteStand();
+          _clearAttempt();
+          phase = RepPhase.eccentric;
           currentRepIssues.clear();
-          _reachedDepth = false;
-          _deepestAngle = 180;
-        } else if (verdict == RecoveryVerdict.complete) {
-          repCount++;
-          double score = 1.0;
-          if (!_reachedDepth || currentRepIssues.contains('Insufficient Depth')) {
-            addIssue('Insufficient Depth');
-            score -= AppConstants.lungeInsufficientDepthPenalty;
-          }
-          if (currentRepIssues.contains('Knee Past Toe')) {
-            score -= AppConstants.lungeKneePastToePenalty;
-          }
-          if (currentRepIssues.contains('Torso Lean')) {
-            score -= AppConstants.lungeTorsoLeanPenalty;
-          }
-          statusMessage = 'Rep $repCount';
-          recordRep(
-            score: score,
-            peakAngle: _deepestAngle,
-            romDeficitDegrees: math.max(
-              0,
-              _deepestAngle - AppConstants.lungeDepthThreshold,
-            ),
-          );
-          _reachedDepth = false;
-          _deepestAngle = 180;
-          phase = RepPhase.neutral;
-          if (onRep != null) onRep!(repCount);
+          _attemptStartedAt = now();
+          _minFrontHeight = frontHeight;
+          _minFrontKnee = front.kneeAngle;
+          _minMean = meanHeight;
+          markEccentricStart();
+        } else if (now().difference(_reversedAt!) > AppConstants.repAttemptTimeout) {
+          noteIgnored('stalled');
+          _endAttempt();
         } else {
-          statusMessage = 'Return to neutral standing';
+          statusMessage = 'Stand tall';
         }
-        break;
     }
+  }
+
+  void _track(LegSample front, double frontHeight, double meanHeight, Set<String> faults) {
+    _minFrontHeight = math.min(_minFrontHeight, frontHeight);
+    _minFrontKnee = math.min(_minFrontKnee, front.kneeAngle);
+    _minMean = math.min(_minMean, meanHeight);
+    _evidence.note(good: front.minLikelihood >= minLikelihood, faults: faults);
+  }
+
+  void _rejectIncompleteStand() {
+    if (_minFrontHeight <= AppConstants.lungeNoRepHeight && _evidence.sufficient) {
+      recordNoRep(
+        reason: 'stand all the way up',
+        label: 'Incomplete Stand',
+        peakAngle: _minFrontKnee,
+      );
+    } else {
+      noteIgnored('bounce');
+    }
+  }
+
+  void _finishAttempt() {
+    final minHeight = _minFrontHeight;
+    final uncertain = _evidence.goodFrames >= 3 && !_evidence.sufficient;
+    final deficit = math.max(0.0, _minFrontKnee - AppConstants.lungeFullKneeAngle);
+
+    if (_evidence.goodFrames < 3) {
+      noteIgnored('lost tracking');
+    } else if (minHeight > AppConstants.lungeNoRepHeight) {
+      noteIgnored('not a lunge');
+    } else if (minHeight > AppConstants.lungeSoftHeight) {
+      recordNoRep(
+        reason: 'not deep enough',
+        label: 'Not Deep Enough',
+        peakAngle: _minFrontKnee,
+        romDeficitDegrees: deficit,
+        announce: !uncertain,
+      );
+    } else {
+      final fullDepth = minHeight <= AppConstants.lungeFullHeight;
+      repCount++;
+      var score = 1.0;
+      if (!fullDepth) {
+        addIssue('Insufficient Depth');
+        score -= AppConstants.lungeInsufficientDepthPenalty;
+      }
+      if (_evidence.confirmed('Torso Lean')) {
+        score -= AppConstants.lungeTorsoLeanPenalty;
+      } else {
+        currentRepIssues.remove('Torso Lean');
+      }
+      statusMessage = 'Rep $repCount';
+      recordRep(
+        score: score,
+        peakAngle: _minFrontKnee,
+        romDeficitDegrees: deficit,
+        fullDepth: fullDepth,
+        uncertain: uncertain,
+      );
+      if (onRep != null) onRep!(repCount);
+    }
+    _endAttempt();
   }
 }
 

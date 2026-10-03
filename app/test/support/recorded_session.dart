@@ -39,6 +39,7 @@ ReplayRun replayRecording(
     run.safety.add(m);
   };
 
+  analyzer.onNoRep = (reason, spoken) => run.noReps.add((at, reason));
   var lastCount = 0;
   for (var i = 0; i < frames.length; i++) {
     final m = frameMeta[i];

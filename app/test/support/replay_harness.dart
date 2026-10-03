@@ -16,6 +16,12 @@ class ReplayRun {
   /// Every cue delivered, with the second of the sequence it arrived.
   final List<(double, String)> timedCues = [];
 
+  /// Attempts turned down, with the second each was announced and the phrase.
+  final List<(double, String)> noReps = [];
+
+  /// Movements that were never an attempt (silent).
+  int get ignored => analyzer.ignoredAttempts;
+
   Set<String> get issues => analyzer.allRepIssues.expand((i) => i).toSet();
 }
 
@@ -45,6 +51,7 @@ ReplayRun replay(
     heard(m);
     run.safety.add(m);
   };
+  analyzer.onNoRep = (reason, spoken) => run.noReps.add((frame / fps, reason));
   var lastCount = 0;
   var paused = false;
   for (final pose in RecordedPoseFixtures.loadSequence(fixture)) {

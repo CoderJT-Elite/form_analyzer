@@ -229,6 +229,85 @@ class AppConstants {
   // position entirely and stop the clock.
   static const int timedHoldBreakGraceSeconds = 3;
 
+
+  // ---------------------------------------------------------------------------
+  // Strict rep gates (live test #5, 2026-10-02)
+  //
+  // Hip height is the ankle-to-hip vertical distance as a share of leg length
+  // (thigh + shin), measured in the gravity frame: ~0.96-1.0 standing, 0.25-0.5
+  // in a good squat, 0.7-0.9 at the bottom of a hip hinge. Values below were
+  // read off real squats, hinges and crouches from the live-5 recording.
+  // ---------------------------------------------------------------------------
+
+  /// A rep whose measurement was shaky is counted, but never scores above this.
+  static const double uncertainRepScoreCap = 0.75;
+
+  /// No return to the start position within this long means the athlete was not
+  /// doing a rep (stalled, wandered off); the attempt is ignored, not counted.
+  static const Duration repAttemptTimeout = Duration(seconds: 8);
+
+  /// A drop back down after rising must last this long to count as a pulse at
+  /// the bottom rather than a tracking blip (real reps at 7-15 fps carry
+  /// two-or-three-frame landmark noise).
+  static const Duration bounceHold = Duration(milliseconds: 350);
+
+  /// Squat: an attempt opens when the hips have dropped below this share of leg
+  /// length with the knee bent...
+  static const double squatAttemptHeight = 0.88;
+  static const double squatAttemptKneeAngle = 150.0;
+
+  /// ...and the hips must climb this much from the lowest point to be rising.
+  static const double squatReversalRise = 0.06;
+
+  /// Lowest hip height of a full-depth squat (about parallel or below), and the
+  /// knee angle that goes with it. Good reps read 0.26-0.47 / 44-59 degrees.
+  static const double squatFullHeight = 0.60;
+  static const double squatFullKneeAngle = 105.0;
+
+  /// Between full depth and this, the rep counts but is scored short...
+  /// beyond it, below squatIgnoreHeight, it is turned down ("not deep enough").
+  static const double squatNoRepHeight = 0.70;
+
+  /// Never getting below this is not a squat attempt at all.
+  static const double squatIgnoreHeight = 0.80;
+
+  /// The rep is complete when the hips are back above this (standing reads
+  /// 0.96-1.0). Replaces the 85% recovery rule that counted pulses at the bottom.
+  static const double squatReturnHeight = 0.90;
+
+  /// Heading back down after rising this far, without standing, is a pulse.
+  static const double squatBounceDrop = 0.10;
+
+  /// Torso angle from vertical at the bottom beyond which the athlete is bent
+  /// over, not squatting. Good squats read 27-45; the toe-touch crouches of live
+  /// test #5 read 61-78.
+  static const double squatHingeTorsoDegrees = 58.0;
+
+  /// Feet moving more than this share of leg length during one rep means the
+  /// athlete is walking, not squatting.
+  static const double squatMaxAnkleTravel = 0.45;
+
+
+  // Lunge gates. Front-leg hip height (see squat note above): the three deep
+  // lunges of live test #5 read 0.39-0.63, the small knee dips 0.66-0.88.
+  static const double lungeAttemptHeight = 0.88;
+  static const double lungeAttemptKneeAngle = 140.0;
+  static const double lungeReversalRise = 0.05;
+
+  /// Front thigh about parallel or lower.
+  static const double lungeFullHeight = 0.66;
+  static const double lungeFullKneeAngle = 100.0;
+
+  /// Counts, scored short, up to here; beyond it the rep is turned down...
+  static const double lungeSoftHeight = 0.74;
+
+  /// ...and beyond this it was never a lunge attempt.
+  static const double lungeNoRepHeight = 0.84;
+  /// Lower than the squat's: stationary (split) lunges, which are common, never
+  /// stand all the way up between reps, but their hips still rise to ~0.8-0.9.
+  static const double lungeReturnHeight = 0.80;
+  static const double lungeBounceDrop = 0.10;
+
   // Backward compatibility aliases
   static const double squatDepthMin = 70;
   static const double squatDepthMax = 95;

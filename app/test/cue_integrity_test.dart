@@ -17,18 +17,22 @@ import 'support/replay_harness.dart';
 /// fails here instead of on someone's phone.
 const _praise = {CueIds.goodRep, CueIds.streak};
 
+/// Praise about depth, only ever requested by exercises with a depth target.
+const _depthPraise = {CueIds.goodDepth};
+
 final Map<String, Set<String>> _allowed = {
   'squat': {
     CueIds.goDeeper, CueIds.torsoLean, CueIds.asymmetry, CueIds.kneeValgus,
-    CueIds.controlDescent, CueIds.turnSideOn, ..._praise,
+    CueIds.controlDescent, CueIds.turnSideOn, CueIds.sitDown, ..._praise,
+    ..._depthPraise,
   },
   'pushup': {
     CueIds.goDeeper, CueIds.lockOut, CueIds.hipsSagging, CueIds.hipsPiked,
     CueIds.straightBody, CueIds.controlDescent, ..._praise,
   },
   'lunge': {
-    CueIds.goDeeper, CueIds.kneePastToe, CueIds.torsoLean,
-    CueIds.controlDescent, ..._praise,
+    CueIds.goDeeper, CueIds.torsoLean, CueIds.controlDescent, CueIds.lungeDeeper,
+    ..._praise, ..._depthPraise,
   },
   'overheadPress': {
     CueIds.fullRange, CueIds.lockOut, CueIds.elbowsOut,
@@ -58,6 +62,10 @@ final Map<String, Set<String>> _allowed = {
     CueIds.turnSideOn,
   },
 };
+
+/// Any rep-counted exercise may turn an attempt down; the verdict cue carries
+/// the reason, so it is allowed everywhere.
+Set<String> _allowedFor(String exercise) => {..._allowed[exercise]!, CueIds.noRep};
 
 ExerciseAnalyzer Function(DateTime Function()) _factory(String exercise, List<String> ids) {
   return (clock) {
@@ -106,7 +114,7 @@ void main() {
       final ids = <String>[];
       final live = name.startsWith('live');
       replay(name, _factory(exercise, ids), fps: live ? 15 : 30);
-      final stray = ids.toSet().difference(_allowed[exercise]!);
+      final stray = ids.toSet().difference(_allowedFor(exercise));
       expect(stray, isEmpty, reason: 'unexpected cues for $exercise: $stray');
     });
   }
