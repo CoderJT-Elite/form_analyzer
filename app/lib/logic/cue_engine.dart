@@ -99,6 +99,7 @@ class CueIds {
   static const String hipsPiked = 'hold.hipsPiked';
   static const String straightBody = 'hold.straightBody';
   static const String getInPlank = 'hold.getInPlank';
+  static const String liftOff = 'hold.liftOff';
 
   static const String rushedTempo = 'tempo.rushed';
   static const String kneeValgus = 'form.kneeValgus';
@@ -333,6 +334,12 @@ const List<CueDefinition> kDefaultCues = [
     priority: CuePriority.range,
     cooldown: Duration(seconds: 8),
     phrasings: ['Get into plank position on the floor', 'Lower down into your plank'],
+  ),
+  CueDefinition(
+    id: CueIds.liftOff,
+    priority: CuePriority.range,
+    cooldown: Duration(seconds: 8),
+    phrasings: ['Lift your body off the floor', 'Hold yourself up on your arms'],
   ),
   CueDefinition(
     id: CueIds.rushedTempo,

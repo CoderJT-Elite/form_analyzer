@@ -221,8 +221,8 @@ class AppConstants {
   static const double jumpingJackShortRangePenalty = 0.25;
 
   // Wall sit — knee angle held near a right angle.
-  static const double wallSitKneeAngleMin = 70.0;
-  static const double wallSitKneeAngleMax = 110.0;
+  static const double wallSitKneeAngleMin = 80.0;
+  static const double wallSitKneeAngleMax = 105.0;
 
   // Side plank — shoulder/hip/ankle held close to a straight line.
   static const double sidePlankBodyAngleMin = 155.0;
@@ -238,12 +238,26 @@ class AppConstants {
   /// read 2-28; standing up or leaning on a wall reads 65-85.
   static const double holdMaxTiltDegrees = 60.0;
 
-  // A second held with broken form still counts toward duration but scores low.
-  static const double timedHoldBrokenFormScore = 0.4;
-  // How long form may stay broken before we assume the user has left the
-  // position entirely and stop the clock.
-  static const int timedHoldBreakGraceSeconds = 3;
+  // A hard fault in a hold (hips sagging, not low enough) is coached at once and
+  // forgiven this long; after that the clock pauses until the position has been
+  // right for the resume time.
+  static const Duration holdFaultGrace = Duration(seconds: 1);
+  static const Duration holdResumeClean = Duration(milliseconds: 500);
 
+  /// Planks only count while the torso (shoulder to hip) is within this many
+  /// degrees of horizontal (real planks read 2-25; standing up reads 65-85)...
+  static const double plankMaxTiltDegrees = 45.0;
+
+  /// ...and a torso flatter than this must be visibly held up on the arms, or the
+  /// athlete is lying on the floor.
+  static const double plankMinTorsoTilt = 8.0;
+
+  /// The shoulder must be this share of the arm's length above the elbow (or
+  /// wrist) to be held up rather than lying on the floor.
+  static const double plankSupportShare = 0.5;
+
+  /// Wall sit: the hip may sit this share of a thigh above the knee at most.
+  static const double wallSitMinThighLevel = 0.35;
 
   // ---------------------------------------------------------------------------
   // Strict rep gates (live test #5, 2026-10-02)

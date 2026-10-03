@@ -1204,7 +1204,7 @@ class PushupAnalyzer extends ExerciseAnalyzer {
     // out of frame. Measuring to the knee alone missed sag from the knees down.
     final end = isLandmarkVisible(ankle) ? ankle! : (isLandmarkVisible(knee) ? knee : null);
     if (end != null) {
-      final raw = HipLineJudge.offsetRatio(shoulder!, hip!, end);
+      final raw = HipLineMeter.offsetRatio(shoulder!, hip!, end);
       if (raw != null) {
         final offset = _offsetFilter.add(raw);
         if (offset >= AppConstants.pushupSagOffset) faults.add('Hips Sagging');
@@ -2233,28 +2233,43 @@ class HoldEvaluation {
   /// What to show while [leftPosition]; a generic prompt when null.
   final String? message;
 
+  /// A fault that is coached and noted but does not stop the clock (an elbow
+  /// drifting, a knee past the toe). Everything else that breaks the position
+  /// pauses the clock once it has lasted [AppConstants.holdFaultGrace].
+  final bool soft;
+
   const HoldEvaluation.good()
       : isCorrect = true,
         cueId = '',
         issue = '',
         leftPosition = false,
-        message = null;
+        message = null,
+        soft = false;
 
   const HoldEvaluation.broken({
     required this.cueId,
     required this.issue,
     this.leftPosition = false,
     this.message,
+    this.soft = false,
   }) : isCorrect = false;
 }
 
 /// Base class for exercises measured in held seconds rather than reps
 /// (plank, wall sit, side plank).
 ///
-/// Duration is reported through [repCount] and — critically — through [onRep],
-/// the same channel rep-counted exercises use. `ExerciseScreen` only saves a
-/// session when its rep count is above zero, so a timed analyzer that never
-/// fires [onRep] records nothing at all.
+/// Only time spent with good form counts. A hard fault (hips sagging, a wall sit
+/// that is not low enough) is coached at once, forgiven for
+/// [AppConstants.holdFaultGrace], and after that the clock pauses ("Paused:
+/// hips sagging") until the position has been right for
+/// [AppConstants.holdResumeClean]. Live test #5 credited 32 seconds of plank
+/// that held about 15 good ones, because a sagging plank kept the clock running
+/// "as time under tension".
+///
+/// Good seconds are reported through [repCount] and, critically, through
+/// [onRep], the same channel rep-counted exercises use: `ExerciseScreen` only
+/// saves a session when its rep count is above zero. Paused seconds are kept as
+/// records that did not count, so a set shows "good form 0:42 of 0:55".
 abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   TimedExerciseAnalyzer({super.cueEngine, super.clock});
 
@@ -2268,25 +2283,27 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   @override
   double get minLikelihood => AppConstants.holdVisibilityThreshold;
 
-  /// Whether persistently broken form is read as having left the position, and
-  /// stops the clock after [AppConstants.timedHoldBreakGraceSeconds]. Holds that
-  /// can tell for themselves (see [HoldEvaluation.leftPosition]) turn this off,
-  /// so a sagging plank is still time under tension.
-  bool get stopsClockOnLongBreak => true;
-
   /// A hold keeps its accumulated time when interrupted; only the running
   /// clock stops until the athlete is back in position.
   @override
   void interrupt() {
     _lastFrameTime = null;
-    _brokenSince = null;
+    _hardSince = null;
+    _cleanSince = null;
+    _paused = false;
     statusMessage = 'Paused';
   }
 
   DateTime? _lastFrameTime;
-  int _accumulatedHeldMs = 0;
-  DateTime? _brokenSince;
+  int _goodMs = 0;
+  int _pausedMs = 0;
   int _lastScoredSecond = 0;
+  int _lastPausedSecond = 0;
+  DateTime? _hardSince;
+  DateTime? _cleanSince;
+  bool _paused = false;
+  bool _everGood = false;
+  String _pausedFor = '';
 
   /// Judge the current frame. Return null when the required landmarks aren't
   /// visible, which pauses the clock rather than counting bad time.
@@ -2295,7 +2312,14 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
   /// Status line shown while the hold is going well.
   String holdingMessage(int seconds);
 
-  int get heldSeconds => _accumulatedHeldMs ~/ 1000;
+  /// Seconds held with good form.
+  int get heldSeconds => _goodMs ~/ 1000;
+
+  /// Seconds spent in the position at all, good or not.
+  int get inPositionSeconds => (_goodMs + _pausedMs) ~/ 1000;
+
+  /// Whether the clock is paused for a fault right now.
+  bool get isPaused => _paused;
 
   @override
   void processPose(Pose pose) {
@@ -2312,52 +2336,84 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
         return;
       }
       _lastFrameTime = null;
-      _brokenSince = null;
+      _hardSince = null;
       statusMessage = 'Adjust Camera';
       return;
     }
 
     if (evaluation.leftPosition) {
       _lastFrameTime = null;
-      _brokenSince = null;
+      _hardSince = null;
+      _cleanSince = null;
+      _paused = false;
       statusMessage = evaluation.message ?? 'Get back into position';
       if (evaluation.cueId.isNotEmpty) cues.request(evaluation.cueId);
       return;
     }
 
+    var deltaMs = 0;
     if (_lastFrameTime != null) {
-      final deltaMs = currentTime.difference(_lastFrameTime!).inMilliseconds;
-      if (deltaMs > 0 && deltaMs <= 2000) {
-        _accumulatedHeldMs += deltaMs;
-      }
+      final d = currentTime.difference(_lastFrameTime!).inMilliseconds;
+      if (d > 0 && d <= 2000) deltaMs = d;
     }
     _lastFrameTime = currentTime;
 
-    if (evaluation.isCorrect) {
-      _brokenSince = null;
-      _accrue(1.0);
-      statusMessage = holdingMessage(heldSeconds);
+    if (evaluation.isCorrect || evaluation.soft) {
+      if (_paused) {
+        // Resume only once the position has been right for a moment, so a frame
+        // of good form in the middle of a long sag does not restart the clock.
+        _cleanSince ??= currentTime;
+        if (currentTime.difference(_cleanSince!) >= AppConstants.holdResumeClean) {
+          _paused = false;
+          _hardSince = null;
+          _cleanSince = null;
+        }
+      } else {
+        _hardSince = null;
+      }
+      if (!_paused) {
+        _everGood = true;
+        _goodMs += deltaMs;
+        if (evaluation.soft) {
+          addIssue(evaluation.issue);
+          cues.request(evaluation.cueId);
+        }
+        _accrueGood(evaluation.soft ? 0.8 : 1.0);
+        statusMessage = evaluation.soft
+            ? (evaluation.message ?? holdingMessage(heldSeconds))
+            : holdingMessage(heldSeconds);
+      } else {
+        _pausedMs += deltaMs;
+        _accruePaused();
+        statusMessage = 'Paused: $_pausedFor';
+      }
       return;
     }
 
-    // Form is broken but the user is still in position, so the clock keeps
-    // running — a sagging plank is still time under tension. If it stays broken
-    // long enough we assume they've stood up and stop counting.
-    _brokenSince ??= currentTime;
-    final brokenForMs = currentTime.difference(_brokenSince!).inMilliseconds;
-    if (stopsClockOnLongBreak &&
-        brokenForMs >= AppConstants.timedHoldBreakGraceSeconds * 1000) {
-      _lastFrameTime = null;
-    }
-
+    // A hard fault. Coached at once; forgiven briefly (and not at all before the
+    // athlete has ever held the position correctly), then the clock pauses.
+    _cleanSince = null;
+    _hardSince ??= currentTime;
+    _pausedFor = evaluation.issue.toLowerCase();
     addIssue(evaluation.issue);
-    _accrue(AppConstants.timedHoldBrokenFormScore);
     cues.request(evaluation.cueId);
+    if (!_paused) {
+      final grace = _everGood ? AppConstants.holdFaultGrace : Duration.zero;
+      if (currentTime.difference(_hardSince!) > grace) _paused = true;
+    }
+    if (_paused) {
+      _pausedMs += deltaMs;
+      _accruePaused();
+      statusMessage = 'Paused: $_pausedFor';
+    } else {
+      _goodMs += deltaMs;
+      _accrueGood(0.7);
+    }
   }
 
-  /// Credit whole seconds that have elapsed since the last check, scoring each
-  /// with the quality that applied when it ticked over.
-  void _accrue(double secondScore) {
+  /// Credit whole good seconds that have elapsed, scoring each with the quality
+  /// that applied when it ticked over.
+  void _accrueGood(double secondScore) {
     final seconds = heldSeconds;
     if (seconds <= _lastScoredSecond) return;
 
@@ -2380,24 +2436,51 @@ abstract class TimedExerciseAnalyzer extends ExerciseAnalyzer {
     if (onRep != null) onRep!(repCount);
   }
 
+  /// Record whole seconds spent paused as seconds that did not count.
+  void _accruePaused() {
+    final seconds = _pausedMs ~/ 1000;
+    while (_lastPausedSecond < seconds) {
+      _lastPausedSecond++;
+      final label = _pausedFor.isEmpty ? 'Form Broke' : _toLabel(_pausedFor);
+      noRepRecords.add(
+        RepRecord(
+          index: repCount + noRepRecords.length,
+          score: 0,
+          issues: [label],
+          counted: false,
+          noRepReason: label,
+        ),
+      );
+      _noRepTimes.add(now());
+    }
+  }
+
+  static String _toLabel(String lower) => lower.isEmpty
+      ? lower
+      : lower.split(' ').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+
   @override
   void reset() {
     super.reset();
     _lastFrameTime = null;
-    _accumulatedHeldMs = 0;
-    _brokenSince = null;
+    _goodMs = 0;
+    _pausedMs = 0;
     _lastScoredSecond = 0;
+    _lastPausedSecond = 0;
+    _hardSince = null;
+    _cleanSince = null;
+    _paused = false;
+    _everGood = false;
+    _pausedFor = '';
   }
 }
 
+/// Supported on the forearms (or hands), body held in a straight line.
 class PlankAnalyzer extends TimedExerciseAnalyzer {
   PlankAnalyzer({super.cueEngine, super.clock});
 
-  final HipLineJudge _hipLine = HipLineJudge();
+  final HipLineMeter _hipLine = HipLineMeter();
   final SettleGate _gate = SettleGate();
-
-  @override
-  bool get stopsClockOnLongBreak => false;
 
   @override
   void reset() {
@@ -2423,64 +2506,46 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
 
   @override
   HoldEvaluation? evaluateHold(Pose pose) {
-    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
-    final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
-    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
+    final frame = _bodyLine(pose);
+    if (frame == null) return null;
+    final (shoulder, hip, end, useLeft) = frame;
 
-    final rightShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
-    final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
-    final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
-
-    final leftVisible = isLandmarkVisible(leftShoulder) &&
-        isLandmarkVisible(leftHip) &&
-        isLandmarkVisible(leftKnee);
-    final rightVisible = isLandmarkVisible(rightShoulder) &&
-        isLandmarkVisible(rightHip) &&
-        isLandmarkVisible(rightKnee);
-
-    if (!leftVisible && !rightVisible) {
-      return null;
-    }
-
-    final leftConfidence = (leftShoulder?.likelihood ?? 0) +
-        (leftHip?.likelihood ?? 0) +
-        (leftKnee?.likelihood ?? 0);
-    final rightConfidence = (rightShoulder?.likelihood ?? 0) +
-        (rightHip?.likelihood ?? 0) +
-        (rightKnee?.likelihood ?? 0);
-
-    final useLeft = leftVisible && (!rightVisible || leftConfidence >= rightConfidence);
-    final shoulder = useLeft ? leftShoulder! : rightShoulder!;
-    final hip = useLeft ? leftHip! : rightHip!;
-    final knee = useLeft ? leftKnee! : rightKnee!;
-
-    final backAngle = MathUtils.calculateJointAngle(shoulder, hip, knee);
-    lastProcessedAngle = backAngle;
+    lastProcessedAngle = angle2D(shoulder, hip, end);
 
     // A plank is on the floor, so the body lies roughly flat once the frame is
     // gravity-aligned. Upright is standing up (or leaning on a wall, which is
     // not a plank however straight the line): not in position, and no time is
-    // credited. Bending the line, by contrast, is bad form, not leaving.
-    final flat = !gravityKnown ||
-        HipLineJudge.tiltFromHorizontal(shoulder, knee) <= AppConstants.holdMaxTiltDegrees;
-    final settled = _gate.update(flat, now());
+    // credited. Lying flat on the belly is not a plank either: the body must
+    // be held up on the arms.
+    // Judged on the torso (shoulder to hip), the best-tracked pair: the ankle
+    // end of the body line is often the least reliable landmark in the frame.
+    final tilt = HipLineMeter.tiltFromHorizontal(shoulder, hip);
+    final flat = !gravityKnown || tilt <= AppConstants.plankMaxTiltDegrees;
+    final lyingFlat = flat &&
+        gravityKnown &&
+        tilt < AppConstants.plankMinTorsoTilt &&
+        !_bodyHeldUp(this, pose, shoulder, useLeft: useLeft);
+    final settled = _gate.update(flat && !lyingFlat, now());
     if (!flat) return _notInPlank;
+    if (lyingFlat) return _liftOff;
     if (!settled) return _settling;
 
-    // Fed every frame, straight or not, so it has settled before the line breaks.
-    final verdict = _hipLine.update(shoulder, hip, knee, now: now());
-    if (backAngle <= AppConstants.plankBackAngleMin) {
+    // Fed every frame so it has settled before the line breaks.
+    final verdict = _hipLine.update(shoulder, hip, end);
+    if (verdict == HipVerdict.unjudgeable) {
+      // No floor to sag toward (gravity unknown, or the body is upright): the
+      // line can still be judged, just not its direction.
+      if (lastProcessedAngle! <= AppConstants.plankBackAngleMin) return _brokenLine(verdict);
+    } else if (verdict != HipVerdict.straight) {
       return _brokenLine(verdict);
     }
 
     // Elbow drifting out from under the shoulder, as a fraction of torso
-    // length -- checked only once the hip line itself is already good, since
-    // that's the more important fault.
+    // length -- a coached detail, not a reason to stop the clock. Straight arms
+    // make a high plank, whose elbows are by definition not "under" the
+    // shoulders in the forearm sense, so it is only judged on a forearm plank.
     final elbow = pose.landmarks[useLeft ? PoseLandmarkType.leftElbow : PoseLandmarkType.rightElbow];
     final wrist = pose.landmarks[useLeft ? PoseLandmarkType.leftWrist : PoseLandmarkType.rightWrist];
-    // Straight arms make a high plank, which is a legitimate plank whose
-    // elbows are by definition not "under" the shoulders in the forearm sense;
-    // only judge elbow position on a forearm (bent-elbow) plank.
     final highPlank = isLandmarkVisible(wrist) &&
         isLandmarkVisible(elbow) &&
         MathUtils.calculateJointAngle(shoulder, elbow, wrist) >=
@@ -2493,23 +2558,39 @@ class PlankAnalyzer extends TimedExerciseAnalyzer {
         return const HoldEvaluation.broken(
           issue: 'Elbows Not Under Shoulders',
           cueId: CueIds.elbowsOut,
+          soft: true,
         );
       }
     }
 
-    // Hip twisted/dropped to one side rather than square to the floor.
-    if (leftVisible && rightVisible) {
-      final leftAngle = MathUtils.calculateJointAngle(leftShoulder, leftHip, leftKnee);
-      final rightAngle = MathUtils.calculateJointAngle(rightShoulder, rightHip, rightKnee);
-      if ((leftAngle - rightAngle).abs() > AppConstants.plankHipAsymmetryDegreesThreshold) {
-        return const HoldEvaluation.broken(
-          issue: 'Uneven Hips',
-          cueId: CueIds.asymmetry,
-        );
-      }
-    }
-
+    // (The old "Uneven Hips" check compared the left and right hip angles, which
+    // from a side-on camera measures the camera angle -- the far side is hidden.)
     return const HoldEvaluation.good();
+  }
+
+  /// Shoulder, hip and the far end of the body line (ankle, or knee when the
+  /// feet are out of frame) from the better-seen side.
+  (PoseLandmark, PoseLandmark, PoseLandmark, bool)? _bodyLine(Pose pose) {
+    (PoseLandmark, PoseLandmark, PoseLandmark, double)? pick(
+        PoseLandmarkType s, PoseLandmarkType h, PoseLandmarkType a, PoseLandmarkType k) {
+      final shoulder = pose.landmarks[s];
+      final hip = pose.landmarks[h];
+      if (!isLandmarkVisible(shoulder) || !isLandmarkVisible(hip)) return null;
+      final ankle = pose.landmarks[a];
+      final knee = pose.landmarks[k];
+      final end = isLandmarkVisible(ankle) ? ankle : (isLandmarkVisible(knee) ? knee : null);
+      if (end == null) return null;
+      return (shoulder!, hip!, end, shoulder.likelihood + hip.likelihood + end.likelihood);
+    }
+
+    final left = pick(PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip,
+        PoseLandmarkType.leftAnkle, PoseLandmarkType.leftKnee);
+    final right = pick(PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip,
+        PoseLandmarkType.rightAnkle, PoseLandmarkType.rightKnee);
+    if (left == null && right == null) return null;
+    final useLeft = left != null && (right == null || left.$4 >= right.$4);
+    final chosen = (useLeft ? left : right)!;
+    return (chosen.$1, chosen.$2, chosen.$3, useLeft);
   }
 }
 
@@ -2561,10 +2642,18 @@ const HoldEvaluation _notInPlank = HoldEvaluation.broken(
   message: 'Get into plank position on the floor',
 );
 
-/// The hold evaluation for a body line that is not straight. A direction is
-/// only given when there is one to give: sagging or piking is meaningless when
-/// leaning on a wall, and "hips up" then "hips down" within seconds of each
-/// other (live test #3) is worse than no direction at all.
+const HoldEvaluation _liftOff = HoldEvaluation.broken(
+  issue: 'On The Floor',
+  cueId: CueIds.liftOff,
+  leftPosition: true,
+  message: 'Lift your body off the floor',
+);
+
+/// The hold evaluation for a body line that is not straight. The direction is
+/// the sign of the same offset that decided the line was broken (see
+/// [HipLineMeter]), so "hips up" can never be said to a pike or the reverse. A
+/// direction is only given when there is one to give: sagging or piking is
+/// meaningless when leaning on a wall.
 HoldEvaluation _brokenLine(HipVerdict verdict) {
   switch (verdict) {
     case HipVerdict.sagging:
@@ -2572,9 +2661,39 @@ HoldEvaluation _brokenLine(HipVerdict verdict) {
     case HipVerdict.piked:
       return const HoldEvaluation.broken(issue: 'Hips Piked', cueId: CueIds.hipsPiked);
     case HipVerdict.unjudgeable:
-    case HipVerdict.undecided:
+    case HipVerdict.straight:
       return const HoldEvaluation.broken(issue: 'Body Not Straight', cueId: CueIds.straightBody);
   }
+}
+
+/// Whether the body is held up on the arms rather than lying on the floor: the
+/// shoulder has to sit clearly above the elbow (forearm plank, side plank) or
+/// the wrist (high plank). With neither in view there is no way to tell, so it
+/// is given the benefit of the doubt.
+bool _bodyHeldUp(
+  ExerciseAnalyzer analyzer,
+  Pose pose,
+  PoseLandmark shoulder, {
+  required bool useLeft,
+}) {
+  PoseLandmark? side(PoseLandmarkType left, PoseLandmarkType right) {
+    final preferred = pose.landmarks[useLeft ? left : right];
+    if (analyzer.isLandmarkVisible(preferred)) return preferred;
+    final other = pose.landmarks[useLeft ? right : left];
+    return analyzer.isLandmarkVisible(other) ? other : null;
+  }
+
+  final elbow = side(PoseLandmarkType.leftElbow, PoseLandmarkType.rightElbow);
+  final wrist = side(PoseLandmarkType.leftWrist, PoseLandmarkType.rightWrist);
+  if (elbow == null && wrist == null) return true;
+  bool above(PoseLandmark limb, double share) {
+    final length =
+        math.sqrt(math.pow(shoulder.x - limb.x, 2) + math.pow(shoulder.y - limb.y, 2));
+    return length > 1e-6 && (limb.y - shoulder.y) >= share * length;
+  }
+
+  return (elbow != null && above(elbow, AppConstants.plankSupportShare)) ||
+      (wrist != null && above(wrist, AppConstants.plankSupportShare));
 }
 
 /// Hips lifted from the floor: the shoulder-hip-knee angle opens as you rise.
@@ -3098,7 +3217,11 @@ class JumpingJackAnalyzer extends ExerciseAnalyzer {
   }
 }
 
-/// Seated against a wall, holding roughly a right angle at the knee.
+/// Seated against a wall, thighs level, holding roughly a right angle at the knee.
+///
+/// The knee has to be in the 80-105 degree band *and* the thighs near
+/// horizontal (the hip no higher than a third of a thigh above the knee): the old
+/// 70-110 degree band called a standing, free half-squat a wall sit.
 class WallSitAnalyzer extends TimedExerciseAnalyzer {
   WallSitAnalyzer({super.cueEngine, super.clock});
 
@@ -3130,6 +3253,7 @@ class WallSitAnalyzer extends TimedExerciseAnalyzer {
         PoseLandmarkType.rightKnee,
         PoseLandmarkType.rightAnkle,
       ],
+      angle: (a, b, c) => angle2D(a!, b!, c!),
     );
     if (kneeAngle == null) return null;
 
@@ -3156,16 +3280,29 @@ class WallSitAnalyzer extends TimedExerciseAnalyzer {
         isLandmarkVisible(rightKnee) &&
         isLandmarkVisible(rightAnkle);
 
-    // Knee drifting past the toe, same idea and scale-invariant ratio as the
-    // lunge check.
     if (leftVisible || rightVisible) {
+      final hip = leftVisible ? leftHip! : rightHip!;
       final knee = leftVisible ? leftKnee! : rightKnee!;
       final ankle = leftVisible ? leftAnkle! : rightAnkle!;
+
+      // Thighs level: the hip should sit near knee height. (A knee at 100
+      // degrees with the hips well above it is a standing half-squat.)
+      final thigh = math.sqrt(math.pow(hip.x - knee.x, 2) + math.pow(hip.y - knee.y, 2));
+      if (thigh > 1e-6 && (knee.y - hip.y) / thigh < -AppConstants.wallSitMinThighLevel) {
+        return const HoldEvaluation.broken(issue: 'Not Low Enough', cueId: CueIds.goDeeper);
+      }
+
+      // Knee drifting past the toe, same idea and scale-invariant ratio as the
+      // lunge check; coached, but it does not stop the clock.
       final shinLength =
           math.sqrt(math.pow(knee.x - ankle.x, 2) + math.pow(knee.y - ankle.y, 2));
       if (MathUtils.horizontalOffsetRatio(knee, ankle, shinLength) >
           AppConstants.wallSitKneePastToeRatio) {
-        return const HoldEvaluation.broken(issue: 'Knee Past Toe', cueId: CueIds.kneePastToe);
+        return const HoldEvaluation.broken(
+          issue: 'Knee Past Toe',
+          cueId: CueIds.kneePastToe,
+          soft: true,
+        );
       }
     }
 
@@ -3174,10 +3311,14 @@ class WallSitAnalyzer extends TimedExerciseAnalyzer {
     if (leftVisible &&
         rightVisible &&
         orientationTracker.orientation == ViewOrientation.frontOn) {
-      final leftAngle = MathUtils.calculateJointAngle(leftHip, leftKnee, leftAnkle);
-      final rightAngle = MathUtils.calculateJointAngle(rightHip, rightKnee, rightAnkle);
+      final leftAngle = angle2D(leftHip!, leftKnee!, leftAnkle!);
+      final rightAngle = angle2D(rightHip!, rightKnee!, rightAnkle!);
       if ((leftAngle - rightAngle).abs() > AppConstants.wallSitAsymmetryDegreesThreshold) {
-        return const HoldEvaluation.broken(issue: 'Uneven Weight', cueId: CueIds.asymmetry);
+        return const HoldEvaluation.broken(
+          issue: 'Uneven Weight',
+          cueId: CueIds.asymmetry,
+          soft: true,
+        );
       }
     }
 
@@ -3189,11 +3330,8 @@ class WallSitAnalyzer extends TimedExerciseAnalyzer {
 class SidePlankAnalyzer extends TimedExerciseAnalyzer {
   SidePlankAnalyzer({super.cueEngine, super.clock});
 
-  final HipLineJudge _hipLine = HipLineJudge();
+  final HipLineMeter _hipLine = HipLineMeter();
   final SettleGate _gate = SettleGate();
-
-  @override
-  bool get stopsClockOnLongBreak => false;
 
   @override
   void reset() {
@@ -3246,39 +3384,53 @@ class SidePlankAnalyzer extends TimedExerciseAnalyzer {
     final hip = useLeft ? leftHip! : rightHip!;
     final ankle = useLeft ? leftAnkle! : rightAnkle!;
 
-    final bodyAngle = MathUtils.calculateJointAngle(shoulder, hip, ankle);
-    lastProcessedAngle = bodyAngle;
+    lastProcessedAngle = angle2D(shoulder, hip, ankle);
 
-    final flat = !gravityKnown ||
-        HipLineJudge.tiltFromHorizontal(shoulder, ankle) <= AppConstants.holdMaxTiltDegrees;
-    final settled = _gate.update(flat, now());
+    // On the floor, not standing, and not lying on the side: the shoulder has to
+    // be held above the supporting elbow.
+    final tilt = HipLineMeter.tiltFromHorizontal(shoulder, hip);
+    final flat = !gravityKnown || tilt <= AppConstants.plankMaxTiltDegrees;
+    final lyingFlat = flat &&
+        gravityKnown &&
+        tilt < AppConstants.plankMinTorsoTilt &&
+        !_bodyHeldUp(this, pose, shoulder, useLeft: useLeft);
+    final settled = _gate.update(flat && !lyingFlat, now());
     if (!flat) return _notInPlank;
+    if (lyingFlat) return _liftOff;
     if (!settled) return _settling;
 
-    final verdict = _hipLine.update(shoulder, hip, ankle, now: now());
-    if (bodyAngle <= AppConstants.sidePlankBodyAngleMin) {
+    final verdict = _hipLine.update(shoulder, hip, ankle);
+    if (verdict != HipVerdict.straight) {
       // Same direction logic as Plank: a hip below the shoulder-ankle line is
       // sagging toward the floor, above it is piking upward.
       return _brokenLine(verdict);
     }
 
-    // Supporting elbow drifting out from under the shoulder.
+    // Supporting elbow drifting out from under the shoulder (coached only).
     final elbow = pose.landmarks[useLeft ? PoseLandmarkType.leftElbow : PoseLandmarkType.rightElbow];
     if (isLandmarkVisible(elbow)) {
       final torsoLength =
           math.sqrt(math.pow(shoulder.x - hip.x, 2) + math.pow(shoulder.y - hip.y, 2));
       if (MathUtils.horizontalOffsetRatio(elbow!, shoulder, torsoLength) >
           AppConstants.sidePlankElbowOffsetRatio) {
-        return const HoldEvaluation.broken(issue: 'Elbows Not Under Shoulders', cueId: CueIds.elbowsOut);
+        return const HoldEvaluation.broken(
+          issue: 'Elbows Not Under Shoulders',
+          cueId: CueIds.elbowsOut,
+          soft: true,
+        );
       }
     }
 
     // Legs should stay straight and stacked, not bend at the knee.
     final knee = pose.landmarks[useLeft ? PoseLandmarkType.leftKnee : PoseLandmarkType.rightKnee];
     if (isLandmarkVisible(knee)) {
-      final legAngle = MathUtils.calculateJointAngle(hip, knee, ankle);
+      final legAngle = angle2D(hip, knee!, ankle);
       if (legAngle < AppConstants.sidePlankStraightLegAngleMin) {
-        return const HoldEvaluation.broken(issue: 'Bent Knees', cueId: CueIds.straightenLegs);
+        return const HoldEvaluation.broken(
+          issue: 'Bent Knees',
+          cueId: CueIds.straightenLegs,
+          soft: true,
+        );
       }
     }
 

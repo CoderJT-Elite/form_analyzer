@@ -137,9 +137,12 @@ void main() {
       }
 
       // Previously checked only left side landmarks; a right-facing athlete
-      // returned 'Adjust Camera' on 100% of frames. Bilateral check now evaluates hold.
+      // returned 'Adjust Camera' on 100% of frames. The athlete is now found and
+      // judged: this clip holds the hips about 17% of body length above the
+      // shoulder-ankle line, so the position is recognised but not credited.
       expect(analyzer.statusMessage, isNot('Adjust Camera'));
-      expect(analyzer.heldSeconds, greaterThanOrEqualTo(2));
+      expect(analyzer.inPositionSeconds, greaterThanOrEqualTo(2));
+      expect(analyzer.statusMessage.toLowerCase(), contains('hips piked'));
     });
   });
 
@@ -220,18 +223,31 @@ void main() {
   });
 
   group('Wall Sit, real footage', () {
-    test('wall sit hold duration is tracked and scored', () {
+    // Neither stock clip is a wall sit, which is what the old analyzer's 70-110
+    // degree band hid: one has the knee at 171 degrees (standing), the other has
+    // the hips well above the knees (a shallow, sloping sit).
+    test('standing straight is not a wall sit', () {
       var simulatedTime = DateTime(2026, 9, 10, 12, 0, 0);
       final analyzer = WallSitAnalyzer(clock: () => simulatedTime);
-      final frames = RecordedPoseFixtures.loadSequence('wallSit_pexels_6454275');
-
-      for (final pose in frames) {
+      for (final pose in RecordedPoseFixtures.loadSequence('wallSit_pexels_6454275')) {
         simulatedTime = simulatedTime.add(const Duration(milliseconds: 33));
         analyzer.processPose(pose);
       }
 
-      expect(analyzer.heldSeconds, greaterThanOrEqualTo(5));
-      expect(analyzer.repRecords, isNotEmpty);
+      expect(analyzer.heldSeconds, 0);
+      expect(analyzer.statusMessage.toLowerCase(), contains('not low enough'));
+    });
+
+    test('a shallow, sloping sit is not credited either', () {
+      var simulatedTime = DateTime(2026, 9, 10, 12, 0, 0);
+      final analyzer = WallSitAnalyzer(clock: () => simulatedTime);
+      for (final pose in RecordedPoseFixtures.loadSequence('wallSit_pexels_8402078')) {
+        simulatedTime = simulatedTime.add(const Duration(milliseconds: 33));
+        analyzer.processPose(pose);
+      }
+
+      expect(analyzer.heldSeconds, 0);
+      expect(analyzer.inPositionSeconds, greaterThanOrEqualTo(5));
     });
   });
 

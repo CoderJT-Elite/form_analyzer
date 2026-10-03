@@ -391,11 +391,51 @@ void main() {
       expect(analyzer.repScores.last, lessThan(1.0));
     });
 
-    test('a badly held plank keeps the clock running (bad form is not leaving)', () {
+    test('a badly held plank is forgiven for a moment, then the clock pauses', () {
+      // Live test #5 credited 32 seconds of plank for about 15 good ones, because
+      // a sagging plank kept the clock running as "time under tension".
       hold(PoseFixtures.plank(backAngle: 178), 3);
-      final before = analyzer.repCount;
+      final good = analyzer.heldSeconds;
+      final inPosition = analyzer.inPositionSeconds;
+
       hold(PoseFixtures.plank(backAngle: 140, sagging: true), 8);
-      expect(analyzer.repCount, greaterThanOrEqualTo(before + 6));
+
+      expect(analyzer.heldSeconds, lessThanOrEqualTo(good + 2),
+          reason: 'one second of grace, then nothing');
+      expect(analyzer.inPositionSeconds, greaterThanOrEqualTo(inPosition + 6),
+          reason: 'the athlete is still in position, just not holding it well');
+      expect(analyzer.isPaused, isTrue);
+      expect(analyzer.statusMessage, contains('Paused'));
+      expect(analyzer.statusMessage.toLowerCase(), contains('hips sagging'));
+    });
+
+    test('the paused seconds are recorded as seconds that did not count', () {
+      hold(PoseFixtures.plank(backAngle: 178), 3);
+      hold(PoseFixtures.plank(backAngle: 140, sagging: true), 6);
+
+      expect(analyzer.noRepRecords, isNotEmpty);
+      expect(analyzer.noRepRecords.every((r) => !r.counted), isTrue);
+      expect(analyzer.noRepRecords.first.noRepReason, 'Hips Sagging');
+      final metrics = analyzer.getPerformanceMetrics();
+      expect(metrics.noRepCount, analyzer.noRepRecords.length);
+    });
+
+    test('the clock resumes once the position has been right for half a second', () {
+      hold(PoseFixtures.plank(backAngle: 178), 3);
+      hold(PoseFixtures.plank(backAngle: 140, sagging: true), 4);
+      expect(analyzer.isPaused, isTrue);
+
+      final pausedAt = analyzer.heldSeconds;
+      hold(PoseFixtures.plank(backAngle: 178), 4);
+
+      expect(analyzer.isPaused, isFalse);
+      expect(analyzer.heldSeconds, greaterThan(pausedAt));
+    });
+
+    test('a hold that starts piked is not credited until the line is right', () {
+      hold(PoseFixtures.plank(backAngle: 140, sagging: false), 6);
+      expect(analyzer.heldSeconds, 0);
+      expect(analyzer.isPaused, isTrue);
     });
 
     test('reset stops and zeroes the clock', () {

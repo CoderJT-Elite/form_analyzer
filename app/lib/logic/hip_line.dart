@@ -1,24 +1,27 @@
-/// Judges whether the hips are sagging or piked, without flip-flopping.
+/// Judges whether the hips are sagging or piked, from one number.
 ///
 /// Poses arrive gravity-aligned (see `normalizePose`), so "sagging" is simply
-/// "the hip is lower than the straight line from shoulder to knee/ankle".
+/// "the hip is lower than the straight line from shoulder to ankle".
 ///
-/// Two things went wrong before this existed (live tests #2 and #3):
-///   * the verdict was recomputed from a single frame, so a plank read "hips
-///     too high" and "hips too low" within seconds of each other, and
-///   * it was answered even when there is no floor to sag toward. Leaning on a
-///     wall, the body is nearly vertical and "lower than the line" means
-///     nothing; the athlete still deserves to hear their body line is broken,
-///     just not in a direction.
+/// Live test #5 heard "Hips are too high, flatten your body out" from a plank
+/// whose hips were sagging. The "line is broken" decision came from one
+/// unsmoothed angle while the *direction* came from a separate, sticky verdict
+/// that stayed on "piked" until the offset had crossed well past zero, held for
+/// eight frames and waited four seconds. Two measurements disagreed, and the
+/// athlete was told the opposite of the truth. Here there is one smoothed signed
+/// offset: whether the line is broken and which way are read from the same
+/// number, so they cannot disagree.
 library;
 
 import 'dart:math' as math;
 
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
+import 'signal_filters.dart';
+
 enum HipVerdict {
-  /// Not enough signal yet to call it either way.
-  undecided,
+  /// The body line is straight enough.
+  straight,
 
   /// Hips below the line, toward the floor.
   sagging,
@@ -31,55 +34,51 @@ enum HipVerdict {
   unjudgeable,
 }
 
-class HipLineJudge {
-  HipLineJudge({
-    this.smoothing = 0.25,
-    this.enter = 0.03,
-    this.switchMargin = 0.05,
+class HipLineMeter {
+  HipLineMeter({
+    this.sagBreak = 0.10,
+    this.sagClear = 0.07,
+    this.pikeBreak = -0.15,
+    this.pikeClear = -0.11,
     this.maxTiltDegrees = 60,
-    this.dwellFrames = 8,
-    this.minReversal = const Duration(seconds: 4),
-  });
+    this.smoothing = 0.35,
+    this.medianWindow = 5,
+  }) : _median = MedianFilter(medianWindow);
 
-  /// Weight of each new sample in the running offset.
-  final double smoothing;
+  /// Hip offset (share of the shoulder-to-end line's length, positive toward the
+  /// floor) at which the hips are called sagging, and below which the call is
+  /// withdrawn. About 157 degrees at the hip breaks; 164 clears. (Real sagging
+  /// planks in live test #5 read 0.10-0.18; straight ones 0.0-0.08.)
+  final double sagBreak;
+  final double sagClear;
 
-  /// Smoothed offset (fraction of body length) needed to call a direction.
-  final double enter;
-
-  /// How far past zero the opposite way the smoothed offset must go before a
-  /// standing verdict is reversed.
-  final double switchMargin;
+  /// The same for piking. Pose models place the hip landmark a little high, so a
+  /// perfectly decent plank reads a few percent piked (stock clips: median -0.06)
+  /// and a pike has to be clearly past that before it is called.
+  final double pikeBreak;
+  final double pikeClear;
 
   /// Beyond this angle from horizontal there is no floor line to sag toward.
   final double maxTiltDegrees;
 
-  /// A new verdict must hold for this many consecutive frames before it stands.
-  /// While an athlete is still moving into position the reading swings by more
-  /// than the switch margin in a fraction of a second.
-  final int dwellFrames;
+  /// Weight of each new (median-filtered) sample in the running offset.
+  final double smoothing;
+  final int medianWindow;
 
-  /// Once a direction has been called, the opposite one is not called again for
-  /// this long: "hips up" followed by "lower your hips" a second later (live
-  /// test #3) teaches the athlete nothing.
-  final Duration minReversal;
-
+  final MedianFilter _median;
   double? _offset;
-  HipVerdict _verdict = HipVerdict.undecided;
-  HipVerdict _candidate = HipVerdict.undecided;
-  int _candidateFrames = 0;
-  HipVerdict? _lastDirection;
-  DateTime? _lastDirectionAt;
+  HipVerdict _verdict = HipVerdict.straight;
 
   HipVerdict get verdict => _verdict;
 
+  /// The smoothed offset behind [verdict], or null before the first sample or
+  /// while the body is too upright to judge.
+  double? get offset => _offset;
+
   void reset() {
+    _median.reset();
     _offset = null;
-    _verdict = HipVerdict.undecided;
-    _candidate = HipVerdict.undecided;
-    _candidateFrames = 0;
-    _lastDirection = null;
-    _lastDirectionAt = null;
+    _verdict = HipVerdict.straight;
   }
 
   /// Signed distance of [hip] below the shoulder-[end] line, as a fraction of
@@ -105,70 +104,42 @@ class HipLineJudge {
     return math.atan2(dy, dx) * 180 / math.pi;
   }
 
-  /// Feed one frame and return the current verdict. [now] enables the minimum
-  /// time between opposite calls.
-  HipVerdict update(PoseLandmark shoulder, PoseLandmark hip, PoseLandmark end, {DateTime? now}) {
+  /// Feed one frame and return the verdict.
+  HipVerdict update(PoseLandmark shoulder, PoseLandmark hip, PoseLandmark end) {
     if (tiltFromHorizontal(shoulder, end) > maxTiltDegrees) {
       _offset = null;
-      return _settle(HipVerdict.unjudgeable, now);
+      _median.reset();
+      return _verdict = HipVerdict.unjudgeable;
     }
     final ratio = offsetRatio(shoulder, hip, end);
     if (ratio == null) return _verdict;
 
+    final filtered = _median.add(ratio);
     final previous = _offset;
-    final offset = previous == null ? ratio : previous + smoothing * (ratio - previous);
+    final offset = previous == null ? filtered : previous + smoothing * (filtered - previous);
     _offset = offset;
 
-    HipVerdict wanted = _verdict;
+    // Hysteresis: a verdict that stands is only withdrawn once the offset is
+    // clearly back inside the (narrower) clear band, so it cannot flicker at the
+    // boundary.
     switch (_verdict) {
-      case HipVerdict.undecided:
       case HipVerdict.unjudgeable:
-        if (offset >= enter) {
-          wanted = HipVerdict.sagging;
-        } else if (offset <= -enter) {
-          wanted = HipVerdict.piked;
+      case HipVerdict.straight:
+        if (offset >= sagBreak) {
+          _verdict = HipVerdict.sagging;
+        } else if (offset <= pikeBreak) {
+          _verdict = HipVerdict.piked;
         } else {
-          wanted = HipVerdict.undecided;
+          _verdict = HipVerdict.straight;
         }
       case HipVerdict.sagging:
-        if (offset <= -switchMargin) wanted = HipVerdict.piked;
+        if (offset < sagClear) {
+          _verdict = offset <= pikeBreak ? HipVerdict.piked : HipVerdict.straight;
+        }
       case HipVerdict.piked:
-        if (offset >= switchMargin) wanted = HipVerdict.sagging;
-    }
-    return _settle(wanted, now);
-  }
-
-  /// Adopt [wanted] only once it has persisted, and not too soon after the
-  /// last opposite call.
-  HipVerdict _settle(HipVerdict wanted, DateTime? now) {
-    if (wanted == _verdict) {
-      _candidate = wanted;
-      _candidateFrames = 0;
-      return _verdict;
-    }
-    if (wanted == _candidate) {
-      _candidateFrames++;
-    } else {
-      _candidate = wanted;
-      _candidateFrames = 1;
-    }
-    final directional = wanted == HipVerdict.sagging || wanted == HipVerdict.piked;
-    // Judged against the last *direction called*, not the current verdict: an
-    // athlete standing up passes through "unjudgeable" on the way from one to
-    // the other, which must not launder a reversal.
-    final tooSoon = directional &&
-        now != null &&
-        _lastDirection != null &&
-        wanted != _lastDirection &&
-        _lastDirectionAt != null &&
-        now.difference(_lastDirectionAt!) < minReversal;
-    if (_candidateFrames >= dwellFrames && !tooSoon) {
-      _verdict = wanted;
-      _candidateFrames = 0;
-      if (directional) {
-        _lastDirection = wanted;
-        _lastDirectionAt = now;
-      }
+        if (offset > pikeClear) {
+          _verdict = offset >= sagBreak ? HipVerdict.sagging : HipVerdict.straight;
+        }
     }
     return _verdict;
   }

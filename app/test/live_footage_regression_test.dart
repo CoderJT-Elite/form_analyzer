@@ -89,8 +89,12 @@ void main() {
     expect(run.analyzer.isTimedHold, isTrue);
     // A ~36 second floor plank with the phone on its side and repeated landmark
     // dropouts. The old code credited 14 and called the hips both too high and
-    // too low within 0.2 seconds.
-    expect(run.analyzer.repCount, greaterThanOrEqualTo(25));
+    // too low within 0.2 seconds. Now only seconds with a straight line count:
+    // about half of this one has the hips drifting high, so about half is
+    // credited, out of the ~30 spent in position.
+    final analyzer = run.analyzer as PlankAnalyzer;
+    expect(analyzer.inPositionSeconds, greaterThanOrEqualTo(25));
+    expect(run.analyzer.repCount, inInclusiveRange(12, 22));
     expect(oppositeHipCallsWithin(run, const Duration(milliseconds: 1500)), isEmpty);
   });
 }

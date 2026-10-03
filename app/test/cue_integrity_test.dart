@@ -52,11 +52,11 @@ final Map<String, Set<String>> _allowed = {
   },
   'plank': {
     CueIds.hipsSagging, CueIds.hipsPiked, CueIds.straightBody, CueIds.getInPlank,
-    CueIds.elbowsOut, CueIds.asymmetry,
+    CueIds.elbowsOut, CueIds.liftOff,
   },
   'sidePlank': {
     CueIds.hipsSagging, CueIds.hipsPiked, CueIds.straightBody, CueIds.getInPlank,
-    CueIds.elbowsOut, CueIds.straightenLegs,
+    CueIds.elbowsOut, CueIds.straightenLegs, CueIds.liftOff,
   },
   'wallSit': {
     CueIds.goDeeper, CueIds.slideUp, CueIds.kneePastToe, CueIds.asymmetry,
