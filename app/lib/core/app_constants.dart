@@ -398,6 +398,10 @@ class AppConstants {
   /// about 0.9-1.0; the rack position about 0-0.3).
   static const double overheadPressWristAbove = 0.55;
 
+  /// The wrist-stacking check only applies once the bar is above this share of an
+  /// arm length over the shoulder (it is meant for the press, not the rack).
+  static const double overheadPressStackCheckHeight = 0.4;
+
   /// Torso beyond this from vertical is a hinge (the plate going down or up),
   /// not a press.
   static const double overheadPressMaxTorsoLean = 40.0;

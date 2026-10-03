@@ -1771,9 +1771,10 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
         : ((shoulder.y - wrist.y) / armLength).clamp(-1.2, 1.2));
 
     // Wrist should stay roughly stacked above the elbow, not flared out to the
-    // side, while the bar is up.
+    // side, while the bar is pressed up (at the rack the forearm legitimately
+    // slants back toward the shoulder).
     final faults = <String>{};
-    if (phase != RepPhase.neutral) {
+    if (phase == RepPhase.concentric && wristAbove >= AppConstants.overheadPressStackCheckHeight) {
       final forearm = math.sqrt(
           math.pow(elbowLm.x - wrist.x, 2) + math.pow(elbowLm.y - wrist.y, 2));
       if (MathUtils.horizontalOffsetRatio(wrist, elbowLm, forearm) >
