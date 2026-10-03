@@ -53,7 +53,8 @@ mid-set, not afterwards.
 
 Prop your phone against a wall, pick an exercise, and start moving. Form Analyzer
 tracks your body through the camera, counts your reps, and coaches you out loud
-when your depth, tempo or back position slips.
+when your depth, tempo or body line slips, and tells you straight away when a rep
+does not count and why.
 
 EVERYTHING HAPPENS ON YOUR PHONE
 No account. No sign-up. Your camera feed is analysed on the device and thrown
@@ -68,9 +69,10 @@ escalate to more specific advice. Clean reps get credit.
 
 WHAT IT WATCHES FOR
 • Depth and range of motion, with how far short you actually were
-• Back position and safety warnings on squats
+• Chest position on squats (a hip hinge or a bend to the floor is not a squat)
+• Reps that do not count: half reps, sagging push-ups, bounces, with the reason
 • Tempo — whether you are lowering under control or just dropping
-• Left/right imbalance
+• Left/right imbalance on front-on squats
 • Hip position on planks and holds
 
 TEN EXERCISES
@@ -78,8 +80,10 @@ Squats, push-ups, lunges, overhead press, plank, glute bridge, sit-ups,
 jumping jacks, wall sit, and side plank.
 
 AFTER EVERY SET
-A breakdown of each individual rep, your best and weakest rep, average lowering
-time, the single thing most worth fixing, and how you compare to last time.
+A bar for every rep (tap one for its score, range, tempo and what to fix), the
+reps that did not count and why, whether your form held up or faded, average
+lowering time, the two things most worth fixing, and how you compare to last
+time. Holds show good-form time against time in position.
 
 YOUR HISTORY STAYS YOURS
 Workouts are stored on your device. Back them up to a file whenever you want,

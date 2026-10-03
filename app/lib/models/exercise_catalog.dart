@@ -47,7 +47,7 @@ class ExerciseCatalog {
       name: 'SQUATS',
       description: 'Perfect your depth and torso angle',
       instructions:
-          'Stand side-on to the camera with feet shoulder-width apart. Lower your hips until thighs are parallel to the floor.',
+          'Stand side-on to the camera, feet shoulder-width apart. Sit your hips back and down until your thighs are parallel to the floor, chest up, then stand all the way up. Bending over to touch your toes does not count.',
       muscleGroup: 'Quadriceps, Glutes',
       difficulty: 'Intermediate',
       iconAsset: 'assets/icons/exercises/squat.png',
@@ -58,7 +58,7 @@ class ExerciseCatalog {
       name: 'PUSH-UPS',
       description: 'Build upper body and core strength',
       instructions:
-          'Set up side-on to the camera. Keep your body in a straight line and lower your chest until your elbows reach 90 degrees.',
+          'Set up side-on to the camera on your toes, not your knees. Keep your body in one straight line, lower your chest until your elbows reach about 90 degrees, then lock your arms out at the top.',
       muscleGroup: 'Chest, Triceps, Shoulders',
       difficulty: 'Beginner',
       iconAsset: 'assets/icons/exercises/pushup.png',
@@ -69,7 +69,7 @@ class ExerciseCatalog {
       name: 'LUNGES',
       description: 'Build single-leg strength and balance',
       instructions:
-          'Stand side-on to the camera. Step forward and lower your hips until both knees are bent at about 90 degrees.',
+          'Stand side-on to the camera. Step out and lower until your front thigh is about level with the floor, then stand back up. Small knee dips do not count.',
       muscleGroup: 'Quadriceps, Glutes, Hamstrings',
       difficulty: 'Intermediate',
       iconAsset: 'assets/icons/exercises/lunge.png',
@@ -80,7 +80,7 @@ class ExerciseCatalog {
       name: 'OVERHEAD PRESS',
       description: 'Build shoulder and arm strength',
       instructions:
-          'Stand side-on to the camera. Press your arms straight overhead from shoulder height, then lower with control.',
+          'Stand side-on to the camera. From shoulder height press straight overhead until your arms lock out, then lower the bar back to your shoulders. Keep your legs still.',
       muscleGroup: 'Shoulders, Triceps',
       difficulty: 'Intermediate',
       iconAsset: 'assets/icons/exercises/overheadPress.png',
@@ -91,7 +91,7 @@ class ExerciseCatalog {
       name: 'PLANK',
       description: 'Build core stability and endurance',
       instructions:
-          'Face side-on to the camera. Hold your body in a straight line from head to heels, supported on forearms and toes.',
+          'Face side-on to the camera. Hold your body in a straight line from head to heels, held up on your forearms and toes. The clock pauses while your hips sag or rise.',
       muscleGroup: 'Core, Shoulders',
       difficulty: 'Beginner',
       iconAsset: 'assets/icons/exercises/plank.png',
@@ -102,7 +102,7 @@ class ExerciseCatalog {
       name: 'GLUTE BRIDGE',
       description: 'Wake up your glutes and hips',
       instructions:
-          'Lie on your back side-on to the camera, knees bent. Drive your hips up until your body forms a straight line, then lower slowly.',
+          'Lie on your back side-on to the camera, knees bent. Drive your hips up until your shoulders, hips and knees form one straight line, then lower all the way down.',
       muscleGroup: 'Glutes, Hamstrings',
       difficulty: 'Beginner',
       iconAsset: 'assets/icons/exercises/gluteBridge.png',
@@ -113,7 +113,7 @@ class ExerciseCatalog {
       name: 'SIT-UPS',
       description: 'Train your abs through a full range',
       instructions:
-          'Lie on your back side-on to the camera, knees bent. Curl your torso up toward your knees, then lower under control.',
+          'Lie on your back side-on to the camera, knees bent. Sit all the way up, chest well off the floor, then lie back down under control. Crunches do not count.',
       muscleGroup: 'Core, Hip Flexors',
       difficulty: 'Beginner',
       iconAsset: 'assets/icons/exercises/situp.png',
@@ -124,7 +124,7 @@ class ExerciseCatalog {
       name: 'JUMPING JACKS',
       description: 'Raise your heart rate and warm up',
       instructions:
-          'Face the camera. Jump your feet wide and sweep your arms all the way overhead, then return to the start.',
+          'Face the camera, far enough back to see your feet. Jump your feet wide and sweep your arms all the way overhead, then return to the start.',
       muscleGroup: 'Full Body, Cardio',
       difficulty: 'Beginner',
       iconAsset: 'assets/icons/exercises/jumpingJack.png',
@@ -135,7 +135,7 @@ class ExerciseCatalog {
       name: 'WALL SIT',
       description: 'Burn out your quads with a static hold',
       instructions:
-          'Sit against a wall side-on to the camera with your knees at about 90 degrees. Hold the position.',
+          'Sit against a wall side-on to the camera, thighs level and knees at about 90 degrees. The clock pauses if you slide up or down.',
       muscleGroup: 'Quadriceps, Glutes',
       difficulty: 'Beginner',
       iconAsset: 'assets/icons/exercises/wallSit.png',
@@ -146,7 +146,7 @@ class ExerciseCatalog {
       name: 'SIDE PLANK',
       description: 'Strengthen your obliques and stabilisers',
       instructions:
-          'Lie on one side facing the camera edge-on, propped on your forearm. Lift your hips so your body makes a straight line and hold.',
+          'Lie on one side facing the camera edge-on, propped on your forearm. Lift your hips so your body makes a straight line and hold. The clock pauses when your hips drop.',
       muscleGroup: 'Core, Obliques',
       difficulty: 'Intermediate',
       iconAsset: 'assets/icons/exercises/sidePlank.png',

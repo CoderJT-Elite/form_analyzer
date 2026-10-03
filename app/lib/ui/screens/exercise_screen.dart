@@ -372,20 +372,32 @@ class ExerciseScreenState extends State<ExerciseScreen>
             ? InputImageFormat.bgra8888
             : InputImageFormat.nv21;
 
-        final controller = CameraController(
-          description,
-          ResolutionPreset.medium,
-          enableAudio: false,
-          // A fixed 30 fps target keeps the sensor from stretching exposure in
-          // indoor light, which is what blurs a fast arm into a smear.
-          fps: 30,
-          imageFormatGroup: Platform.isIOS
-              ? ImageFormatGroup.bgra8888
-              : ImageFormatGroup.nv21,
-        );
+        // A fixed 30 fps target keeps the sensor from stretching exposure in
+        // indoor light, which is what blurs a fast arm into a smear. A device
+        // that refuses it gets the plugin's default instead of no camera.
+        CameraController build({int? fps}) => CameraController(
+              description,
+              ResolutionPreset.medium,
+              enableAudio: false,
+              fps: fps,
+              imageFormatGroup: Platform.isIOS
+                  ? ImageFormatGroup.bgra8888
+                  : ImageFormatGroup.nv21,
+            );
 
+        var controller = build(fps: 30);
         _cameraController = controller;
-        await controller.initialize();
+        try {
+          await controller.initialize();
+        } on CameraException catch (e) {
+          debugPrint('Camera refused a 30 fps target (${e.code}); using the default.');
+          try {
+            await controller.dispose();
+          } catch (_) {}
+          controller = build();
+          _cameraController = controller;
+          await controller.initialize();
+        }
 
         try {
           _minZoom = await controller.getMinZoomLevel();
@@ -1410,7 +1422,16 @@ class ExerciseScreenState extends State<ExerciseScreen>
                   style: AppTextStyles.setupSubtext,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 16),
+                // What counts, in a couple of lines: the rules are strict now, so
+                // say them before the set rather than after a rep is turned down.
+                Text(
+                  widget.exercise.instructions,
+                  key: const Key('setup-instructions'),
+                  style: const TextStyle(color: Colors.white54, fontSize: 12, height: 1.4),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
 
                 // Status Indicator Pill
                 Container(

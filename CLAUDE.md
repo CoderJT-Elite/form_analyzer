@@ -47,19 +47,21 @@ Camera frames flow through a fixed pipeline:
 4. The pose is handed to the active exercise's `ExerciseAnalyzer.processPose(pose)` (`lib/logic/exercise_analyzer.dart`), which does all rep-counting and form-scoring. While the phone itself is being moved (`PhoneMotionMonitor`) nothing is fed, and reps counted just before are retracted.
 5. The analyzer fires callbacks (`onRep`, `onFeedback`, `onCorrection`, `onSafetyAlert`) that `ExerciseScreen` wires up to TTS (`TTSService`), haptics, and the on-screen status/skeleton overlay (`PosePainter`). Everything spoken goes through `_say`, so the optional `SessionRecorder` can log it.
 
-Rep counting is judged against **the athlete's own range** (`logic/rep_cycle_detector.dart` for push-ups; `logic/rep_recovery.dart` for the recovery half elsewhere), never against fixed angles, and depth is *graded*, not a gate. Push-ups and sit-ups use 2D angles (`uses3dAngles => false`); ML Kit's depth estimate is noisy.
+Reps are judged by **gates, not scores**. Every rep-counted analyzer measures a scale-free signal (hip height as a share of leg length, elbow angle, torso elevation, feet spread in torso lengths...), median-filters it over a few frames, and at the end of each attempt decides one of three things: **counted** (scored 1.0 minus soft penalties), **no-rep** (a serious fault with enough good frames behind it: `recordNoRep`, announced via `onNoRep`, kept in `noRepRecords`) or **ignored** (not an attempt at all: `noteIgnored`, silent). Counts are emitted the moment the athlete is back at the start; there is no plateau wait, rocking or watchdog. Thresholds were read off real footage and live in `core/app_constants.dart` with the numbers they came from.
 
 **Before trusting a live test, read the build line at the bottom of Profile.** Live test #3 was recorded on a stale build. Install with `tools/install_phone.ps1`, which refuses to build from uncommitted code and stamps the APK. Turn on "Record Test Sessions" (tap the build line five times) to capture real poses; `test/support/recorded_session.dart` replays them with their real timing and gravity.
+
+To choose or check a threshold, don't guess: `python tools/dump_rep_metrics.py <fixture>` and `python tools/peaks.py <fixture> <metric>` print the signals from a recorded set, and `flutter test test/tool/dump_replay_test.dart --dart-define=DUMP=live5_squat:squat` replays one through the real analyzer (skipped otherwise). `test/live5_regression_test.dart` pins what each set of live test #5 must do, and `test/strict_gates_test.dart` pins every way a rep can be bad on synthetic poses.
 
 Timing-dependent tests must use a simulated clock (`test/support/test_clock.dart`, `replay_harness.dart`): analyzers judge reps by duration, and a tight loop on the wall clock makes every rep last zero milliseconds.
 
 ### Exercise analyzers
 
-`ExerciseAnalyzer` is an abstract base class with a per-exercise state machine (`RepPhase`: neutral/eccentric/concentric, plus a per-exercise state enum like `SquatState` for exercises needing depth tracking). Concrete analyzers — `SquatAnalyzer`, `PushupAnalyzer`, `LungeAnalyzer`, `OverheadPressAnalyzer`, `PlankAnalyzer` — all live in `lib/logic/exercise_analyzer.dart` and follow the same shape:
+`ExerciseAnalyzer` is an abstract base class with a per-exercise state machine (`RepPhase`: neutral/eccentric/concentric). The ten analyzers — `SquatAnalyzer`, `PushupAnalyzer`, `LungeAnalyzer`, `OverheadPressAnalyzer`, `GluteBridgeAnalyzer`, `SitupAnalyzer` (the last two on the `RangeOfMotionAnalyzer` base), `JumpingJackAnalyzer`, and the holds `PlankAnalyzer`, `SidePlankAnalyzer`, `WallSitAnalyzer` (on `TimedExerciseAnalyzer`) — all live in `lib/logic/exercise_analyzer.dart` and follow the same shape:
 - Declare `activeLandmarkTypes` (which ML Kit landmarks they need).
-- Smooth raw landmark/angle noise via `MovingAverageFilter` / `LandmarkSmoother` / `ExponentialSmoothingFilter` (`lib/utils/math_utils.dart`).
-- Drive phase transitions off angle thresholds with a hysteresis dead zone (`AppConstants.hysteresisDeadZoneDegrees`) to avoid flicker at phase boundaries.
-- Accumulate `currentRepIssues` per rep, score the rep (1.0 minus penalties), and push into `repScores`/`allRepIssues` on rep completion.
+- Measure with `logic/body_signals.dart` (`sampleLeg(s)`, `angle2D`, `ScaleWatch`) and filter with `logic/signal_filters.dart` (`MedianFilter`, `AttemptEvidence`, which judges a fault over the share of good frames in a rep, never one frame).
+- Open an attempt, track the extreme, count/no-rep/ignore at the return. Per-rep results are `RepRecord`s (`counted`, `noRepReason`, `uncertain`, tempo, range short); `attemptRecords` has counted and rejected attempts in order and is what gets saved.
+- Holds count only good-form time: hard faults are forgiven for `holdFaultGrace`, then the clock pauses until the position has been right for `holdResumeClean`; paused seconds are saved as records that did not count. The hip line is one smoothed offset (`logic/hip_line.dart: HipLineMeter`).
 
 `ExerciseAnalyzer` instances are stateful and single-use per workout session — `ExerciseCatalog.exerciseForType()` (`lib/models/exercise_catalog.dart`) always constructs a fresh analyzer rather than reusing one.
 
@@ -77,4 +79,4 @@ The Flutter project scaffolds android/ios/linux/macos/web/windows, but **Android
 
 ## Product scope
 
-This is an MVP: one core flow (open app → camera-based analysis → track reps/form cues for one of 5 exercises → review history/stats). When making changes, prefer maintainability over feature expansion, and keep this one core path solid rather than growing surface area.
+This is an MVP: one core flow (open app → camera-based analysis → track reps/form cues for one of 10 exercises → review history/stats, including per-rep detail). When making changes, prefer maintainability over feature expansion, and keep this one core path solid rather than growing surface area.
