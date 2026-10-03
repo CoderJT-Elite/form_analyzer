@@ -6,6 +6,7 @@ import '../../core/app_colors.dart';
 import '../../logic/exercise_analyzer.dart';
 import '../../models/exercise_model.dart';
 import 'glass_container.dart';
+import 'set_report.dart';
 
 class WorkoutSummaryDialog extends StatefulWidget {
   final WorkoutSession session;
@@ -70,6 +71,8 @@ class _WorkoutSummaryDialogState extends State<WorkoutSummaryDialog> {
         rating != null && session.ratingTrustworthy && session.countedTotal > 0;
     final int stars = (rating ?? 0).round().clamp(0, 5);
     final reps = session.ratingTrustworthy ? _allReps : <RepRecord>[];
+    final insights =
+        reps.isEmpty ? null : SetInsights.from(session.exerciseType, reps);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -91,7 +94,7 @@ class _WorkoutSummaryDialogState extends State<WorkoutSummaryDialog> {
             ),
             const SizedBox(height: 16),
             Text(
-              session.exerciseType.name.toUpperCase(),
+              session.exerciseType.displayName.toUpperCase(),
               style: GoogleFonts.outfit(
                 color: Colors.white,
                 fontSize: 28,
@@ -135,56 +138,33 @@ class _WorkoutSummaryDialogState extends State<WorkoutSummaryDialog> {
               ),
             ],
             const SizedBox(height: 32),
-            if (timed)
-              _buildStatRow('TIME HELD', formatHold(session.heldSeconds))
-            else
+            if (timed) ...[
+              _buildStatRow('TIME HELD', formatHold(session.heldSeconds)),
+              if (insights != null && insights.rejected.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'of ${formatHold(session.heldSeconds + insights.rejected.length)} in position',
+                    key: const Key('in-position'),
+                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                  ),
+                ),
+            ] else
               _buildRepStepper(),
-            if (reps.isNotEmpty) ...[
+            if (insights != null && !insights.isEmpty) ...[
               const Divider(color: Colors.white12, height: 32),
               _sectionLabel(timed ? 'FORM SECOND BY SECOND' : 'REP QUALITY'),
               const SizedBox(height: 12),
-              _RepQualityStrip(reps: reps),
-              const SizedBox(height: 12),
-              timed
-                  ? _buildHoldDetail(reps)
-                  : _buildRepDetail(reps, thinSet: session.totalReps < 3),
-            ],
-            const SizedBox(height: 16),
-            if (session.overallFeedback.isNotEmpty) ...[
-              const Divider(color: Colors.white12, height: 32),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'COACH\'S FEEDBACK',
-                  style: GoogleFonts.inter(
-                    color: Colors.white38,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: session.overallFeedback
-                    .map((f) => _FeedbackChip(label: f))
-                    .toList(),
+              RepQualityStrip(type: session.exerciseType, attempts: reps),
+              const SizedBox(height: 6),
+              Text(
+                'Tap a bar to see that ${timed ? 'second' : 'rep'}.',
+                style: GoogleFonts.inter(color: Colors.white30, fontSize: 11),
               ),
               const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _focusHint(session.overallFeedback.first),
-                  style: GoogleFonts.inter(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    height: 1.5,
-                  ),
-                ),
-              ),
+              SetReportText(insights: insights),
             ],
+            const SizedBox(height: 16),
             const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
@@ -229,92 +209,6 @@ class _WorkoutSummaryDialogState extends State<WorkoutSummaryDialog> {
   /// m:ss for a hold, e.g. 75 -> 1:15.
   static String formatHold(int seconds) =>
       '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
-
-  /// How much of a hold was spent with good form, in place of the per-rep
-  /// "best rep / weakest rep" wording that makes no sense for seconds.
-  Widget _buildHoldDetail(List<RepRecord> reps) {
-    final good = reps.where((r) => r.score >= 0.9).length;
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        'Good form for $good of ${reps.length} seconds.',
-        style: GoogleFonts.inter(
-          color: Colors.white70,
-          fontSize: 13,
-          height: 1.5,
-        ),
-      ),
-    );
-  }
-
-  /// Best and worst rep, plus average tempo when it was measured. Comparing
-  /// reps only means something with a few of them ("Every rep scored the same"
-  /// for a single rep is not a finding).
-  Widget _buildRepDetail(List<RepRecord> reps, {required bool thinSet}) {
-    final best = reps.reduce((a, b) => b.score > a.score ? b : a);
-    final worst = reps.reduce((a, b) => b.score < a.score ? b : a);
-
-    final timed = reps.where((record) => record.eccentricMs > 0).toList();
-    final averageEccentric = timed.isEmpty
-        ? null
-        : timed.fold<int>(0, (sum, r) => sum + r.eccentricMs) ~/ timed.length;
-
-    final lines = <String>[
-      if (!thinSet && best.score != worst.score)
-        'Best rep #${best.index}, weakest rep #${worst.index}.'
-      else if (!thinSet)
-        'Every rep scored the same.',
-      if (averageEccentric != null)
-        'Average lowering time ${(averageEccentric / 1000).toStringAsFixed(1)}s.',
-    ];
-
-    if (lines.isEmpty) return const SizedBox.shrink();
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        lines.join(' '),
-        style: GoogleFonts.inter(
-          color: Colors.white70,
-          fontSize: 13,
-          height: 1.5,
-        ),
-      ),
-    );
-  }
-
-  /// Turn the most frequent issue into one actionable thing to work on.
-  static String _focusHint(String topIssue) {
-    switch (topIssue) {
-      case 'Excessive Forward Lean':
-        return 'Focus next time: keep your chest up so your torso stays '
-            'roughly parallel to your shins.';
-      case 'Rounded Back':
-      case 'Critical Back Rounding':
-        return 'Focus next time: brace your core and keep your chest up '
-            'through the whole rep.';
-      case 'Insufficient Depth':
-        return 'Focus next time: slow down and go a little lower before '
-            'driving back up.';
-      case 'Insufficient Range':
-        return 'Focus next time: bring the weight all the way down before '
-            'pressing.';
-      case 'Incomplete Lockout':
-      case 'No Full Lockout':
-        return 'Focus next time: finish each rep fully extended before '
-            'starting the next.';
-      case 'Hips Sagging':
-        return 'Focus next time: squeeze your glutes to keep your hips in '
-            'line with your shoulders.';
-      case 'Hips Piked':
-        return 'Focus next time: lower your hips so your body makes one '
-            'straight line.';
-      case 'Body Not Straight':
-        return 'Focus next time: keep your head, hips and heels in one straight '
-            'line.';
-      default:
-        return 'Focus next time: $topIssue.';
-    }
-  }
 
   /// Total reps with plus/minus, so a miscount can be put right. The counter's
   /// own number is kept alongside so the gap can be measured.
@@ -409,46 +303,6 @@ class _WorkoutSummaryDialogState extends State<WorkoutSummaryDialog> {
   }
 }
 
-/// One bar per rep, coloured by how clean it was. Shows at a glance whether
-/// form held up or fell apart as the set went on.
-class _RepQualityStrip extends StatelessWidget {
-  final List<RepRecord> reps;
-
-  const _RepQualityStrip({required this.reps});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (final record in reps)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 1.5),
-                child: Container(
-                  height: 8 + (48 * record.score.clamp(0.0, 1.0)),
-                  decoration: BoxDecoration(
-                    color: _colorFor(record.score),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  static Color _colorFor(double score) {
-    if (score >= 0.9) return AppColors.goodGreen;
-    if (score >= 0.7) return AppColors.accentCyan;
-    if (score >= 0.5) return AppColors.warnOrange;
-    return AppColors.badRed;
-  }
-}
-
 /// "Up 0.4 stars from last time" — the reason to come back tomorrow.
 class _TrendLabel extends StatelessWidget {
   final double current;
@@ -483,32 +337,6 @@ class _TrendLabel extends StatelessWidget {
         color: color,
         fontSize: 12,
         fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-}
-
-class _FeedbackChip extends StatelessWidget {
-  final String label;
-
-  const _FeedbackChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.inter(
-          color: Colors.white70,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
       ),
     );
   }

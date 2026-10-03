@@ -231,7 +231,7 @@ void main() {
       final run = _run(stem, kind);
       for (final record in run.analyzer.noRepRecords) {
         expect(record.counted, isFalse);
-        expect(record.noRepReason, isNotNull, reason: '$stem');
+        expect(record.noRepReason, isNotNull, reason: stem);
       }
       expect(run.analyzer.getPerformanceMetrics().noRepCount, run.analyzer.noRepRecords.length);
     }

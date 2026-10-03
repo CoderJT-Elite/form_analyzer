@@ -51,7 +51,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('SQUAT'), findsOneWidget);
+    expect(find.text('SQUATS'), findsOneWidget);
     expect(find.text('12'), findsOneWidget); // REPS
     expect(find.text('4.8'), findsOneWidget); // FORM
     expect(find.text('GOOD DEPTH'), findsOneWidget);

@@ -51,9 +51,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Find switches. First switch is Voice Coaching, second is Haptic Feedback.
+    // Find switches: Voice Coaching, Count Reps Aloud, Haptic Feedback.
     final switches = find.byType(Switch);
-    expect(switches, findsNWidgets(2));
+    expect(switches, findsNWidgets(3));
 
     // Toggle Voice Coaching to false
     await tester.tap(switches.first);
@@ -82,7 +82,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final switches = find.byType(Switch);
-    expect(switches, findsNWidgets(2));
+    expect(switches, findsNWidgets(3));
 
     // Toggle Haptics to false
     await tester.tap(switches.last);
@@ -95,6 +95,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(await storage.isHapticFeedbackEnabled(), isTrue);
+  });
+
+  testWidgets('Toggling Count Reps Aloud updates local state and StorageService',
+      (WidgetTester tester) async {
+    setPhoneSize(tester);
+    final storage = StorageService();
+    // On by default: the coach counts for you.
+    expect(await storage.isRepCountSpeechEnabled(), isTrue);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ProfileScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Count Reps Aloud'), findsOneWidget);
+    final switches = find.byType(Switch);
+    await tester.tap(switches.at(1));
+    await tester.pumpAndSettle();
+    expect(await storage.isRepCountSpeechEnabled(), isFalse);
+
+    await tester.tap(switches.at(1));
+    await tester.pumpAndSettle();
+    expect(await storage.isRepCountSpeechEnabled(), isTrue);
   });
 
   testWidgets('Tapping Report a Problem with empty crash logs shows message',

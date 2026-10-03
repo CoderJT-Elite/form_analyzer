@@ -262,7 +262,7 @@ class _StatsScreenState extends State<StatsScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    e.key.name.toUpperCase(),
+                    e.key.displayName.toUpperCase(),
                     style: GoogleFonts.outfit(
                       color: AppColors.textPrimary,
                       fontSize: 13,
@@ -293,6 +293,7 @@ class _StatsScreenState extends State<StatsScreen>
                 ],
               ),
               const SizedBox(height: 12),
+              ...?_exerciseNote(e.key),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: AnimatedBuilder(
@@ -312,6 +313,53 @@ class _StatsScreenState extends State<StatsScreen>
         ),
       );
     }).toList();
+  }
+
+  /// How form is going on one exercise: the latest rating, the change from the
+  /// session before it (only between sessions scored the same way), and the
+  /// fault that comes up most. The old trend line mixed every exercise together,
+  /// so a good squat day made push-ups look better.
+  List<Widget>? _exerciseNote(ExerciseType type) {
+    final rated = _sessions
+        .where((s) => s.exerciseType == type && s.overallRating != null)
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+    if (rated.isEmpty) return null;
+    final latest = rated.last;
+    final previous = rated.length > 1 ? rated[rated.length - 2] : null;
+    final comparable = previous != null && previous.scoringVersion == latest.scoringVersion;
+
+    final issueCounts = <String, int>{};
+    for (final s in rated.skip(rated.length > 5 ? rated.length - 5 : 0)) {
+      for (final issue in s.overallFeedback) {
+        issueCounts[issue] = (issueCounts[issue] ?? 0) + 1;
+      }
+    }
+    final topIssue = issueCounts.isEmpty
+        ? null
+        : (issueCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).first.key;
+
+    final parts = <String>['Form ${latest.overallRating!.toStringAsFixed(1)}'];
+    if (comparable) {
+      final delta = latest.overallRating! - previous.overallRating!;
+      if (delta.abs() >= 0.05) {
+        parts.add('${delta > 0 ? '▲' : '▼'}${delta.abs().toStringAsFixed(1)} vs last time');
+      } else {
+        parts.add('same as last time');
+      }
+    }
+    if (topIssue != null) parts.add('most common fault: ${topIssue.toLowerCase()}');
+    return [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          parts.join(' · '),
+          key: Key('exercise-note-${type.name}'),
+          style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12),
+        ),
+      ),
+      const SizedBox(height: 10),
+    ];
   }
 
   Widget _buildFormRatingCard() {

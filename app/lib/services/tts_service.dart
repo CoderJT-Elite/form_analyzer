@@ -2,11 +2,14 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 /// How badly a phrase needs to be heard right now.
 enum SpeechPriority {
+  /// The rep count: said only into silence, and cut off by any coaching.
+  low,
+
   /// Coaching that can wait: dropped if something is already being said.
   normal,
 
-  /// Safety warnings and the countdown: may interrupt normal speech, but never
-  /// another urgent phrase (that just chops both to pieces).
+  /// Safety warnings and the countdown: may interrupt lower-priority speech, but
+  /// never another urgent phrase (that just chops both to pieces).
   urgent,
 }
 
@@ -54,7 +57,7 @@ class TTSService {
     if (!_speaking) return true;
     final t = now ?? DateTime.now();
     if (t.difference(_startedAt) > _stuckAfter) return true;
-    return priority == SpeechPriority.urgent && _current == SpeechPriority.normal;
+    return priority.index > _current.index;
   }
 
   /// Returns true if the phrase was handed to the engine.

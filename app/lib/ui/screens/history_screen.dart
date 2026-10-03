@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/app_colors.dart';
 import '../../models/exercise_model.dart';
+import 'session_detail_screen.dart';
 import '../../services/storage_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/profile_avatar_button.dart';
@@ -180,6 +181,7 @@ class _SessionCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: GlassContainer(
         padding: const EdgeInsets.all(20),
+        onTap: () => SessionDetailScreen.open(context, session),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -200,7 +202,7 @@ class _SessionCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          session.exerciseType.name.toUpperCase(),
+                          session.exerciseType.displayName.toUpperCase(),
                           style: GoogleFonts.outfit(
                             color: AppColors.accentCyan,
                             fontSize: 10,
@@ -344,7 +346,8 @@ class _SessionCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          ' · ${set.rating.toStringAsFixed(1)}',
+                          // A set saved by hand was never analysed: no score.
+                          set.counted == 0 ? ' · —' : ' · ${set.rating.toStringAsFixed(1)}',
                           style: GoogleFonts.inter(
                             color: setColor.withValues(alpha: 0.6),
                             fontSize: 10,

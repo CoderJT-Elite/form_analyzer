@@ -19,6 +19,7 @@ import '../../logic/pose_normalizer.dart';
 import '../../logic/pose_orientation.dart';
 import '../../logic/pose_validity.dart';
 import '../../models/exercise_model.dart';
+import '../../models/feedback_copy.dart';
 import '../../services/device_gravity_service.dart';
 import '../../services/pose_detector_service.dart';
 import '../../services/session_recorder.dart';
@@ -123,8 +124,6 @@ class ExerciseScreenState extends State<ExerciseScreen>
 
   int _calibrationCountdown = 3;
   bool _isCalibrated = false;
-  static const int _frameSkipInterval = 2;
-  int _frameCounter = 0;
   Timer? _calibrationTimer;
 
   // Per-frame state lives in notifiers rather than in setState. Calling
@@ -215,6 +214,9 @@ class ExerciseScreenState extends State<ExerciseScreen>
   Timer? _restTimer;
   bool _hapticsEnabled = true;
 
+  /// Whether the rep number is spoken after each counted rep (Profile).
+  bool _speakCounts = true;
+
   @override
   void initState() {
     super.initState();
@@ -232,8 +234,10 @@ class ExerciseScreenState extends State<ExerciseScreen>
     _loadFeedbackPreferences();
     widget.exercise.analyzer.onRep = (count) {
       if (mounted) {
-        if (count > _repCount.value) {
+        final counted = count > _repCount.value;
+        if (counted) {
           _triggerHaptic(HapticFeedback.mediumImpact);
+          _announceCount(count);
         }
         _repCount.value = count;
         _recorder?.event('rep', {'count': count});
@@ -241,7 +245,23 @@ class ExerciseScreenState extends State<ExerciseScreen>
     };
     // Cue delivery is already rate-limited, prioritised and varied by the
     // analyzer's CueEngine, so these just hand the text straight to speech.
-    widget.exercise.analyzer.onFeedback = (message) => _say(message, kind: 'praise');
+    widget.exercise.analyzer.onFeedback = (message) {
+      // While the count is being spoken, praise is kept for the streaks: "7. Nice
+      // rep. 8. That one was clean." is chatter.
+      if (_speakCounts &&
+          !widget.exercise.analyzer.isTimedHold &&
+          !_streakPhrases.contains(message)) {
+        _recorder?.event('speech_skipped', {'text': message, 'why': 'counting aloud'});
+        return;
+      }
+      _say(message, kind: 'praise');
+    };
+    widget.exercise.analyzer.onNoRep = (reason, spoken) {
+      _triggerHaptic(HapticFeedback.heavyImpact);
+      _recorder?.event('noRep', {'reason': reason, 'spoken': spoken != null});
+      if (spoken != null) _say(spoken, kind: 'noRep');
+    };
+    widget.exercise.analyzer.onIgnored = (reason) => _recorder?.event('ignored', {'reason': reason});
     widget.exercise.analyzer.onCorrection = (message) => _say(message, kind: 'correction');
     widget.exercise.analyzer.onSafetyAlert = (message) {
       _triggerHaptic(HapticFeedback.heavyImpact);
@@ -265,13 +285,38 @@ class ExerciseScreenState extends State<ExerciseScreen>
   /// goes through here, so the recording can show what was said and when.
   void _say(String message, {String kind = 'speech', SpeechPriority priority = SpeechPriority.normal}) {
     _recorder?.event('speech', {'text': message, 'kind': kind, 'urgent': priority == SpeechPriority.urgent});
-    _tts.speak(message, priority: priority);
+    // The engine drops a phrase when something more important is being said (or
+    // the voice is off). The recording used to claim everything was spoken.
+    unawaited(_tts.speak(message, priority: priority).then((spoken) {
+      if (!spoken) _recorder?.event('speech_dropped', {'text': message, 'kind': kind});
+    }));
+  }
+
+  /// The streak compliments, the only praise spoken while counting aloud.
+  static final Set<String> _streakPhrases = {
+    for (final d in kDefaultCues)
+      if (d.id == CueIds.streak) ...d.phrasings,
+  };
+
+  /// Say the rep number, quietly: any coaching cuts it off.
+  void _announceCount(int count) {
+    final analyzer = widget.exercise.analyzer;
+    if (!_speakCounts) return;
+    if (analyzer.isTimedHold) {
+      // A hold is not counted second by second; mark the milestones.
+      if (count > 0 && count % 15 == 0) {
+        _say('$count seconds', kind: 'count', priority: SpeechPriority.low);
+      }
+      return;
+    }
+    _say('$count', kind: 'count', priority: SpeechPriority.low);
   }
 
   Future<void> _loadFeedbackPreferences() async {
     await _tts.init();
     final voiceEnabled = await _storage.isVoiceCoachingEnabled();
     final hapticsEnabled = await _storage.isHapticFeedbackEnabled();
+    _speakCounts = await _storage.isRepCountSpeechEnabled();
     if (widget.recorder != null) {
       _recorder = widget.recorder;
     } else if (await _storage.isSessionRecordingEnabled()) {
@@ -331,6 +376,9 @@ class ExerciseScreenState extends State<ExerciseScreen>
           description,
           ResolutionPreset.medium,
           enableAudio: false,
+          // A fixed 30 fps target keeps the sensor from stretching exposure in
+          // indoor light, which is what blurs a fast arm into a smear.
+          fps: 30,
           imageFormatGroup: Platform.isIOS
               ? ImageFormatGroup.bgra8888
               : ImageFormatGroup.nv21,
@@ -590,13 +638,13 @@ class ExerciseScreenState extends State<ExerciseScreen>
   }
 
   Future<void> _processImage(CameraImage image) async {
-    // Count every delivered frame before any early return, so the skip
-    // interval stays a fixed 1-in-N. Incrementing after the busy check made
-    // the effective sample rate drift with detection latency.
-    _frameCounter++;
-    if (_frameCounter % _frameSkipInterval != 0) return;
+    // Every frame the detector can take is analysed: skipping every other one
+    // halved the rate to 6-8 a frame (live test #5), at which fast arms blur and
+    // a rep's bottom can fall between two frames. The busy flag below is the
+    // throttle: frames that arrive while detection is running are dropped.
     if (_isProcessingFrame || !_isCameraInitialized) return;
     _isProcessingFrame = true;
+    final detectStarted = DateTime.now();
 
     try {
       if (image.planes.isEmpty) {
@@ -617,6 +665,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
       );
 
       final detected = await _poseDetector.processImage(inputImage);
+      final detectMs = DateTime.now().difference(detectStarted).inMilliseconds;
 
       if (!mounted) return;
 
@@ -651,7 +700,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
       // Notifier assignment instead of setState: only the skeleton overlay
       // repaints, leaving CameraPreview and the surrounding chrome alone.
       _presence.frame(athleteVisible: poses.isNotEmpty);
-      _recordFrame(detected, poses, detectionRotation);
+      _recordFrame(detected, poses, detectionRotation, detectMs);
       _posesRotation = detectionRotation;
       _poses.value = poses;
     } catch (e) {
@@ -666,7 +715,12 @@ class ExerciseScreenState extends State<ExerciseScreen>
       ? 'setup'
       : (!_isCalibrated ? 'countdown' : (_isResting ? 'rest' : 'active'));
 
-  void _recordFrame(List<Pose> detected, List<Pose> accepted, InputImageRotation rotation) {
+  void _recordFrame(
+    List<Pose> detected,
+    List<Pose> accepted,
+    InputImageRotation rotation,
+    int detectMs,
+  ) {
     final recorder = _recorder;
     final raw = _imageSize;
     if (recorder == null || raw == null) return;
@@ -680,6 +734,7 @@ class ExerciseScreenState extends State<ExerciseScreen>
       gravity: _gravity.estimate,
       accel: _gravity.lastSample,
       phoneMoving: _gravity.phoneIsMoving,
+      detectMs: detectMs,
     );
   }
 
@@ -723,21 +778,25 @@ class ExerciseScreenState extends State<ExerciseScreen>
     final analyzer = widget.exercise.analyzer;
     final sets = List<ExerciseSet>.from(_completedSets);
     double? rating;
-    List<String> feedback = const [];
     if (_repCount.value > 0) {
       final setPerformance = analyzer.getPerformanceMetrics();
       rating = setPerformance.averageFormScore;
-      feedback = setPerformance.commonIssues;
       sets.add(
         ExerciseSet(
           reps: _repCount.value,
           timestamp: DateTime.now(),
           rating: setPerformance.averageFormScore,
           feedback: setPerformance.commonIssues,
-          repRecords: List.of(analyzer.repRecords),
+          repRecords: List.of(analyzer.attemptRecords),
         ),
       );
     }
+    // The coaching summary covers every set of the workout, not only the one
+    // still in progress: finishing a set and then the workout used to leave the
+    // report with no coach feedback at all.
+    final feedback = PerformanceMetrics.fromRecords(
+      sets.expand((set) => set.repRecords),
+    ).commonIssues;
     if (sets.isEmpty) {
       // Nothing was counted. That is not the same as nothing happening: the
       // counter may have missed a whole set (it did, twice, on live test #3),
@@ -831,6 +890,9 @@ class ExerciseScreenState extends State<ExerciseScreen>
       final sameExercise = sessions
           .where((s) => s.exerciseType == widget.exercise.type)
           .where((s) => s.overallRating != null)
+          // Ratings from before no-reps existed were made by lenient rules and
+          // are not comparable with today's.
+          .where((s) => s.scoringVersion >= WorkoutSession.currentScoringVersion)
           .toList()
         ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -840,6 +902,9 @@ class ExerciseScreenState extends State<ExerciseScreen>
       return null;
     }
   }
+
+  /// What the set that just ended looked like, shown on the rest screen.
+  PerformanceMetrics? _lastSetSummary;
 
   void _finishSet() {
     if (_repCount.value == 0) return;
@@ -851,9 +916,10 @@ class ExerciseScreenState extends State<ExerciseScreen>
         timestamp: DateTime.now(),
         rating: performance.averageFormScore,
         feedback: performance.commonIssues,
-        repRecords: List.of(widget.exercise.analyzer.repRecords),
+        repRecords: List.of(widget.exercise.analyzer.attemptRecords),
       ),
     );
+    _lastSetSummary = performance;
     _recorder?.event('set_finished', {'reps': _repCount.value, 'sets': _completedSets.length});
     _repCount.value = 0;
     _setCount.value = _completedSets.length;
@@ -903,6 +969,8 @@ class ExerciseScreenState extends State<ExerciseScreen>
     widget.exercise.analyzer.onFeedback = null;
     widget.exercise.analyzer.onCorrection = null;
     widget.exercise.analyzer.onSafetyAlert = null;
+    widget.exercise.analyzer.onNoRep = null;
+    widget.exercise.analyzer.onIgnored = null;
     _poses.dispose();
     _statusMessage.dispose();
     _repCount.dispose();
@@ -1168,7 +1236,11 @@ class ExerciseScreenState extends State<ExerciseScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 40),
+            if (_lastSetSummary != null) ...[
+              const SizedBox(height: 24),
+              _buildLastSetCard(_lastSetSummary!),
+            ],
+            const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
                 _restTimer?.cancel();
@@ -1195,6 +1267,53 @@ class ExerciseScreenState extends State<ExerciseScreen>
       ),
     );
   }
+
+  /// A few lines on the set that just ended: what counted, what did not, and the
+  /// one thing to fix next set.
+  Widget _buildLastSetCard(PerformanceMetrics summary) {
+    final type = widget.exercise.type;
+    final unit = type.isTimedHold ? 'seconds held' : (summary.totalReps == 1 ? 'rep' : 'reps');
+    final lines = <String>[
+      '${summary.totalReps} $unit counted',
+      if (summary.noRepCount > 0)
+        '${summary.noRepCount} ${type.isTimedHold ? 'paused' : "didn't count"}'
+            ' (${summary.noReps.entries.map((e) => '${e.key.toLowerCase()} x${e.value}').join(', ')})',
+    ];
+    final fix = summary.noReps.isNotEmpty
+        ? FeedbackCopy.tip(type, _topKey(summary.noReps)).fix
+        : (summary.commonIssues.isNotEmpty
+            ? FeedbackCopy.tip(type, summary.commonIssues.first).fix
+            : 'Clean set. Keep that form.');
+    return Container(
+      key: const Key('rest-last-set'),
+      margin: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final line in lines)
+            Text(
+              line,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          const SizedBox(height: 8),
+          Text(
+            'Next set: $fix',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(color: AppColors.accentCyan, fontSize: 13, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _topKey(Map<String, int> counts) =>
+      (counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).first.key;
 
   Widget _buildStartupOverlay() {
     if (_isSetupGuiding) {

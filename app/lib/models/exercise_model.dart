@@ -25,6 +25,37 @@ extension ExerciseTypeTiming on ExerciseType {
       this == ExerciseType.sidePlank;
 }
 
+/// What to call an exercise on screen. (The enum's own name, upper-cased, read
+/// "OVERHEADPRESS" and "GLUTEBRIDGE" in the summary, history and stats.)
+extension ExerciseTypeDisplay on ExerciseType {
+  String get displayName => switch (this) {
+        ExerciseType.squat => 'Squats',
+        ExerciseType.pushup => 'Push-ups',
+        ExerciseType.lunge => 'Lunges',
+        ExerciseType.plank => 'Plank',
+        ExerciseType.overheadPress => 'Overhead Press',
+        ExerciseType.gluteBridge => 'Glute Bridge',
+        ExerciseType.situp => 'Sit-ups',
+        ExerciseType.jumpingJack => 'Jumping Jacks',
+        ExerciseType.wallSit => 'Wall Sit',
+        ExerciseType.sidePlank => 'Side Plank',
+      };
+
+  /// Singular, for "your best squat".
+  String get singularName => switch (this) {
+        ExerciseType.squat => 'squat',
+        ExerciseType.pushup => 'push-up',
+        ExerciseType.lunge => 'lunge',
+        ExerciseType.plank => 'plank',
+        ExerciseType.overheadPress => 'press',
+        ExerciseType.gluteBridge => 'bridge',
+        ExerciseType.situp => 'sit-up',
+        ExerciseType.jumpingJack => 'jack',
+        ExerciseType.wallSit => 'wall sit',
+        ExerciseType.sidePlank => 'side plank',
+      };
+}
+
 class Exercise {
   final String name;
   final String description;
@@ -99,10 +130,30 @@ class ExerciseSet {
         repRecords: repRecords,
       );
 
-  /// Average lowering time across reps that measured it, or null when unknown.
+  /// Records of reps that counted (for a hold, the seconds held with good form).
+  List<RepRecord> get countedRecords =>
+      repRecords.where((record) => record.counted).toList(growable: false);
+
+  /// Records of attempts that did not count (for a hold, seconds paused for a
+  /// fault).
+  List<RepRecord> get noRepRecords =>
+      repRecords.where((record) => !record.counted).toList(growable: false);
+
+  /// How many attempts were turned down, by the reason given.
+  Map<String, int> get noRepCounts {
+    final counts = <String, int>{};
+    for (final record in noRepRecords) {
+      final reason = record.noRepReason ?? 'Did not count';
+      counts[reason] = (counts[reason] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /// Average lowering time across counted reps that measured it, or null when
+  /// unknown.
   Duration? get averageEccentric {
     final measured =
-        repRecords.where((record) => record.eccentricMs > 0).toList();
+        countedRecords.where((record) => record.eccentricMs > 0).toList();
     if (measured.isEmpty) return null;
     final total =
         measured.fold<int>(0, (sum, record) => sum + record.eccentricMs);
@@ -110,13 +161,15 @@ class ExerciseSet {
   }
 
   RepRecord? get bestRep {
-    if (repRecords.isEmpty) return null;
-    return repRecords.reduce((a, b) => b.score > a.score ? b : a);
+    final counted = countedRecords;
+    if (counted.isEmpty) return null;
+    return counted.reduce((a, b) => b.score > a.score ? b : a);
   }
 
   RepRecord? get worstRep {
-    if (repRecords.isEmpty) return null;
-    return repRecords.reduce((a, b) => b.score < a.score ? b : a);
+    final counted = countedRecords;
+    if (counted.isEmpty) return null;
+    return counted.reduce((a, b) => b.score < a.score ? b : a);
   }
 
   Map<String, dynamic> toJson() => {
@@ -157,6 +210,14 @@ class WorkoutSession {
   final double? overallRating;
   final List<String> overallFeedback;
 
+  /// How reps were judged when this session was recorded. 1 is the original
+  /// lenient scoring (nothing was ever turned down for form); 2 turns serious
+  /// faults into no-reps, so a rating from version 2 is not comparable with one
+  /// from version 1 and "vs last session" skips the comparison.
+  final int scoringVersion;
+
+  static const int currentScoringVersion = 2;
+
   WorkoutSession({
     required this.id,
     required this.date,
@@ -164,6 +225,7 @@ class WorkoutSession {
     required this.sets,
     this.overallRating,
     this.overallFeedback = const [],
+    this.scoringVersion = currentScoringVersion,
   });
 
   int get totalReps => sets.fold(0, (sum, set) => sum + set.reps);
@@ -194,6 +256,7 @@ class WorkoutSession {
         sets: sets ?? this.sets,
         overallRating: clearRating ? null : (overallRating ?? this.overallRating),
         overallFeedback: overallFeedback,
+        scoringVersion: scoringVersion,
       );
 
   /// Seconds held, for timed exercises; zero otherwise.
@@ -210,6 +273,7 @@ class WorkoutSession {
     'sets': sets.map((s) => s.toJson()).toList(),
     'overallRating': overallRating,
     'overallFeedback': overallFeedback,
+    'scoringVersion': scoringVersion,
   };
 
   factory WorkoutSession.fromJson(Map<String, dynamic> json) => WorkoutSession(
@@ -221,6 +285,8 @@ class WorkoutSession {
     sets: (json['sets'] as List).map((s) => ExerciseSet.fromJson(s)).toList(),
     overallRating: (json['overallRating'] as num?)?.toDouble(),
     overallFeedback: List<String>.from(json['overallFeedback'] ?? []),
+    // Sessions saved before the field existed were judged by the lenient rules.
+    scoringVersion: json['scoringVersion'] as int? ?? 1,
   );
 }
 

@@ -44,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSyncing = false;
   bool _voiceCoachingEnabled = true;
   bool _hapticFeedbackEnabled = true;
+  bool _repCountSpeech = true;
   String? _profilePicturePath;
   bool _isTakingPhoto = false;
   String? _displayName;
@@ -63,6 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final data = await _storageService.loadSessions();
       final voiceEnabled = await _storageService.isVoiceCoachingEnabled();
       final hapticsEnabled = await _storageService.isHapticFeedbackEnabled();
+      final countAloud = await _storageService.isRepCountSpeechEnabled();
       final picturePath = await _storageService.getProfilePicturePath();
       final displayName = await _storageService.getDisplayName();
       final unlocked = await _storageService.isDeveloperUnlocked();
@@ -74,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _sessions = data;
         _voiceCoachingEnabled = voiceEnabled;
         _hapticFeedbackEnabled = hapticsEnabled;
+        _repCountSpeech = countAloud;
         _profilePicturePath = picturePath;
         _displayName = displayName;
         _isLoading = false;
@@ -490,6 +493,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onChanged: (value) async {
             await _storageService.setVoiceCoachingEnabled(value);
             if (mounted) setState(() => _voiceCoachingEnabled = value);
+          },
+        ),
+        _buildToggleSetting(
+          icon: Icons.pin_outlined,
+          title: 'Count Reps Aloud',
+          value: _repCountSpeech,
+          onChanged: (value) async {
+            await _storageService.setRepCountSpeechEnabled(value);
+            if (mounted) setState(() => _repCountSpeech = value);
           },
         ),
         _buildToggleSetting(

@@ -43,6 +43,7 @@ class StorageService {
   static const String _voiceCoachingEnabledKey = 'voice_coaching_enabled_v1';
   static const String _hapticFeedbackEnabledKey = 'haptic_feedback_enabled_v1';
   static const String _sessionRecordingKey = 'session_recording_enabled_v1';
+  static const String _speakRepCountKey = 'speak_rep_count_v1';
   static const String _developerUnlockedKey = 'developer_options_unlocked_v1';
   static const String _disclaimerAcceptedKey = 'health_disclaimer_accepted_v1';
   static const String _profilePicturePathKey = 'profile_picture_path_v1';
@@ -220,6 +221,17 @@ class StorageService {
   Future<bool> isHapticFeedbackEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_hapticFeedbackEnabledKey) ?? true;
+  }
+
+  /// Whether the rep number is spoken after each counted rep. On by default.
+  Future<bool> isRepCountSpeechEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_speakRepCountKey) ?? true;
+  }
+
+  Future<void> setRepCountSpeechEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_speakRepCountKey, enabled);
   }
 
   /// Whether workouts are recorded to the device for diagnosis. Off by default;

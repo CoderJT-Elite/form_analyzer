@@ -77,6 +77,7 @@ class SessionRecorder {
     GravityEstimate? gravity,
     AccelerometerSample? accel,
     bool phoneMoving = false,
+    int? detectMs,
   }) {
     _detectionsSeen++;
     if (pose == null) return;
@@ -104,6 +105,7 @@ class SessionRecorder {
       if (gravity != null) 'quarterTurns': gravity.quarterTurns,
       if (accel != null) 'accel': [_round(accel.x, 2), _round(accel.y, 2), _round(accel.z, 2)],
       if (phoneMoving) 'phoneMoving': true,
+      if (detectMs != null) 'detectMs': detectMs,
     });
   }
 
@@ -205,8 +207,10 @@ class RecordingStore {
     return found;
   }
 
-  /// The files of the newest [sessions] workouts (a pair each).
-  static Future<List<File>> latest({int sessions = 3}) async {
+  /// The files of the newest [sessions] workouts (a pair each). Twelve covers a
+  /// full routine and then some: live test #5 shared only the newest three, so
+  /// five of the eight exercises' recordings never left the phone.
+  static Future<List<File>> latest({int sessions = 12}) async {
     return (await files()).take(sessions * 2).toList();
   }
 
