@@ -51,12 +51,15 @@ void main() {
     expect(run.analyzer.repCount, inInclusiveRange(13, 17));
   });
 
-  test('overhead press: the rep counted as the athlete walks to the phone is taken back', () {
-    // The last "rep" (20.8 s) is the athlete stepping up to the phone. The
-    // phone is picked up at 21 s; reps counted in the 1.5 s before that go.
+  test('overhead press: the three real presses, none from the walk to the phone', () {
+    // Three presses to overhead lockout (7, 11 and 15 s), then the athlete sets
+    // the plate down and walks back to the phone with the arms hanging. (The
+    // old note here said ~7-8; the elbow and wrist-height traces show three
+    // lockouts, and the old analyzer counted the lowering as extra reps.) The
+    // phone is picked up at 21 s.
     final run = replay('live3_overheadPress', (c) => OverheadPressAnalyzer(clock: c),
         phoneMovedAt: 21.0);
-    expect(run.analyzer.repCount, inInclusiveRange(7, 8));
+    expect(run.analyzer.repCount, 3);
   });
 
   test('push-ups (side view): the ~10 real reps, not 1', () {

@@ -96,62 +96,32 @@ void main() {
   });
 
   group('Overhead Press, real footage', () {
-    test('set of 6 full overhead presses counted cleanly, including a strained final rep',
-        () {
-      final analyzer = OverheadPressAnalyzer();
-      final frames = RecordedPoseFixtures.loadSequence('overheadPress_pexels_4367541');
+    test('a free-weight press set is counted at each lockout, none of it dropped', () {
+      final run = replay('overheadPress_pexels_4367541', (c) => OverheadPressAnalyzer(clock: c), fps: 30);
 
-      for (final pose in frames) {
-        analyzer.processPose(pose);
-      }
-
-      // A prior pass over this pipeline lowered overheadPressLockoutThreshold
-      // from 165 to 152 and called it done at 5 reps. That missed a real 6th
-      // rep: this clip's final press is visibly effortful (confirmed by
-      // screenshotting the source video directly -- strained expression,
-      // genuine full lockout at frames ~682-715 of 715), and it only failed
-      // to register because OverheadPressAnalyzer picked a single arm by ML
-      // Kit confidence, the same bug already fixed in SquatAnalyzer/
-      // LungeAnalyzer/GluteBridgeAnalyzer. During this final rep the
-      // right arm's tracking confidence dropped (likely the athlete
-      // straining/tilting) right as it reached genuine lockout, so the
-      // "more confident" left arm's angle was trusted instead -- and never
-      // read as fully locked out on its own within this window. Fixed by
-      // taking whichever visible arm reads more extended for the
-      // lockout/neutral-threshold comparisons (max) and whichever reads more
-      // flexed for the bottom-of-press check (min), the same bilateral
-      // principle as the other fixes -- confirmed by re-screenshotting the
-      // same frames and by this test.
-      expect(analyzer.repCount, 6);
-      // Rep 2 carries a real 'Wrist Not Stacked' flag (0.8) -- the wrist drifts
-      // out from directly above the elbow on that specific press, recovering by
-      // rep 3. The other 5 reps score clean.
-      expect(analyzer.repScores, [1.0, 0.8, 1.0, 1.0, 1.0, 1.0]);
+      // Three full presses (rack to overhead lockout and back) after the opening
+      // top position; the trace of the elbow and wrist heights shows exactly
+      // three bottoms and four tops over the 24 s clip. (An earlier version of
+      // this test pinned 6, which counted lowering and lockout as separate
+      // reps: the clip is slow, about 7 s a rep.) Each rep is counted as the
+      // arms lock out.
+      expect(run.analyzer.repCount, 3);
+      expect(run.noReps, isEmpty);
+      expect(run.repTimes, [
+        closeTo(7.8, 0.6),
+        closeTo(15.4, 0.6),
+        closeTo(21.2, 0.6),
+      ]);
     });
 
     test('a machine press with a confidence-degraded arm is still counted correctly', () {
-      final analyzer = OverheadPressAnalyzer();
-      final frames = RecordedPoseFixtures.loadSequence('overheadPress_pexels_32239223');
+      // A shoulder-press machine: both arms move together, so the more open arm
+      // (the one the tracker is less sure about) shows the real lockout and is
+      // trusted for it. Three full presses to lockout in the clip.
+      final run = replay('overheadPress_pexels_32239223', (c) => OverheadPressAnalyzer(clock: c), fps: 30);
 
-      for (final pose in frames) {
-        analyzer.processPose(pose);
-      }
-
-      // A prior pass labeled this clip "found but not fixed by design":
-      // elbow angle allegedly topped out at 144 degrees, so 0 reps was
-      // called correct. That was wrong -- verified by screenshotting the
-      // source video directly, this is a shoulder-press MACHINE (not free
-      // weights), so both arms are mechanically constrained to move
-      // together; the athlete presses to genuine full lockout repeatedly.
-      // The right arm's raw angle reaches 156-171 degrees several times
-      // (comfortably past even the old 165 degree threshold) while the
-      // left arm -- which ML Kit was more "confident" about throughout --
-      // never exceeds ~150. Same bilateral-confidence bug as above; same
-      // fix recovers the real reps.
-      expect(analyzer.repCount, 4);
-      for (final score in analyzer.repScores) {
-        expect(score, 1.0);
-      }
+      expect(run.analyzer.repCount, 3);
+      expect(run.noReps, isEmpty);
     });
   });
 

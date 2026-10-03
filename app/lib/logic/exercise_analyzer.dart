@@ -1630,16 +1630,34 @@ class LungeAnalyzer extends ExerciseAnalyzer {
   }
 }
 
+/// An overhead press counts when the bar comes down to the shoulders and goes
+/// all the way back up: arms locked out with the wrists over the shoulders.
+///
+/// Lockout used to be deliberately unscored and the "bottom" a single raw frame,
+/// so live test #5 counted half-presses, a plate being set down (a hip hinge) and
+/// the athlete walking to the phone. Both ends are gates now, a hinge or a walk
+/// is not an attempt, and a press that bends the knees to get the bar up is a
+/// push press, flagged as such.
 class OverheadPressAnalyzer extends ExerciseAnalyzer {
   OverheadPressAnalyzer({super.cueEngine, super.clock});
 
-  final MovingAverageFilter _angleFilter =
-      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
-  double? _prevAngle;
-  bool _reachedBottom = false;
-  double _concentricPeak = 0;
-  double _deepestAngle = 180;
-  final RecoveryDetector _recovery = RecoveryDetector();
+  final MedianFilter _lockoutFilter = MedianFilter(3);
+  final MedianFilter _bottomFilter = MedianFilter(3);
+  final AttemptEvidence _evidence = AttemptEvidence();
+
+  final MedianFilter _heightFilter = MedianFilter(3);
+  double _minElbow = 180;
+  double _minWristAbove = 99;
+  double _peakWristAbove = -99;
+  double? _startKnee;
+  double _maxKneeDip = 0;
+  bool _bentOver = false;
+  bool _wristsOverhead = false;
+  DateTime? _attemptStartedAt;
+  DateTime? _reversedAt;
+  DateTime? _droppedSince;
+  DateTime? _overheadSince;
+  bool _overheadHeld = false;
 
   @override
   Set<PoseLandmarkType> get activeLandmarkTypes => {
@@ -1652,198 +1670,277 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
       };
 
   @override
+  bool get uses3dAngles => false;
+
+  @override
   void reset() {
     super.reset();
-    _angleFilter.reset();
-    _prevAngle = null;
-    _reachedBottom = false;
-    _concentricPeak = 0;
-    _deepestAngle = 180;
-    _recovery.reset();
+    _lockoutFilter.reset();
+    _bottomFilter.reset();
+    _heightFilter.reset();
+    _clearAttempt();
+  }
+
+  void _clearAttempt() {
+    _evidence.reset();
+    _minElbow = 180;
+    _minWristAbove = 99;
+    _peakWristAbove = -99;
+    _startKnee = null;
+    _maxKneeDip = 0;
+    _bentOver = false;
+    _wristsOverhead = false;
+    _attemptStartedAt = null;
+    _reversedAt = null;
+    _droppedSince = null;
+    _overheadSince = null;
+    _overheadHeld = false;
+  }
+
+  void _endAttempt() {
+    phase = RepPhase.neutral;
+    _clearAttempt();
+  }
+
+  bool _sustainedDrop(double value, double best, double drop) {
+    if (value > best - drop) {
+      _droppedSince = null;
+      return false;
+    }
+    _droppedSince ??= now();
+    return now().difference(_droppedSince!) >= AppConstants.bounceHold;
   }
 
   @override
   void processPose(Pose pose) {
-    final leftShoulderLandmark = pose.landmarks[PoseLandmarkType.leftShoulder];
-    final leftElbowLandmark = pose.landmarks[PoseLandmarkType.leftElbow];
-    final leftWristLandmark = pose.landmarks[PoseLandmarkType.leftWrist];
-    final rightShoulderLandmark = pose.landmarks[PoseLandmarkType.rightShoulder];
-    final rightElbowLandmark = pose.landmarks[PoseLandmarkType.rightElbow];
-    final rightWristLandmark = pose.landmarks[PoseLandmarkType.rightWrist];
+    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
+    final leftElbow = pose.landmarks[PoseLandmarkType.leftElbow];
+    final leftWrist = pose.landmarks[PoseLandmarkType.leftWrist];
+    final rightShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
+    final rightElbow = pose.landmarks[PoseLandmarkType.rightElbow];
+    final rightWrist = pose.landmarks[PoseLandmarkType.rightWrist];
 
-    final leftVisible = isLandmarkVisible(leftShoulderLandmark) &&
-        isLandmarkVisible(leftElbowLandmark) &&
-        isLandmarkVisible(leftWristLandmark);
-    final rightVisible = isLandmarkVisible(rightShoulderLandmark) &&
-        isLandmarkVisible(rightElbowLandmark) &&
-        isLandmarkVisible(rightWristLandmark);
-
-    final leftElbow = MathUtils.calculateJointAngle(
-      leftShoulderLandmark,
-      leftElbowLandmark,
-      leftWristLandmark,
-    );
-    final rightElbow = MathUtils.calculateJointAngle(
-      rightShoulderLandmark,
-      rightElbowLandmark,
-      rightWristLandmark,
-    );
-
-    // Wrist should stay roughly stacked above the elbow, not flared out to
-    // the side, at the top of the press -- checked per-arm (whichever is
-    // visible) rather than by comparing the two sides against each other.
-    // A left-vs-right comparison was tried here first and dropped: real
-    // footage of a machine press with one arm's tracking confidence
-    // genuinely degraded showed the *measured* asymmetry swinging from 4 to
-    // 54 degrees frame to frame on the exact same rep -- a tracking-quality
-    // artifact, not a real form difference, and the same failure mode the
-    // bilateral-extremum lockout/depth logic above already exists to avoid.
-    // A leaning-back/vertical check was also tried and dropped: on a seated
-    // machine-press clip it measured a rock-steady ~27-28 degree lean for
-    // every single rep -- the seat's own fixed recline, not a dynamic fault,
-    // and nothing in the available landmarks distinguishes a reclined
-    // machine seat from someone genuinely arching back.
-    final wristElbow = leftVisible ? leftElbowLandmark : (rightVisible ? rightElbowLandmark : null);
-    final wrist = leftVisible ? leftWristLandmark : (rightVisible ? rightWristLandmark : null);
-    if (phase != RepPhase.neutral && isLandmarkVisible(wristElbow) && isLandmarkVisible(wrist)) {
-      final forearmLength = math.sqrt(
-        math.pow(wristElbow!.x - wrist!.x, 2) + math.pow(wristElbow.y - wrist.y, 2),
-      );
-      if (MathUtils.horizontalOffsetRatio(wrist, wristElbow, forearmLength) >
-          AppConstants.overheadPressWristOffsetRatio) {
-        addIssue('Wrist Not Stacked');
-        cues.request(CueIds.elbowsOut);
-      } else {
-        currentRepIssues.remove('Wrist Not Stacked');
-      }
-    }
-
-    // Both arms press together in an overhead press. When both sides are
-    // visible, trust whichever shows genuine lockout (max) for the
-    // lockout/neutral-threshold comparisons that drive phase transitions and
-    // rep-closing, and whichever shows genuine depth (min) for tracking
-    // whether the bottom was reached -- a confidence gap between the two
-    // sides reflects estimation error, not anatomy, the same principle
-    // already applied to Squat/Lunge/GluteBridge. Confirmed against real
-    // stock footage where the higher-confidence (left) arm read up to ~141
-    // degrees for an entire set while the other arm -- still comfortably
-    // visible -- read 156-171 degrees for the same frames; picking a side by
-    // confidence alone missed genuine lockouts for the whole clip.
-    final lockoutAngle = (leftVisible && rightVisible)
-        ? math.max(leftElbow, rightElbow)
-        : (leftVisible ? leftElbow : rightElbow);
-    final bottomAngle = (leftVisible && rightVisible)
-        ? math.min(leftElbow, rightElbow)
-        : (leftVisible ? leftElbow : rightElbow);
-
-    final currentAngle = _angleFilter.add(lockoutAngle);
-    final delta = _prevAngle == null ? 0.0 : currentAngle - _prevAngle!;
-    _prevAngle = currentAngle;
-    lastProcessedAngle = currentAngle;
-
+    final leftVisible = isLandmarkVisible(leftShoulder) &&
+        isLandmarkVisible(leftElbow) &&
+        isLandmarkVisible(leftWrist);
+    final rightVisible = isLandmarkVisible(rightShoulder) &&
+        isLandmarkVisible(rightElbow) &&
+        isLandmarkVisible(rightWrist);
     if (!leftVisible && !rightVisible) {
       statusMessage = 'Adjust Camera';
       return;
     }
 
-    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
+    // Image-plane angles: ML Kit's depth estimate read a straight, locked-out arm
+    // as 140-150 degrees on live footage, so lockout never registered.
+    final leftAngle = leftVisible ? angle2D(leftShoulder!, leftElbow!, leftWrist!) : 180.0;
+    final rightAngle = rightVisible ? angle2D(rightShoulder!, rightElbow!, rightWrist!) : 180.0;
+
+    // Both arms press together. When both are in view, the more open one shows
+    // genuine lockout and the more closed one genuine depth: a gap between them
+    // is estimation error, not anatomy. Each is median-filtered so one flipped
+    // landmark cannot decide a rep.
+    final lockoutRaw = (leftVisible && rightVisible)
+        ? math.max(leftAngle, rightAngle)
+        : (leftVisible ? leftAngle : rightAngle);
+    final bottomRaw = (leftVisible && rightVisible)
+        ? math.min(leftAngle, rightAngle)
+        : (leftVisible ? leftAngle : rightAngle);
+    final lockout = _lockoutFilter.add(lockoutRaw);
+    final bottom = _bottomFilter.add(bottomRaw);
+    lastProcessedAngle = lockout;
+
+    // Where the wrists are relative to the shoulders, in upper-arm lengths.
+    final shoulder = leftVisible ? leftShoulder! : rightShoulder!;
+    final elbowLm = leftVisible ? leftElbow! : rightElbow!;
+    final wrist = leftVisible ? leftWrist! : rightWrist!;
+    // Wrist height above the shoulder as a share of the whole arm (upper arm plus
+    // forearm), so an arm pointing at the lens (a tiny projected upper arm) can't
+    // blow the ratio up: about 1.0 at full overhead lockout, 0-0.3 in the rack.
+    final upperArm = math.sqrt(
+        math.pow(shoulder.x - elbowLm.x, 2) + math.pow(shoulder.y - elbowLm.y, 2));
+    final forearmLen = math.sqrt(
+        math.pow(elbowLm.x - wrist.x, 2) + math.pow(elbowLm.y - wrist.y, 2));
+    final armLength = upperArm + forearmLen;
+    final wristAbove = _heightFilter.add(armLength < 1e-6
+        ? 0.0
+        : ((shoulder.y - wrist.y) / armLength).clamp(-1.2, 1.2));
+
+    // Wrist should stay roughly stacked above the elbow, not flared out to the
+    // side, while the bar is up.
+    final faults = <String>{};
+    if (phase != RepPhase.neutral) {
+      final forearm = math.sqrt(
+          math.pow(elbowLm.x - wrist.x, 2) + math.pow(elbowLm.y - wrist.y, 2));
+      if (MathUtils.horizontalOffsetRatio(wrist, elbowLm, forearm) >
+          AppConstants.overheadPressWristOffsetRatio) {
+        faults.add('Wrist Not Stacked');
+        addIssue('Wrist Not Stacked');
+        cues.request(CueIds.stackWrists);
+      }
+    }
+
+    // Body posture, when the hips are in view: a torso folded over is the
+    // athlete picking up or setting down the bar, not pressing it.
+    final hip = pose.landmarks[PoseLandmarkType.leftHip] ?? pose.landmarks[PoseLandmarkType.rightHip];
+    final knee = pose.landmarks[PoseLandmarkType.leftKnee] ?? pose.landmarks[PoseLandmarkType.rightKnee];
+    final ankle = pose.landmarks[PoseLandmarkType.leftAnkle] ?? pose.landmarks[PoseLandmarkType.rightAnkle];
+    double? kneeAngle;
+    if (isLandmarkVisible(hip) && isLandmarkVisible(shoulder)) {
+      if (degreesFromUp(shoulder, hip!) > AppConstants.overheadPressMaxTorsoLean) {
+        _bentOver = true;
+      }
+      if (isLandmarkVisible(knee) && isLandmarkVisible(ankle)) {
+        kneeAngle = angle2D(hip, knee!, ankle!);
+      }
+    }
 
     switch (phase) {
       case RepPhase.neutral:
-        if (currentAngle < AppConstants.overheadPressLockoutThreshold - deadZone) {
+        if (lockout < AppConstants.overheadPressAttemptAngle) {
+          _clearAttempt();
           phase = RepPhase.eccentric;
           currentRepIssues.clear();
-          _reachedBottom = false;
-          _deepestAngle = bottomAngle;
+          _attemptStartedAt = now();
+          _minElbow = bottom;
+          _startKnee = kneeAngle;
           markEccentricStart();
           statusMessage = 'Lower to shoulder level';
         } else {
           statusMessage = 'Lower under control';
         }
-        break;
 
       case RepPhase.eccentric:
-        _deepestAngle = math.min(_deepestAngle, bottomAngle);
-
-        if (bottomAngle <= AppConstants.overheadPressStartThreshold) {
-          _reachedBottom = true;
-          currentRepIssues.remove('Insufficient Range');
-        }
-
-        if (_reachedBottom && delta > AppConstants.angleDirectionDeltaDegrees) {
+        _minElbow = math.min(_minElbow, bottom);
+        _minWristAbove = math.min(_minWristAbove, wristAbove);
+        _evidence.note(good: true, faults: faults);
+        // Pressing up means the wrists climb well clear of where they bottomed
+        // out *and* the arms open; a wobble at the rack changes neither much.
+        if (lockout >= _minElbow + AppConstants.overheadPressReversalRise &&
+            wristAbove >= _minWristAbove + AppConstants.overheadPressWristRise) {
           phase = RepPhase.concentric;
-          _concentricPeak = currentAngle;
-          _recovery.begin(now());
+          _reversedAt = now();
+          _peakWristAbove = wristAbove;
+          _startKnee ??= kneeAngle;
           markConcentricStart();
+          if (_minElbow > AppConstants.overheadPressStartThreshold) {
+            cues.request(CueIds.fullRange);
+          }
           statusMessage = 'Press up';
-        } else if (!_reachedBottom &&
-            currentAngle >= AppConstants.overheadPressLockoutThreshold) {
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          cues.request(CueIds.fullRange);
-        } else if (delta > AppConstants.angleDirectionDeltaDegrees &&
-            bottomAngle > AppConstants.overheadPressStartThreshold + deadZone) {
-          addIssue('Insufficient Range');
-          cues.request(CueIds.fullRange);
+        } else if (now().difference(_attemptStartedAt!) > AppConstants.repAttemptTimeout) {
+          noteIgnored('stalled');
+          _endAttempt();
         } else {
           statusMessage = 'Lower';
         }
-        break;
 
       case RepPhase.concentric:
-        final verdict = currentAngle >= AppConstants.overheadPressLockoutThreshold
-            ? RecoveryVerdict.complete
-            : _recovery.update(
-                progress: -currentAngle,
-                extreme: -_deepestAngle,
-                rest: -AppConstants.overheadPressLockoutThreshold,
-                now: now(),
-              );
-        if (verdict == RecoveryVerdict.abandon) {
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          _reachedBottom = false;
-          _concentricPeak = 0;
-          _deepestAngle = 180;
-        } else if (verdict == RecoveryVerdict.complete) {
-          repCount++;
-          double score = 1.0;
-          if (!_reachedBottom || currentRepIssues.contains('Insufficient Range')) {
-            addIssue('Insufficient Range');
-            score -= AppConstants.overheadPressInsufficientRangePenalty;
+        _minElbow = math.min(_minElbow, bottom);
+        _peakWristAbove = math.max(_peakWristAbove, wristAbove);
+        _evidence.note(good: true, faults: faults);
+        if (wristAbove >= AppConstants.overheadPressWristAbove) {
+          _wristsOverhead = true;
+          // Overhead for a moment, not a one-frame tracking spike at the rack.
+          _overheadSince ??= now();
+          if (now().difference(_overheadSince!) >= AppConstants.bounceHold) {
+            _overheadHeld = true;
           }
-          // Not scored -- same recovery gap as push-up's 'Incomplete
-          // Lockout' (see that comment); left as a live cue only.
-          currentRepIssues.remove('No Full Lockout');
-          if (currentRepIssues.contains('Wrist Not Stacked')) {
-            score -= AppConstants.overheadPressWristOffsetPenalty;
-          }
-          statusMessage = 'Rep $repCount';
-          recordRep(
-            score: score,
-            peakAngle: _deepestAngle,
-            romDeficitDegrees: math.max(
-              0,
-              _deepestAngle - AppConstants.overheadPressStartThreshold,
-            ),
-          );
-          _reachedBottom = false;
-          _concentricPeak = 0;
-          _deepestAngle = 180;
-          phase = RepPhase.neutral;
-          if (onRep != null) onRep!(repCount);
         } else {
-          // Same as pushup: sinking back from the highest point reached without
-          // ever locking out is the fault, not simply being mid-press.
-          _concentricPeak = math.max(_concentricPeak, currentAngle);
-          if (currentAngle < _concentricPeak - deadZone) {
-            addIssue('No Full Lockout');
-            cues.request(CueIds.lockOut);
+          _overheadSince = null;
+        }
+        final start = _startKnee;
+        if (start != null && kneeAngle != null) {
+          _maxKneeDip = math.max(_maxKneeDip, start - kneeAngle);
+          if (_maxKneeDip >= AppConstants.overheadPressLegDriveDip) {
+            addIssue('Leg Drive');
+            cues.request(CueIds.legDrive);
           }
+        }
+        if (lockout >= AppConstants.overheadPressLockoutThreshold && _wristsOverhead) {
+          _finishAttempt();
+        } else if (_sustainedDrop(
+            wristAbove, _peakWristAbove, AppConstants.overheadPressWristDrop)) {
+          if (_overheadHeld) {
+            // The bar got overhead but the arms never locked out, and it came
+            // back down: a half press.
+            _rejectIncompleteLockout();
+            _endAttempt();
+          } else {
+            // Never got near overhead: still working at the rack.
+            phase = RepPhase.eccentric;
+            _reversedAt = null;
+            _droppedSince = null;
+            _minWristAbove = wristAbove;
+          }
+        } else if (now().difference(_reversedAt!) > AppConstants.repAttemptTimeout) {
+          noteIgnored('stalled');
+          _endAttempt();
+        } else {
           statusMessage = 'Reach higher';
         }
-        break;
     }
+  }
+
+  void _rejectIncompleteLockout() {
+    if (_bentOver) {
+      noteIgnored('bent over');
+    } else if (_minElbow <= AppConstants.overheadPressNoRepBottom && _evidence.goodFrames >= 3) {
+      recordNoRep(
+        reason: 'press all the way up',
+        label: 'No Full Lockout',
+        peakAngle: _minElbow,
+      );
+    } else {
+      noteIgnored('half press');
+    }
+  }
+
+  void _finishAttempt() {
+    final took = now().difference(_attemptStartedAt ?? now());
+    final depth = _minElbow;
+    final deficit = math.max(0.0, depth - AppConstants.overheadPressStartThreshold);
+
+    if (_bentOver) {
+      // The plate being set down or picked up: a hinge, not a press.
+      noteIgnored('bent over');
+    } else if (took < AppConstants.overheadPressMinRepDuration || _evidence.goodFrames < 3) {
+      noteIgnored('too quick');
+    } else if (depth > AppConstants.overheadPressNoRepBottom) {
+      recordNoRep(
+        reason: 'bring it down to your shoulders',
+        label: 'Not Low Enough',
+        peakAngle: depth,
+        romDeficitDegrees: deficit,
+      );
+    } else {
+      final fullDepth = depth <= AppConstants.overheadPressStartThreshold;
+      repCount++;
+      var score = 1.0;
+      if (!fullDepth) {
+        addIssue('Insufficient Range');
+        score -= AppConstants.overheadPressInsufficientRangePenalty;
+      }
+      if (_evidence.confirmed('Wrist Not Stacked')) {
+        score -= AppConstants.overheadPressWristOffsetPenalty;
+      } else {
+        currentRepIssues.remove('Wrist Not Stacked');
+      }
+      if (_maxKneeDip >= AppConstants.overheadPressLegDriveDip) {
+        score -= AppConstants.overheadPressLegDrivePenalty;
+      } else {
+        currentRepIssues.remove('Leg Drive');
+      }
+      statusMessage = 'Rep $repCount';
+      recordRep(
+        score: score,
+        peakAngle: depth,
+        romDeficitDegrees: deficit,
+        fullDepth: fullDepth,
+        uncertain: !_evidence.sufficient,
+      );
+      if (onRep != null) onRep!(repCount);
+    }
+    _endAttempt();
   }
 }
 

@@ -108,7 +108,9 @@ class AppConstants {
   static const double lungeTorsoLeanPenalty = 0.2;
 
   static const double overheadPressStartThreshold = 100.0;
-  static const double overheadPressLockoutThreshold = 152.0;
+  /// Arms count as locked out at this elbow angle with the wrists above the
+  /// shoulders. (Was 152, and lockout was not scored at all.)
+  static const double overheadPressLockoutThreshold = 155.0;
   static const double overheadPressInsufficientRangePenalty = 0.3;
 
   /// Wrist horizontal offset from directly above the elbow, as a fraction of
@@ -349,6 +351,36 @@ class AppConstants {
   /// reach this, and the bottom must get below this share of it.
   static const double pushupFrontMinTop = 1.25;
   static const double pushupFrontNoRepRatio = 0.75;
+
+
+  // Overhead press gates.
+  /// An attempt opens when the more open arm bends below this...
+  static const double overheadPressAttemptAngle = 140.0;
+
+  /// ...the bar must come down to at most this elbow angle for full range, and
+  /// is turned down if it never gets below this...
+  static const double overheadPressNoRepBottom = 115.0;
+
+  /// ...and the arm must open this far from the bottom to be pressing up.
+  static const double overheadPressReversalRise = 20.0;
+  /// The wrists must climb this share of an arm length from their lowest point
+  /// to be pressing, and dropping this far from the highest point is coming back
+  /// down.
+  static const double overheadPressWristRise = 0.25;
+  static const double overheadPressWristDrop = 0.3;
+
+  /// Wrists this share of an arm length above the shoulders (full lockout reads
+  /// about 0.9-1.0; the rack position about 0-0.3).
+  static const double overheadPressWristAbove = 0.55;
+
+  /// Torso beyond this from vertical is a hinge (the plate going down or up),
+  /// not a press.
+  static const double overheadPressMaxTorsoLean = 40.0;
+
+  /// Knee bend during the press, beyond which it is a push press.
+  static const double overheadPressLegDriveDip = 15.0;
+  static const double overheadPressLegDrivePenalty = 0.25;
+  static const Duration overheadPressMinRepDuration = Duration(milliseconds: 700);
 
   // Backward compatibility aliases
   static const double squatDepthMin = 70;

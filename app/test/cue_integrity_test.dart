@@ -35,8 +35,8 @@ final Map<String, Set<String>> _allowed = {
     ..._praise, ..._depthPraise,
   },
   'overheadPress': {
-    CueIds.fullRange, CueIds.lockOut, CueIds.elbowsOut,
-    CueIds.controlDescent, ..._praise,
+    CueIds.fullRange, CueIds.lockOut, CueIds.stackWrists, CueIds.legDrive,
+    CueIds.controlDescent, ..._praise, ..._depthPraise,
   },
   'situp': {
     CueIds.curlHigher, CueIds.asymmetry, CueIds.straightenLegs,
