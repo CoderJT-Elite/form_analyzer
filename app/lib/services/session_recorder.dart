@@ -152,8 +152,14 @@ class SessionRecorder {
     final base = 'session_${_stamp(_startedAt)}_$exercise';
     final poses = File('${directory.path}/${base}_poses.json');
     final metaFile = File('${directory.path}/${base}_meta.json');
-    await poses.writeAsString(jsonEncode(_poses));
-    await metaFile.writeAsString(jsonEncode(meta(summary: summary)));
+    // Serialise both before the first await: the recorder keeps receiving frames
+    // while the files are written, and a frame landing between the two writes
+    // left meta one entry longer than poses (live test #5, sit-up), which made
+    // the pair impossible to replay.
+    final posesJson = jsonEncode(_poses);
+    final metaJson = jsonEncode(meta(summary: summary));
+    await poses.writeAsString(posesJson);
+    await metaFile.writeAsString(metaJson);
     return [poses, metaFile];
   }
 

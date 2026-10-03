@@ -39,6 +39,8 @@ void main() {
       print('counted at: ${run.repTimes.map((t) => t.toStringAsFixed(1)).join(' ')}');
       // ignore: avoid_print
       print('no-reps:    ${run.noReps.map((e) => '${e.$1.toStringAsFixed(1)}:${e.$2}').join(' | ')}');
+      // ignore: avoid_print
+      print('ignored:    ${run.ignoredLog.map((e) => '${e.$1.toStringAsFixed(1)}:${e.$2}').join(' | ')}');
       for (final c in run.timedCues) {
         // ignore: avoid_print
         print('  ${c.$1.toStringAsFixed(1).padLeft(5)}  ${c.$2}');

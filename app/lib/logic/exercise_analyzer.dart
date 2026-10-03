@@ -7,7 +7,6 @@ import 'cue_engine.dart';
 import 'hip_line.dart';
 import 'pose_orientation.dart';
 import 'rep_cycle_detector.dart';
-import 'rep_recovery.dart';
 import 'signal_filters.dart';
 
 /// Issues that cannot both be the headline of the same set.
@@ -198,6 +197,10 @@ abstract class ExerciseAnalyzer {
   /// ("hips sagged"); [spoken] is what was said aloud, or null when it was only
   /// shown (the fault cue had just been spoken, or a safety cue was talking).
   void Function(String reason, String? spoken)? onNoRep;
+
+  /// Fired when a movement was judged not to be a rep attempt at all (silent to
+  /// the athlete; the session recorder logs it so a missed rep can be diagnosed).
+  void Function(String reason)? onIgnored;
 
   /// Injectable clock, so tempo and cue cooldowns are testable.
   final DateTime Function() now;
@@ -548,6 +551,7 @@ abstract class ExerciseAnalyzer {
   void noteIgnored(String reason) {
     ignoredAttempts++;
     lastIgnoredReason = reason;
+    onIgnored?.call(reason);
     final timestamp = now();
     _recentIgnored
       ..add(timestamp)
@@ -1944,26 +1948,33 @@ class OverheadPressAnalyzer extends ExerciseAnalyzer {
   }
 }
 
-/// A rep-counted exercise expressed as travel along a single joint angle.
+/// A rep-counted exercise expressed as travel along a single measured angle
+/// (glute bridge, sit-up).
 ///
-/// The four original analyzers each hand-rolled this state machine, which is
-/// how the same two bugs (sticking in the eccentric phase after a short rep,
-/// and entering the concentric phase before the athlete had actually reversed)
-/// ended up copied into all of them. Exercises added since share this instead.
+/// A rep is a trip out to the target and back to the start. Live test #5 counted
+/// eight tiny hip pulses as full glute bridges (12 degrees of travel earned full
+/// credit) and sit-ups that were crunches, because a rep that covered "most of
+/// the range" counted, rocking between two points counted, and a watchdog
+/// counted anything that came halfway back. Now the range reached is graded in
+/// bands: full, counted-but-short, turned down, or too small to be an attempt;
+/// the rep is counted the moment the athlete is back at the start (no waiting
+/// for a plateau), and going again before getting back is a no-rep, not a
+/// bonus rep.
 ///
 /// Movement direction is expressed through [worksTowardSmallerAngle], so the
-/// same machine drives a squat (angle closes as you descend) and a glute bridge
-/// (angle opens as you lift).
+/// same machine drives an exercise whose angle opens as you work and one whose
+/// angle closes.
 abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
   RangeOfMotionAnalyzer({super.cueEngine, super.clock});
 
-  final MovingAverageFilter _angleFilter =
-      MovingAverageFilter(windowSize: AppConstants.angleMovingAverageWindow);
-  double? _prevProgress;
-  bool _reachedTarget = false;
-  double _bestProgress = double.negativeInfinity;
-  final RecoveryDetector _recovery = RecoveryDetector(allowRocking: true);
-  DateTime? _eccentricEnteredAt;
+  final MedianFilter _signalFilter = MedianFilter(3);
+  final AttemptEvidence _evidence = AttemptEvidence();
+
+  double _best = double.negativeInfinity;
+  double _lowSinceReversal = double.infinity;
+  DateTime? _attemptStartedAt;
+  DateTime? _reversedAt;
+  DateTime? _risingSince;
 
   /// Angle the athlete rests at between reps.
   double get restAngle;
@@ -1974,7 +1985,7 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
   /// True when working through the range makes the measured angle smaller.
   bool get worksTowardSmallerAngle;
 
-  /// Score lost when a rep finishes without reaching [targetAngle].
+  /// Score lost when a rep is counted but falls short of full range.
   double get shortRangePenalty;
 
   /// Issue label recorded for a rep that fell short.
@@ -1982,6 +1993,29 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
 
   /// Cue requested when the athlete keeps falling short.
   String get shortRangeCueId => CueIds.goDeeper;
+
+  /// What to say, and what to call it in the summary, when a rep is turned down
+  /// for not travelling far enough.
+  String get noRepReason;
+  String get noRepLabel;
+
+  /// Share of the rest-to-target range at which an attempt opens, below which
+  /// the movement is a twitch...
+  double get openFraction => 0.3;
+
+  /// ...reaching this share earns full credit...
+  double get fullFraction => 0.88;
+
+  /// ...this much is counted but scored short...
+  double get softFraction => 0.65;
+
+  /// ...this much is turned down, and anything less is too small to be an
+  /// attempt at all.
+  double get noRepFraction => 0.4;
+
+  /// The rep is complete once the athlete is back within this share of the range
+  /// from the start.
+  double get returnFraction => 0.35;
 
   /// Status text while travelling toward the target.
   String get workingMessage;
@@ -1996,36 +2030,47 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
   /// needed aren't visible.
   double? measureAngle(Pose pose);
 
-  /// Hook for exercise-specific form checks beyond the shared range-of-motion
-  /// state machine above (e.g. glute bridge's knee valgus, sit-up's knee
-  /// bend). Called every frame while working through the rep; implementations
-  /// call [addIssue] directly, same as [measureAngle]'s caller does for
-  /// [shortRangeIssue]. Default is a no-op for exercises that don't need one.
-  void checkFormIssues(Pose pose) {}
+  /// Hook for exercise-specific form checks beyond the range of motion. Called
+  /// every frame while working through the rep; return the names of the faults
+  /// this frame shows. Faults are judged over the whole rep, never on one frame.
+  Set<String> checkFormIssues(Pose pose) => const {};
 
-  /// Score penalty for each issue label [checkFormIssues] might add, applied
-  /// once per rep at completion. Exercises that don't override
-  /// [checkFormIssues] don't need to override this either.
+  /// Score penalty for each issue label [checkFormIssues] might report, applied
+  /// once per rep at completion.
   Map<String, double> get supplementaryPenalties => const {};
-
-  /// Share of the rest-to-target range a rep must cover to count, scored as
-  /// short, rather than being discarded as an abandoned attempt.
-  double get partialRepFraction => 0.6;
 
   /// Signed so that "further into the movement" always means "larger".
   double _progress(double angle) => worksTowardSmallerAngle ? -angle : angle;
 
   double _angleOf(double progress) => worksTowardSmallerAngle ? -progress : progress;
 
+  double get _range => (_progress(targetAngle) - _progress(restAngle)).abs();
+
+  double _levelAt(double fraction) => _progress(restAngle) + fraction * _range;
+
+  /// The coaching cue for lowering applies to the way back to the start here.
+  @override
+  bool get coachesLowering => true;
+
   @override
   void reset() {
     super.reset();
-    _angleFilter.reset();
-    _prevProgress = null;
-    _reachedTarget = false;
-    _bestProgress = double.negativeInfinity;
-    _recovery.reset();
-    _eccentricEnteredAt = null;
+    _signalFilter.reset();
+    _clearAttempt();
+  }
+
+  void _clearAttempt() {
+    _evidence.reset();
+    _best = double.negativeInfinity;
+    _lowSinceReversal = double.infinity;
+    _attemptStartedAt = null;
+    _reversedAt = null;
+    _risingSince = null;
+  }
+
+  void _endAttempt() {
+    phase = RepPhase.neutral;
+    _clearAttempt();
   }
 
   @override
@@ -2038,121 +2083,136 @@ abstract class RangeOfMotionAnalyzer extends ExerciseAnalyzer {
 
     updateOrientation(pose);
 
-    final smoothed = _angleFilter.add(measured);
-    lastProcessedAngle = smoothed;
-
-    final progress = _progress(smoothed);
-    final restProgress = _progress(restAngle);
-    final targetProgress = _progress(targetAngle);
-    final delta = _prevProgress == null ? 0.0 : progress - _prevProgress!;
-    _prevProgress = progress;
-
-    final deadZone = AppConstants.hysteresisDeadZoneDegrees;
-    final directionDelta = AppConstants.angleDirectionDeltaDegrees;
+    final progress = _progress(_signalFilter.add(measured));
+    lastProcessedAngle = _angleOf(progress);
 
     switch (phase) {
       case RepPhase.neutral:
-        if (progress > restProgress + deadZone) {
+        if (progress >= _levelAt(openFraction)) {
+          _clearAttempt();
           phase = RepPhase.eccentric;
           currentRepIssues.clear();
-          _reachedTarget = false;
-          _bestProgress = progress;
-          _eccentricEnteredAt = now();
-          markEccentricStart();
+          _attemptStartedAt = now();
+          _best = progress;
+          markRepStart();
           statusMessage = workingMessage;
         } else {
           statusMessage = restingMessage;
         }
 
       case RepPhase.eccentric:
-        _bestProgress = math.max(_bestProgress, progress);
-        checkFormIssues(pose);
-
-        if (progress >= targetProgress) {
-          _reachedTarget = true;
-        }
-
-        if (_reachedTarget && delta < -directionDelta) {
-          // Only once the athlete has genuinely reversed.
+        _best = math.max(_best, progress);
+        _evidence.note(good: true, faults: _faults(pose));
+        // Turned around once clearly back from the best point reached.
+        final turnBack = math.max(4.0, 0.2 * _range);
+        if (progress <= _best - turnBack) {
           phase = RepPhase.concentric;
-          _recovery.begin(now());
-          markConcentricStart();
+          _reversedAt = now();
+          _lowSinceReversal = progress;
+          markEccentricStart(newRep: false);
           statusMessage = returningMessage;
-        } else if (_eccentricEnteredAt != null &&
-            now().difference(_eccentricEnteredAt!) > const Duration(seconds: 12)) {
-          // Wandered off mid-rep (or the athlete simply stopped); don't wait
-          // forever for a target that is not coming.
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-        } else if (!_reachedTarget && progress <= restProgress) {
-          // Back to the start without completing the range — return to neutral
-          // rather than stalling here forever.
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          cues.request(shortRangeCueId);
-        } else if (!_reachedTarget && delta < -directionDelta) {
-          addIssue(shortRangeIssue);
-          cues.request(shortRangeCueId);
-          // Came most of the way and is now heading back: that is a rep, just
-          // a short one. Silently discarding it made real, repeated jacks
-          // (arms peaking ~110 of a 130 degree target) count as nothing at
-          // all. Score the shortfall instead, as the squat does for depth.
-          final partialProgress =
-              restProgress + partialRepFraction * (targetProgress - restProgress);
-          if (_bestProgress >= partialProgress &&
-              progress < _bestProgress - deadZone) {
-            phase = RepPhase.concentric;
-            _recovery.begin(now());
-            markConcentricStart();
-            statusMessage = returningMessage;
-          }
+          if (_best < _levelAt(fullFraction)) cues.request(shortRangeCueId);
+        } else if (now().difference(_attemptStartedAt!) > AppConstants.repAttemptTimeout) {
+          noteIgnored('stalled');
+          _endAttempt();
         } else {
           statusMessage = workingMessage;
         }
 
       case RepPhase.concentric:
-        _bestProgress = math.max(_bestProgress, progress);
-        final verdict = progress <= restProgress
-            ? RecoveryVerdict.complete
-            : _recovery.update(
-                progress: progress,
-                extreme: _bestProgress,
-                rest: restProgress,
-                now: now(),
-              );
-        if (verdict == RecoveryVerdict.abandon) {
-          phase = RepPhase.neutral;
-          currentRepIssues.clear();
-          _reachedTarget = false;
-          _bestProgress = double.negativeInfinity;
-          statusMessage = restingMessage;
-        } else if (verdict == RecoveryVerdict.complete) {
-          repCount++;
-
-          var score = 1.0;
-          if (!_reachedTarget || currentRepIssues.contains(shortRangeIssue)) {
-            addIssue(shortRangeIssue);
-            score -= shortRangePenalty;
-          }
-          for (final issue in currentRepIssues) {
-            score -= supplementaryPenalties[issue] ?? 0.0;
-          }
-
-          statusMessage = 'Rep $repCount';
-          recordRep(
-            score: score,
-            peakAngle: _angleOf(_bestProgress),
-            romDeficitDegrees: math.max(0, targetProgress - _bestProgress),
-          );
-
-          phase = RepPhase.neutral;
-          _reachedTarget = false;
-          _bestProgress = double.negativeInfinity;
-          if (onRep != null) onRep!(repCount);
+        _best = math.max(_best, progress);
+        _lowSinceReversal = math.min(_lowSinceReversal, progress);
+        _evidence.note(good: true, faults: _faults(pose));
+        if (progress <= _levelAt(returnFraction)) {
+          _finishAttempt();
+        } else if (_risingAgain(progress)) {
+          // Going again without getting back to the start.
+          _rejectIncompleteReturn();
+          _endAttempt();
+        } else if (now().difference(_reversedAt!) > AppConstants.repAttemptTimeout) {
+          noteIgnored('stalled');
+          _endAttempt();
         } else {
           statusMessage = returningMessage;
         }
     }
+  }
+
+  Set<String> _faults(Pose pose) {
+    final faults = checkFormIssues(pose);
+    for (final fault in faults) {
+      if (_evidence.confirmed(fault, minFrames: 3, minFraction: 0.4)) addIssue(fault);
+    }
+    return faults;
+  }
+
+  /// True once the athlete has climbed back [rise] above the lowest point of the
+  /// return and stayed there: a second rep started before the first finished.
+  bool _risingAgain(double progress) {
+    final rise = math.max(4.0, 0.2 * _range);
+    if (progress < _lowSinceReversal + rise) {
+      _risingSince = null;
+      return false;
+    }
+    _risingSince ??= now();
+    return now().difference(_risingSince!) >= AppConstants.bounceHold;
+  }
+
+  double get _bestFraction => (_best - _progress(restAngle)) / _range;
+
+  void _rejectIncompleteReturn() {
+    if (_bestFraction >= noRepFraction && _evidence.goodFrames >= 3) {
+      recordNoRep(
+        reason: 'come all the way back down first',
+        label: 'Incomplete Return',
+        peakAngle: _angleOf(_best),
+      );
+    } else {
+      noteIgnored('bounce');
+    }
+  }
+
+  void _finishAttempt() {
+    final fraction = _bestFraction;
+    final deficit = math.max(0.0, _progress(targetAngle) - _best);
+
+    if (_evidence.goodFrames < 3) {
+      noteIgnored('lost tracking');
+    } else if (fraction < noRepFraction) {
+      noteIgnored('too small');
+    } else if (fraction < softFraction) {
+      recordNoRep(
+        reason: noRepReason,
+        label: noRepLabel,
+        peakAngle: _angleOf(_best),
+        romDeficitDegrees: deficit,
+      );
+    } else {
+      final full = fraction >= fullFraction;
+      repCount++;
+      var score = 1.0;
+      if (!full) {
+        addIssue(shortRangeIssue);
+        score -= shortRangePenalty;
+      }
+      for (final entry in supplementaryPenalties.entries) {
+        if (_evidence.confirmed(entry.key, minFrames: 3, minFraction: 0.4)) {
+          addIssue(entry.key);
+          score -= entry.value;
+        } else {
+          currentRepIssues.remove(entry.key);
+        }
+      }
+      statusMessage = 'Rep $repCount';
+      recordRep(
+        score: score,
+        peakAngle: _angleOf(_best),
+        romDeficitDegrees: deficit,
+        fullDepth: full,
+      );
+      if (onRep != null) onRep!(repCount);
+    }
+    _endAttempt();
   }
 }
 
@@ -2518,6 +2578,10 @@ HoldEvaluation _brokenLine(HipVerdict verdict) {
 }
 
 /// Hips lifted from the floor: the shoulder-hip-knee angle opens as you rise.
+///
+/// Measured in the image plane. A real bridge in live test #5 opened the angle
+/// from about 130 degrees to 170-180; the old 138-to-150 target gave full credit
+/// for 12 degrees of travel, which a hip twitch covers.
 class GluteBridgeAnalyzer extends RangeOfMotionAnalyzer {
   GluteBridgeAnalyzer({super.cueEngine, super.clock});
 
@@ -2530,6 +2594,9 @@ class GluteBridgeAnalyzer extends RangeOfMotionAnalyzer {
         PoseLandmarkType.leftKnee,
         PoseLandmarkType.rightKnee,
       };
+
+  @override
+  bool get uses3dAngles => false;
 
   @override
   double get restAngle => AppConstants.gluteBridgeRestAngle;
@@ -2548,6 +2615,12 @@ class GluteBridgeAnalyzer extends RangeOfMotionAnalyzer {
 
   @override
   String get shortRangeCueId => CueIds.liftHigher;
+
+  @override
+  String get noRepReason => 'push your hips higher';
+
+  @override
+  String get noRepLabel => 'Hips Not High Enough';
 
   @override
   String get workingMessage => 'Drive your hips up';
@@ -2577,12 +2650,8 @@ class GluteBridgeAnalyzer extends RangeOfMotionAnalyzer {
 
     if (!leftVisible && !rightVisible) return null;
 
-    final leftAngle = leftVisible
-        ? MathUtils.calculateJointAngle(leftShoulder, leftHip, leftKnee)
-        : null;
-    final rightAngle = rightVisible
-        ? MathUtils.calculateJointAngle(rightShoulder, rightHip, rightKnee)
-        : null;
+    final leftAngle = leftVisible ? angle2D(leftShoulder!, leftHip!, leftKnee!) : null;
+    final rightAngle = rightVisible ? angle2D(rightShoulder!, rightHip!, rightKnee!) : null;
 
     if (leftAngle == null) return rightAngle;
     if (rightAngle == null) return leftAngle;
@@ -2593,21 +2662,19 @@ class GluteBridgeAnalyzer extends RangeOfMotionAnalyzer {
     return math.max(leftAngle, rightAngle);
   }
 
-  // No supplementary checks: glute bridge is filmed lying down, side-on
-  // (confirmed against real footage -- left/right hip X-coordinates sat
-  // ~19px apart out of a >1600px-wide frame, meaning they nearly coincide in
-  // the image exactly as a true side view would produce). Every width- or
-  // vertical-based check tried here (knee valgus via left/right knee
-  // spacing, hip-height asymmetry, foot-placement via shin lean) depends on
-  // an assumption that only holds for a front-facing or upright-standing
-  // camera angle, and produced nonsensical values on real footage (a
-  // shin-lean measurement of ~85 degrees, and a knee-width/hip-width ratio
-  // swinging from 0.6 to 64 across one clip). Left at just the one check
-  // that's actually valid from this exercise's real filming angle, rather
-  // than ship checks proven unreliable.
+  // No supplementary checks: glute bridge is filmed lying down, side-on, and
+  // every width- or vertical-based check tried here (knee valgus via left/right
+  // knee spacing, hip-height asymmetry, foot placement via shin lean) assumed a
+  // front-facing or upright camera and produced nonsense on real footage.
 }
 
-/// Torso curling toward the knees: the same joint closes as you come up.
+/// Torso curling toward the knees, measured as how far the torso has risen from
+/// the floor.
+///
+/// This used to be the shoulder-hip-knee angle, which jumped 5-30 degrees
+/// whenever the knee landmark flipped (so reps were counted late, at the start
+/// of the next one). The shoulder-to-hip line does not depend on the knee, and
+/// "how high has the chest come up" is exactly what a sit-up is.
 class SitupAnalyzer extends RangeOfMotionAnalyzer {
   SitupAnalyzer({super.cueEngine, super.clock});
 
@@ -2623,6 +2690,12 @@ class SitupAnalyzer extends RangeOfMotionAnalyzer {
         PoseLandmarkType.rightAnkle,
       };
 
+  // The shoulder-hip line is all this needs, and at the top of a sit-up the
+  // tracker's confidence in a folded body dips below the usual bar exactly where
+  // the peak is: demanding 0.7 turned genuine full sit-ups into short ones.
+  @override
+  double get minLikelihood => AppConstants.situpVisibilityThreshold;
+
   @override
   double get restAngle => AppConstants.situpRestAngle;
 
@@ -2630,7 +2703,7 @@ class SitupAnalyzer extends RangeOfMotionAnalyzer {
   double get targetAngle => AppConstants.situpTopAngle;
 
   @override
-  bool get worksTowardSmallerAngle => true;
+  bool get worksTowardSmallerAngle => false;
 
   @override
   double get shortRangePenalty => AppConstants.situpShortRangePenalty;
@@ -2640,6 +2713,12 @@ class SitupAnalyzer extends RangeOfMotionAnalyzer {
 
   @override
   String get shortRangeCueId => CueIds.curlHigher;
+
+  @override
+  String get noRepReason => 'sit up higher';
+
+  @override
+  String get noRepLabel => 'Not High Enough';
 
   @override
   String get workingMessage => 'Curl up';
@@ -2655,86 +2734,80 @@ class SitupAnalyzer extends RangeOfMotionAnalyzer {
   @override
   bool get uses3dAngles => false;
 
+  /// Torso elevation from the floor, in degrees: 0 lying flat, 90 sitting
+  /// upright. Taken from whichever side is better seen.
   @override
-  double? measureAngle(Pose pose) => bestSideAngle(
-        pose,
-        isLandmarkVisible,
-        const [
-          PoseLandmarkType.leftShoulder,
-          PoseLandmarkType.leftHip,
-          PoseLandmarkType.leftKnee,
-        ],
-        const [
-          PoseLandmarkType.rightShoulder,
-          PoseLandmarkType.rightHip,
-          PoseLandmarkType.rightKnee,
-        ],
-        angle: jointAngle,
-      );
+  double? measureAngle(Pose pose) {
+    PoseLandmark? bestShoulder;
+    PoseLandmark? bestHip;
+    var bestConfidence = -1.0;
+    for (final (shoulderType, hipType) in const [
+      (PoseLandmarkType.leftShoulder, PoseLandmarkType.leftHip),
+      (PoseLandmarkType.rightShoulder, PoseLandmarkType.rightHip),
+    ]) {
+      final shoulder = pose.landmarks[shoulderType];
+      final hip = pose.landmarks[hipType];
+      if (!isLandmarkVisible(shoulder) || !isLandmarkVisible(hip)) continue;
+      final confidence = shoulder!.likelihood + hip!.likelihood;
+      if (confidence > bestConfidence) {
+        bestConfidence = confidence;
+        bestShoulder = shoulder;
+        bestHip = hip;
+      }
+    }
+    if (bestShoulder == null || bestHip == null) return null;
+    final dx = (bestShoulder.x - bestHip.x).abs();
+    final dy = bestHip.y - bestShoulder.y; // positive when the shoulder is above
+    return math.atan2(dy, math.max(dx, 1e-6)) * 180 / math.pi;
+  }
 
   @override
   Map<String, double> get supplementaryPenalties => const {
-        'Uneven Sides': AppConstants.situpAsymmetryPenalty,
         'Straight Legs': AppConstants.situpStraightLegPenalty,
       };
 
   @override
-  void checkFormIssues(Pose pose) {
-    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
-    final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
-    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
-    final leftAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
-    final rightShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
-    final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
-    final rightKnee = pose.landmarks[PoseLandmarkType.rightKnee];
-    final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
-
-    final leftVisible = isLandmarkVisible(leftShoulder) &&
-        isLandmarkVisible(leftHip) &&
-        isLandmarkVisible(leftKnee);
-    final rightVisible = isLandmarkVisible(rightShoulder) &&
-        isLandmarkVisible(rightHip) &&
-        isLandmarkVisible(rightKnee);
-
-    if (leftVisible && rightVisible) {
-      final leftAngle = MathUtils.calculateJointAngle(leftShoulder, leftHip, leftKnee);
-      final rightAngle = MathUtils.calculateJointAngle(rightShoulder, rightHip, rightKnee);
-      if ((leftAngle - rightAngle).abs() > AppConstants.situpAsymmetryDegreesThreshold) {
-        addIssue('Uneven Sides');
-        cues.request(CueIds.asymmetry);
-      } else {
-        currentRepIssues.remove('Uneven Sides');
-      }
-    }
-
+  Set<String> checkFormIssues(Pose pose) {
     // A proper sit-up keeps the knees bent; straight legs shift the work onto
-    // the hip flexors and lower back instead of the abdominals.
-    if (leftVisible && isLandmarkVisible(leftAnkle)) {
-      final kneeAngle = MathUtils.calculateJointAngle(leftHip, leftKnee, leftAnkle);
-      if (kneeAngle > AppConstants.situpKneeStraightAngle) {
-        addIssue('Straight Legs');
-        cues.request(CueIds.straightenLegs);
-      } else {
-        currentRepIssues.remove('Straight Legs');
-      }
-    } else if (rightVisible && isLandmarkVisible(rightAnkle)) {
-      final kneeAngle = MathUtils.calculateJointAngle(rightHip, rightKnee, rightAnkle);
-      if (kneeAngle > AppConstants.situpKneeStraightAngle) {
-        addIssue('Straight Legs');
-        cues.request(CueIds.straightenLegs);
-      } else {
-        currentRepIssues.remove('Straight Legs');
-      }
-    }
+    // the hip flexors and lower back instead of the abdominals. (The old
+    // left-versus-right "Uneven Sides" check is gone: from a side-on camera the
+    // far side is hidden, so it measured the camera angle, not the athlete.)
+    final leg = sampleLeg(pose, minLikelihood);
+    if (leg == null) return const {};
+    return leg.kneeAngle > AppConstants.situpKneeStraightAngle
+        ? const {'Straight Legs'}
+        : const {};
   }
 }
 
-/// Arms sweeping out and overhead, measured as abduction at the shoulder.
+/// Arms sweeping out and overhead while the feet jump apart, judged from the
+/// front.
 ///
-/// The one exercise judged from the front, which also exercises the front-on
-/// branch of the orientation check.
-class JumpingJackAnalyzer extends RangeOfMotionAnalyzer {
+/// Counted from the legs: feet together, feet apart, feet together again. At the
+/// ~7 frames a second the phone analyses, the arms of a fast jack are a blur
+/// the tracker often puts at shoulder height, so counting from them returned 14
+/// jacks for a set of 25-35 in live test #5 and told an athlete with their hands
+/// overhead to "reach higher". The arms are still coached, but only on frames
+/// where the tracker is confident in them, and a set whose ankles cannot be seen
+/// falls back to counting the arms alone.
+class JumpingJackAnalyzer extends ExerciseAnalyzer {
   JumpingJackAnalyzer({super.cueEngine, super.clock});
+
+  final MedianFilter _spreadFilter = MedianFilter(3);
+  final MedianFilter _armFilter = MedianFilter(3);
+  final AttemptEvidence _evidence = AttemptEvidence();
+
+  bool _apart = false;
+  double _peakSpread = 0;
+  double _peakArm = 0;
+  int _trustedArmFrames = 0;
+  DateTime? _cycleStartedAt;
+  DateTime? _lastSpreadAt;
+
+  // Arms-only fallback.
+  bool _armsHigh = false;
+  double _armCyclePeak = 0;
+  DateTime? _armCycleStartedAt;
 
   @override
   ViewOrientation get requiredOrientation => ViewOrientation.frontOn;
@@ -2747,110 +2820,280 @@ class JumpingJackAnalyzer extends RangeOfMotionAnalyzer {
         PoseLandmarkType.rightElbow,
         PoseLandmarkType.leftHip,
         PoseLandmarkType.rightHip,
-        // Knees are drawn so the skeleton has legs; a jack is a leg movement
-        // too, and floating ankle dots read as a broken overlay.
         PoseLandmarkType.leftKnee,
         PoseLandmarkType.rightKnee,
         PoseLandmarkType.leftAnkle,
         PoseLandmarkType.rightAnkle,
       };
 
+  // A jack is too quick to coach the way down.
   @override
-  double get restAngle => AppConstants.jumpingJackRestAngle;
+  bool get coachesLowering => false;
 
   @override
-  double get targetAngle => AppConstants.jumpingJackTopAngle;
+  void reset() {
+    super.reset();
+    _spreadFilter.reset();
+    _armFilter.reset();
+    _evidence.reset();
+    _apart = false;
+    _peakSpread = 0;
+    _peakArm = 0;
+    _trustedArmFrames = 0;
+    _cycleStartedAt = null;
+    _lastSpreadAt = null;
+    _armsHigh = false;
+    _armCyclePeak = 0;
+    _armCycleStartedAt = null;
+  }
 
-  @override
-  bool get worksTowardSmallerAngle => false;
-
-  @override
-  double get shortRangePenalty => AppConstants.jumpingJackShortRangePenalty;
-
-  @override
-  String get shortRangeIssue => 'Arms Not Fully Raised';
-
-  @override
-  String get shortRangeCueId => CueIds.raiseArms;
-
-  @override
-  String get workingMessage => 'Arms all the way up';
-
-  @override
-  String get returningMessage => 'And back down';
-
-  @override
-  String get restingMessage => 'Jump and raise your arms';
-
-  @override
-  double? measureAngle(Pose pose) => bestSideAngle(
-        pose,
-        isLandmarkVisible,
-        const [
-          PoseLandmarkType.leftHip,
-          PoseLandmarkType.leftShoulder,
-          PoseLandmarkType.leftElbow,
-        ],
-        const [
-          PoseLandmarkType.rightHip,
-          PoseLandmarkType.rightShoulder,
-          PoseLandmarkType.rightElbow,
-        ],
-      );
-
-  @override
-  Map<String, double> get supplementaryPenalties => const {
-        'Feet Not Spread': AppConstants.jumpingJackFeetSpreadPenalty,
-        'Uneven Arms': AppConstants.jumpingJackAsymmetryPenalty,
-      };
-
-  @override
-  void checkFormIssues(Pose pose) {
-    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
-    final rightShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
-    final leftAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
-    final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
-
-    // The analyzer only ever measured arm abduction -- a "jack" that just
-    // waves its arms with feet together would still pass. Ankle spread
-    // relative to shoulder width catches the half of the movement that was
-    // never checked at all. Tracked continuously and retracted once wide
-    // enough, same pattern as the depth checks elsewhere: it only needs to
-    // happen once during the rep, not be true on every single frame.
-    if (isLandmarkVisible(leftShoulder) &&
-        isLandmarkVisible(rightShoulder) &&
-        isLandmarkVisible(leftAnkle) &&
-        isLandmarkVisible(rightAnkle)) {
-      final shoulderWidth = (leftShoulder!.x - rightShoulder!.x).abs();
-      final ankleWidth = (leftAnkle!.x - rightAnkle!.x).abs();
-      if (shoulderWidth > AppConstants.minMagnitude &&
-          ankleWidth / shoulderWidth >= AppConstants.jumpingJackFeetSpreadRatio) {
-        currentRepIssues.remove('Feet Not Spread');
-      } else {
-        addIssue('Feet Not Spread');
-        cues.request(CueIds.feetNotSpread);
+  /// Arm abduction at the shoulder (hip-shoulder-elbow), both arms, with whether
+  /// the tracker was confident in every landmark that went into it.
+  (double? angle, bool trusted) _armAbduction(Pose pose) {
+    double? best;
+    var trusted = false;
+    for (final (hipType, shoulderType, elbowType) in const [
+      (PoseLandmarkType.leftHip, PoseLandmarkType.leftShoulder, PoseLandmarkType.leftElbow),
+      (PoseLandmarkType.rightHip, PoseLandmarkType.rightShoulder, PoseLandmarkType.rightElbow),
+    ]) {
+      final hip = pose.landmarks[hipType];
+      final shoulder = pose.landmarks[shoulderType];
+      final elbow = pose.landmarks[elbowType];
+      if (hip == null || shoulder == null || elbow == null) continue;
+      if (!isLandmarkVisible(hip) || !isLandmarkVisible(shoulder) || !isLandmarkVisible(elbow)) {
+        continue;
+      }
+      final angle = angle2D(hip, shoulder, elbow);
+      if (best == null || angle > best) best = angle;
+      if (hip.likelihood >= AppConstants.jumpingJackArmTrust &&
+          shoulder.likelihood >= AppConstants.jumpingJackArmTrust &&
+          elbow.likelihood >= AppConstants.jumpingJackArmTrust) {
+        trusted = true;
       }
     }
+    return (best, trusted);
+  }
 
-    final leftElbow = pose.landmarks[PoseLandmarkType.leftElbow];
+  /// Ankle-to-ankle distance in torso lengths (shoulder midpoint to hip
+  /// midpoint), or null when an ankle, shoulder or hip can't be seen (or the
+  /// reading is tracker junk). Torso length rather than shoulder width: the
+  /// shoulders collapse to almost nothing whenever the athlete turns a little,
+  /// which made the stock clip read feet 27 shoulder-widths apart.
+  double? _feetSpread(Pose pose) {
+    final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
+    final rightShoulder = pose.landmarks[PoseLandmarkType.rightShoulder];
     final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
-    final rightElbow = pose.landmarks[PoseLandmarkType.rightElbow];
     final rightHip = pose.landmarks[PoseLandmarkType.rightHip];
-    final leftVisible = isLandmarkVisible(leftHip) &&
-        isLandmarkVisible(leftShoulder) &&
-        isLandmarkVisible(leftElbow);
-    final rightVisible = isLandmarkVisible(rightHip) &&
-        isLandmarkVisible(rightShoulder) &&
-        isLandmarkVisible(rightElbow);
-    if (leftVisible && rightVisible) {
-      final leftAngle = MathUtils.calculateJointAngle(leftHip, leftShoulder, leftElbow);
-      final rightAngle = MathUtils.calculateJointAngle(rightHip, rightShoulder, rightElbow);
-      if ((leftAngle - rightAngle).abs() > AppConstants.jumpingJackAsymmetryDegreesThreshold) {
-        addIssue('Uneven Arms');
-        cues.request(CueIds.asymmetry);
-      } else {
-        currentRepIssues.remove('Uneven Arms');
+    final leftAnkle = pose.landmarks[PoseLandmarkType.leftAnkle];
+    final rightAnkle = pose.landmarks[PoseLandmarkType.rightAnkle];
+    if (!isLandmarkVisible(leftShoulder) ||
+        !isLandmarkVisible(rightShoulder) ||
+        !isLandmarkVisible(leftHip) ||
+        !isLandmarkVisible(rightHip) ||
+        leftAnkle == null ||
+        rightAnkle == null ||
+        leftAnkle.likelihood < AppConstants.jumpingJackAnkleLikelihood ||
+        rightAnkle.likelihood < AppConstants.jumpingJackAnkleLikelihood) {
+      return null;
+    }
+    final shoulderMidX = (leftShoulder!.x + rightShoulder!.x) / 2;
+    final shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2;
+    final hipMidX = (leftHip!.x + rightHip!.x) / 2;
+    final hipMidY = (leftHip.y + rightHip.y) / 2;
+    final torso = math.sqrt(
+        math.pow(shoulderMidX - hipMidX, 2) + math.pow(shoulderMidY - hipMidY, 2));
+    if (torso < 1e-6) return null;
+    final spread = (leftAnkle.x - rightAnkle.x).abs() / torso;
+    return spread > AppConstants.jumpingJackMaxSpread ? null : spread;
+  }
+
+  @override
+  void processPose(Pose pose) {
+    updateOrientation(pose);
+    final (rawArm, armTrusted) = _armAbduction(pose);
+    final arm = rawArm == null ? null : _armFilter.add(rawArm);
+    lastProcessedAngle = arm;
+
+    final rawSpread = _feetSpread(pose);
+    if (rawSpread == null && arm == null) {
+      statusMessage = 'Adjust Camera';
+      return;
+    }
+
+    final timestamp = now();
+    if (rawSpread != null) {
+      _lastSpreadAt = timestamp;
+      _legCycle(_spreadFilter.add(rawSpread), arm, armTrusted);
+      return;
+    }
+
+    // Ankles out of view for a while: count the arms, more conservatively.
+    final last = _lastSpreadAt;
+    if (arm != null && (last == null || timestamp.difference(last) > const Duration(seconds: 1))) {
+      _armOnlyCycle(arm);
+    }
+  }
+
+  void _legCycle(double spread, double? arm, bool armTrusted) {
+    if (!_apart) {
+      if (spread >= AppConstants.jumpingJackLeaveRatio && _cycleStartedAt == null) {
+        _cycleStartedAt = now();
+        _peakSpread = spread;
+        _peakArm = 0;
+        _trustedArmFrames = 0;
+        _evidence.reset();
+        currentRepIssues.clear();
+        phase = RepPhase.eccentric;
+        markRepStart();
+        statusMessage = 'Arms all the way up';
       }
+      if (_cycleStartedAt != null) {
+        _trackCycle(spread, arm, armTrusted);
+        if (spread >= AppConstants.jumpingJackApartRatio) {
+          _apart = true;
+        } else if (spread <= AppConstants.jumpingJackTogetherRatio) {
+          // Left and came back without opening up: judged on how far it got.
+          _finishCycle();
+        }
+      } else {
+        statusMessage = 'Jump and raise your arms';
+      }
+      return;
+    }
+
+    _trackCycle(spread, arm, armTrusted);
+    if (spread <= AppConstants.jumpingJackTogetherRatio) {
+      _finishCycle();
+    } else {
+      statusMessage = 'And back down';
+    }
+  }
+
+  void _trackCycle(double spread, double? arm, bool armTrusted) {
+    _peakSpread = math.max(_peakSpread, spread);
+    final faults = <String>{};
+    if (arm != null && armTrusted) {
+      _trustedArmFrames++;
+      _peakArm = math.max(_peakArm, arm);
+    }
+    // Arms are only coached on frames the tracker is sure about, and only once
+    // the feet are out, when the arms should be overhead.
+    if (_apart && arm != null && armTrusted && arm < AppConstants.jumpingJackArmCueAngle) {
+      faults.add('Arms Not Fully Raised');
+    }
+    _evidence.note(good: true, faults: faults);
+    if (_evidence.confirmed('Arms Not Fully Raised', minFrames: 3, minFraction: 0.5)) {
+      cues.request(CueIds.raiseArms);
+    }
+    if (_apart && _peakSpread < AppConstants.jumpingJackApartRatio) {
+      cues.request(CueIds.feetNotSpread);
+    }
+  }
+
+  void _finishCycle() {
+    final started = _cycleStartedAt;
+    final took = started == null ? Duration.zero : now().difference(started);
+    final peakSpread = _peakSpread;
+    final armPeak = _peakArm;
+    final trusted = _trustedArmFrames;
+    final apartReached = _apart;
+    _apart = false;
+    _cycleStartedAt = null;
+    phase = RepPhase.neutral;
+
+    if (took < AppConstants.jumpingJackMinCycle ||
+        peakSpread < AppConstants.jumpingJackMinPeak) {
+      noteIgnored('too small');
+      return;
+    }
+
+    if (trusted >= 3 && armPeak < AppConstants.jumpingJackArmNoRep) {
+      recordNoRep(
+        reason: 'arms all the way up',
+        label: 'Arms Not Raised',
+        peakAngle: armPeak,
+      );
+      return;
+    }
+
+    repCount++;
+    var score = 1.0;
+    final feetShort = !apartReached || peakSpread < AppConstants.jumpingJackApartRatio;
+    if (feetShort) {
+      addIssue('Feet Not Spread');
+      score -= AppConstants.jumpingJackFeetSpreadPenalty;
+    }
+    final armsShort = trusted >= 3 && armPeak < AppConstants.jumpingJackArmSoft;
+    if (armsShort) {
+      addIssue('Arms Not Fully Raised');
+      score -= AppConstants.jumpingJackShortRangePenalty;
+    }
+    statusMessage = 'Rep $repCount';
+    recordRep(
+      score: score,
+      peakAngle: trusted >= 3 ? armPeak : null,
+      romDeficitDegrees: trusted >= 3
+          ? math.max(0, AppConstants.jumpingJackTopAngle - armPeak)
+          : 0,
+    );
+    if (onRep != null) onRep!(repCount);
+  }
+
+  /// Arms-only counting for a set whose ankles are out of frame.
+  void _armOnlyCycle(double arm) {
+    if (!_armsHigh) {
+      if (arm >= AppConstants.jumpingJackArmLeave && _armCycleStartedAt == null) {
+        _armCycleStartedAt = now();
+        _armCyclePeak = arm;
+        currentRepIssues.clear();
+        phase = RepPhase.eccentric;
+        markRepStart();
+        statusMessage = 'Arms all the way up';
+      }
+      if (_armCycleStartedAt != null) {
+        _armCyclePeak = math.max(_armCyclePeak, arm);
+        if (arm >= AppConstants.jumpingJackArmCount) {
+          _armsHigh = true;
+        } else if (arm <= AppConstants.jumpingJackArmRest) {
+          _armCycleStartedAt = null;
+          phase = RepPhase.neutral;
+          if (_armCyclePeak < AppConstants.jumpingJackArmCount) {
+            noteIgnored('arms only to ${_armCyclePeak.round()}');
+          }
+        }
+      } else {
+        statusMessage = 'Jump and raise your arms';
+      }
+      return;
+    }
+
+    _armCyclePeak = math.max(_armCyclePeak, arm);
+    if (arm <= AppConstants.jumpingJackArmRest) {
+      final started = _armCycleStartedAt;
+      final took = started == null ? Duration.zero : now().difference(started);
+      final peak = _armCyclePeak;
+      _armsHigh = false;
+      _armCycleStartedAt = null;
+      phase = RepPhase.neutral;
+      if (took < AppConstants.jumpingJackMinCycle) {
+        noteIgnored('too quick');
+        return;
+      }
+      repCount++;
+      var score = 1.0;
+      if (peak < AppConstants.jumpingJackArmFull) {
+        addIssue('Arms Not Fully Raised');
+        score -= AppConstants.jumpingJackShortRangePenalty;
+      }
+      statusMessage = 'Rep $repCount';
+      recordRep(
+        score: score,
+        peakAngle: peak,
+        romDeficitDegrees: math.max(0, AppConstants.jumpingJackTopAngle - peak),
+      );
+      if (onRep != null) onRep!(repCount);
+    } else {
+      statusMessage = 'And back down';
     }
   }
 }

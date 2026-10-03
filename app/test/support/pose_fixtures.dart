@@ -123,6 +123,34 @@ class PoseFixtures {
     ]);
   }
 
+  /// A side-on pose lying or sitting, with the torso [elevation] degrees above
+  /// the floor (0 flat on the back, 90 sitting upright). Floor is down the image;
+  /// the head is to the left. The knees are bent about 90 degrees unless
+  /// [kneeAngle] says otherwise.
+  static Pose situp({
+    required double elevation,
+    double kneeAngle = 90,
+    double likelihood = _defaultLikelihood,
+  }) {
+    const hipX = 300.0;
+    const hipY = 300.0;
+    const segment = 100.0;
+    final rad = _radians(elevation);
+    final shoulder = Offset(hipX - segment * math.cos(rad), hipY - segment * math.sin(rad));
+    // Thigh up and back toward the head, shin back down to the floor.
+    const knee = Offset(hipX + 70, hipY - 70);
+    final kneeRad = _radians(kneeAngle);
+    final ankle = Offset(knee.dx + segment * math.sin(kneeRad) * 0.7, knee.dy + 140);
+    return fromLandmarks([
+      for (final side in const [_Side.left, _Side.right]) ...[
+        landmark(side.shoulder, shoulder.dx, shoulder.dy, likelihood: likelihood),
+        landmark(side.hip, hipX, hipY, likelihood: likelihood),
+        landmark(side.knee, knee.dx, knee.dy, likelihood: likelihood),
+        landmark(side.ankle, ankle.dx, ankle.dy, likelihood: likelihood),
+      ],
+    ]);
+  }
+
   /// A pushup pose whose shoulder-elbow-wrist angle is [elbowAngle] degrees.
   static Pose pushup({
     required double elbowAngle,

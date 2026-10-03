@@ -39,15 +39,16 @@ final Map<String, Set<String>> _allowed = {
     CueIds.controlDescent, ..._praise, ..._depthPraise,
   },
   'situp': {
-    CueIds.curlHigher, CueIds.asymmetry, CueIds.straightenLegs,
-    CueIds.controlDescent, CueIds.turnSideOn, ..._praise,
+    CueIds.curlHigher, CueIds.straightenLegs,
+    CueIds.controlDescent, CueIds.turnSideOn, ..._praise, ..._depthPraise,
   },
   'gluteBridge': {
     CueIds.liftHigher, CueIds.controlDescent, CueIds.turnSideOn, ..._praise,
+    ..._depthPraise,
   },
+  // No tempo cue: a jack is too quick to coach the way down.
   'jumpingJack': {
-    CueIds.raiseArms, CueIds.feetNotSpread, CueIds.asymmetry,
-    CueIds.controlDescent, CueIds.turnFrontOn, ..._praise,
+    CueIds.raiseArms, CueIds.feetNotSpread, CueIds.turnFrontOn, ..._praise,
   },
   'plank': {
     CueIds.hipsSagging, CueIds.hipsPiked, CueIds.straightBody, CueIds.getInPlank,

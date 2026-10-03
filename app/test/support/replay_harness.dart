@@ -19,7 +19,8 @@ class ReplayRun {
   /// Attempts turned down, with the second each was announced and the phrase.
   final List<(double, String)> noReps = [];
 
-  /// Movements that were never an attempt (silent).
+  /// Movements that were never an attempt (silent), with when and why.
+  final List<(double, String)> ignoredLog = [];
   int get ignored => analyzer.ignoredAttempts;
 
   Set<String> get issues => analyzer.allRepIssues.expand((i) => i).toSet();
@@ -52,6 +53,7 @@ ReplayRun replay(
     run.safety.add(m);
   };
   analyzer.onNoRep = (reason, spoken) => run.noReps.add((frame / fps, reason));
+  analyzer.onIgnored = (reason) => run.ignoredLog.add((frame / fps, reason));
   var lastCount = 0;
   var paused = false;
   for (final pose in RecordedPoseFixtures.loadSequence(fixture)) {

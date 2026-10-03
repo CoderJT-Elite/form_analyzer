@@ -178,60 +178,44 @@ void main() {
   });
 
   group('Sit-up, real footage', () {
-    test('bent-knee sit-ups complete reps at realistic floor rest angle', () {
-      final analyzer = SitupAnalyzer();
-      final frames = RecordedPoseFixtures.loadSequence('situp_pixabay_293079');
+    test('bent-knee sit-ups are counted as the torso comes up and goes back down', () {
+      final run = replay('situp_pixabay_293079', (c) => SitupAnalyzer(clock: c), fps: 30);
 
-      for (final pose in frames) {
-        analyzer.processPose(pose);
-      }
-
-      // Bent-knee sit-up lying on floor measures 130-135 degrees.
-      // Requiring 150 degrees caused reps to never finish concentric phase.
-      expect(analyzer.repCount, 4);
-      expect(analyzer.repScores.length, 4);
+      // The torso rises 54-68 degrees off the floor four times (plus a fifth,
+      // lower peak), measured from the shoulder-hip line rather than the knee.
+      expect(run.analyzer.repCount, inInclusiveRange(4, 5));
+      expect(run.analyzer.repScores.length, run.analyzer.repCount);
     });
 
-    test('situp clip 296446 counts the whole fast set, with a genuine side imbalance', () {
+    test('a fast bouncing set only counts the reps that lie back down', () {
       final run = replay('situp_pixabay_296446', (c) => SitupAnalyzer(clock: c), fps: 30);
 
-      // 15 seconds of fast sit-ups. Run in a tight loop with no time passing
-      // this used to read as 2 reps; with real frame timing the set is 7.
-      expect(run.analyzer.repCount, inInclusiveRange(6, 9));
-      // The left/right shoulder-hip-knee angle genuinely diverges past the
-      // threshold on some reps, so the imbalance flag is real.
-      expect(run.issues, contains('Uneven Sides'));
+      // Seven fast reps in 15 seconds, but in the middle of the set the athlete
+      // never gets their shoulders back toward the floor (the torso stays 43-56
+      // degrees up between them). Those are bounces, not sit-ups: the reps that
+      // return to the floor count, and the going-again-without-lowering ones are
+      // turned down instead of being counted as extra reps.
+      expect(run.analyzer.repCount, inInclusiveRange(2, 4));
+      expect(run.noReps.map((e) => e.$2), contains('come all the way back down first'));
     });
   });
 
   group('Jumping Jack, real footage', () {
-    test('jumping jack clip 292741 counts 7 reps, two with genuinely uneven arms', () {
-      final analyzer = JumpingJackAnalyzer();
-      final frames = RecordedPoseFixtures.loadSequence('jumpingJack_pixabay_292741');
+    test('jumping jack clip 292741 is counted from the feet, one per jump', () {
+      final run = replay('jumpingJack_pixabay_292741', (c) => JumpingJackAnalyzer(clock: c), fps: 30);
 
-      for (final pose in frames) {
-        analyzer.processPose(pose);
-      }
-
-      expect(analyzer.repCount, 7);
-      // Reps 2 and 3 carry a real 'Uneven Arms' flag (0.85 each) -- the two
-      // arms' hip-shoulder-elbow angles genuinely diverge past the threshold on
-      // those specific reps, recovering from rep 4 onward.
-      expect(analyzer.repScores, [1.0, 0.85, 0.85, 1.0, 1.0, 1.0, 1.0]);
+      // The arms peak seven times (every ~2 s) and the feet open eight times.
+      expect(run.analyzer.repCount, inInclusiveRange(7, 9));
+      expect(run.noReps, isEmpty);
     });
 
-    test('continuous rhythmic jumping jacks with bouncing rest arms complete reps', () {
-      final analyzer = JumpingJackAnalyzer();
-      final frames = RecordedPoseFixtures.loadSequence('jumpingJack_pixabay_84375');
+    test('continuous rhythmic jumping jacks are all counted', () {
+      final run = replay('jumpingJack_pixabay_84375', (c) => JumpingJackAnalyzer(clock: c), fps: 30);
 
-      for (final pose in frames) {
-        analyzer.processPose(pose);
-      }
-
-      // During rapid continuous jacks, arms descend to 50-55 degrees at the bottom.
-      // Requiring <= 45 degrees stalled concentric phase. Hardened rest angle counts 5 reps.
-      expect(analyzer.repCount, 5);
-      expect(analyzer.repScores.length, 5);
+      // Twelve arm and foot peaks in 12 seconds: one a second. (The old arm
+      // machine, which needed the arms to come all the way back to rest,
+      // counted 5.)
+      expect(run.analyzer.repCount, inInclusiveRange(10, 12));
     });
   });
 

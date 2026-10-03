@@ -40,6 +40,7 @@ ReplayRun replayRecording(
   };
 
   analyzer.onNoRep = (reason, spoken) => run.noReps.add((at, reason));
+  analyzer.onIgnored = (reason) => run.ignoredLog.add((at, reason));
   var lastCount = 0;
   for (var i = 0; i < frames.length; i++) {
     final m = frameMeta[i];

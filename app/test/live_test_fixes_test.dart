@@ -96,7 +96,6 @@ void main() {
     });
 
     test('jumping jack, glute bridge and sit-up have direction-correct cues', () {
-      expect(JumpingJackAnalyzer().shortRangeCueId, CueIds.raiseArms);
       expect(GluteBridgeAnalyzer().shortRangeCueId, CueIds.liftHigher);
       expect(SitupAnalyzer().shortRangeCueId, CueIds.curlHigher);
       final ids = kDefaultCues.map((c) => c.id).toSet();

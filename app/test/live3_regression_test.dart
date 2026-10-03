@@ -46,9 +46,12 @@ void main() {
     expect(run.analyzer.repCount, inInclusiveRange(7, 9));
   });
 
-  test('sit-ups: the ~14-16 real reps, not 0-1', () {
+  test('sit-ups: the ~13 real reps, not 0-1', () {
+    // Thirteen distinct torso peaks (51-87 degrees off the floor) in the trace;
+    // the old note said 14-16, which the old analyzer reached by counting some
+    // of the lowering as reps.
     final run = replay('live3_situp', (c) => SitupAnalyzer(clock: c));
-    expect(run.analyzer.repCount, inInclusiveRange(13, 17));
+    expect(run.analyzer.repCount, inInclusiveRange(11, 14));
   });
 
   test('overhead press: the three real presses, none from the walk to the phone', () {

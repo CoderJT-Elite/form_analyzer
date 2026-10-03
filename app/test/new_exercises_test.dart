@@ -31,52 +31,115 @@ void hold(ExerciseAnalyzer analyzer, Pose pose, {int frames = 15}) {
 void main() {
   group('GluteBridgeAnalyzer', () {
     Pose bridge(double angle) => PoseFixtures.plank(backAngle: angle);
+    late GluteBridgeAnalyzer analyzer;
+    late List<String> turnedDown;
+
+    setUp(() {
+      analyzer = GluteBridgeAnalyzer(clock: TestClock().call);
+      turnedDown = [];
+      analyzer.onNoRep = (reason, spoken) => turnedDown.add(reason);
+    });
 
     test('counts a rep that reaches full hip extension', () {
-      final analyzer = GluteBridgeAnalyzer();
-      hold(analyzer, bridge(110));
+      hold(analyzer, bridge(125));
 
-      sweep(analyzer, bridge, from: 110, to: 175);
-      sweep(analyzer, bridge, from: 175, to: 110);
-      hold(analyzer, bridge(110), frames: 6);
+      sweep(analyzer, bridge, from: 125, to: 175);
+      sweep(analyzer, bridge, from: 175, to: 125);
+      hold(analyzer, bridge(125), frames: 6);
 
       expect(analyzer.repCount, 1);
       expect(analyzer.repScores.single, 1.0);
     });
 
-    test('does not count a rep that never locks the hips out', () {
-      final analyzer = GluteBridgeAnalyzer();
-      hold(analyzer, bridge(110));
+    test('a hip twitch is not a rep: 15 degrees of travel is ignored, silently', () {
+      hold(analyzer, bridge(125));
 
-      // 145 is short of the 160 degree target.
-      sweep(analyzer, bridge, from: 110, to: 145);
-      sweep(analyzer, bridge, from: 145, to: 110);
-      hold(analyzer, bridge(110), frames: 6);
+      // The old 138-to-150 range gave full credit for exactly this.
+      sweep(analyzer, bridge, from: 125, to: 140);
+      sweep(analyzer, bridge, from: 140, to: 125);
+      hold(analyzer, bridge(125), frames: 6);
 
       expect(analyzer.repCount, 0);
+      expect(turnedDown, isEmpty, reason: 'a twitch is not worth a verdict');
       expect(analyzer.phase, RepPhase.neutral,
           reason: 'Must return to neutral, not stall mid-rep.');
+    });
+
+    test('a half bridge is turned down, and says to push the hips higher', () {
+      hold(analyzer, bridge(125));
+
+      sweep(analyzer, bridge, from: 125, to: 152);
+      sweep(analyzer, bridge, from: 152, to: 125);
+      hold(analyzer, bridge(125), frames: 6);
+
+      expect(analyzer.repCount, 0);
+      expect(turnedDown, ['push your hips higher']);
+    });
+
+    test('a bridge that comes up and goes again without lowering is a no-rep', () {
+      hold(analyzer, bridge(125));
+
+      sweep(analyzer, bridge, from: 125, to: 175);
+      sweep(analyzer, bridge, from: 175, to: 155); // only part way down...
+      sweep(analyzer, bridge, from: 155, to: 175); // ...and up again
+      sweep(analyzer, bridge, from: 175, to: 125);
+      hold(analyzer, bridge(125), frames: 6);
+
+      expect(turnedDown, ['come all the way back down first']);
     });
   });
 
   group('SitupAnalyzer', () {
-    Pose situp(double angle) => PoseFixtures.plank(backAngle: angle);
+    Pose situp(double elevation) => PoseFixtures.situp(elevation: elevation);
+    late SitupAnalyzer analyzer;
+    late List<String> turnedDown;
 
-    test('counts a rep that curls all the way up', () {
-      final analyzer = SitupAnalyzer();
-      hold(analyzer, situp(170));
+    setUp(() {
+      analyzer = SitupAnalyzer(clock: TestClock().call);
+      turnedDown = [];
+      analyzer.onNoRep = (reason, spoken) => turnedDown.add(reason);
+    });
 
-      sweep(analyzer, situp, from: 170, to: 80);
-      sweep(analyzer, situp, from: 80, to: 170);
-      hold(analyzer, situp(170), frames: 6);
+    test('counts a rep that sits all the way up', () {
+      hold(analyzer, situp(5));
+
+      sweep(analyzer, situp, from: 5, to: 75);
+      sweep(analyzer, situp, from: 75, to: 5);
+      hold(analyzer, situp(5), frames: 6);
 
       expect(analyzer.repCount, 1);
       expect(analyzer.repScores.single, 1.0);
     });
 
-    test('travels in the opposite direction to the glute bridge', () {
-      expect(SitupAnalyzer().worksTowardSmallerAngle, isTrue);
-      expect(GluteBridgeAnalyzer().worksTowardSmallerAngle, isFalse);
+    test('a crunch is not a sit-up: 22 degrees off the floor is ignored', () {
+      hold(analyzer, situp(5));
+
+      sweep(analyzer, situp, from: 5, to: 22);
+      sweep(analyzer, situp, from: 22, to: 5);
+      hold(analyzer, situp(5), frames: 6);
+
+      expect(analyzer.repCount, 0);
+      expect(turnedDown, isEmpty);
+    });
+
+    test('a half sit-up is turned down ("sit up higher")', () {
+      hold(analyzer, situp(5));
+
+      sweep(analyzer, situp, from: 5, to: 38);
+      sweep(analyzer, situp, from: 38, to: 5);
+      hold(analyzer, situp(5), frames: 6);
+
+      expect(analyzer.repCount, 0);
+      expect(turnedDown, ['sit up higher']);
+    });
+
+    test('is measured as how high the torso has come up, not a knee-dependent angle', () {
+      // Bending or straightening the knees must not move the reading.
+      final bent = analyzer.measureAngle(PoseFixtures.situp(elevation: 50, kneeAngle: 80))!;
+      final straight = analyzer.measureAngle(PoseFixtures.situp(elevation: 50, kneeAngle: 170))!;
+      expect(bent, closeTo(50, 0.5));
+      expect(straight, closeTo(bent, 0.5));
+      expect(analyzer.measureAngle(PoseFixtures.situp(elevation: 5))!, lessThan(10));
     });
   });
 
@@ -87,8 +150,8 @@ void main() {
       expect(JumpingJackAnalyzer().requiredOrientation, ViewOrientation.frontOn);
     });
 
-    test('counts a rep when the arms go all the way overhead', () {
-      final analyzer = JumpingJackAnalyzer();
+    test('with the ankles out of frame, counts a rep when the arms go all the way overhead', () {
+      final analyzer = JumpingJackAnalyzer(clock: TestClock().call);
       hold(analyzer, jack(20));
 
       sweep(analyzer, jack, from: 20, to: 165);
@@ -99,12 +162,12 @@ void main() {
     });
 
     test('does not count half-raised arms', () {
-      final analyzer = JumpingJackAnalyzer();
+      final analyzer = JumpingJackAnalyzer(clock: TestClock().call);
       hold(analyzer, jack(20));
 
-      // 100 is short of the 135 degree target.
-      sweep(analyzer, jack, from: 20, to: 100);
-      sweep(analyzer, jack, from: 100, to: 20);
+      // 98 is short of the 105 degree bar for arms-only counting.
+      sweep(analyzer, jack, from: 20, to: 98);
+      sweep(analyzer, jack, from: 98, to: 20);
       hold(analyzer, jack(20), frames: 6);
 
       expect(analyzer.repCount, 0);
@@ -230,7 +293,7 @@ void main() {
   test('range thresholds are ordered correctly for each new exercise', () {
     expect(AppConstants.gluteBridgeRestAngle,
         lessThan(AppConstants.gluteBridgeTopAngle));
-    expect(AppConstants.situpTopAngle, lessThan(AppConstants.situpRestAngle));
+    expect(AppConstants.situpRestAngle, lessThan(AppConstants.situpTopAngle));
     expect(AppConstants.jumpingJackRestAngle,
         lessThan(AppConstants.jumpingJackTopAngle));
     expect(AppConstants.wallSitKneeAngleMin,

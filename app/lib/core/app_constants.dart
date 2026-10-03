@@ -195,13 +195,24 @@ class AppConstants {
   static const int asymmetryWindow = 10;
 
   // Glute bridge — shoulder/hip/knee opens up as the hips rise.
-  static const double gluteBridgeRestAngle = 138.0;
-  static const double gluteBridgeTopAngle = 150.0;
+  // Real bridges (live test #5, 12 of them) opened the angle from 123-137 degrees
+  // at rest to 169-180 at the top; the old 138-to-150 range gave full credit for
+  // twelve degrees, which a twitch covers.
+  static const double gluteBridgeRestAngle = 135.0;
+  static const double gluteBridgeTopAngle = 170.0;
   static const double gluteBridgeShortRangePenalty = 0.3;
 
+  /// Sit-up landmark bar. The torso line only needs the shoulder and hip, and at
+  /// the top of a sit-up the tracker's confidence in a folded body is low exactly
+  /// where the peak is; 0.7 turned full sit-ups into 'short' ones.
+  static const double situpVisibilityThreshold = 0.3;
+
   // Sit-up — the same joint closes as the torso comes up.
-  static const double situpRestAngle = 130.0;
-  static const double situpTopAngle = 95.0;
+  // Measured as the torso's elevation from the floor (0 flat, 90 upright): the
+  // shoulder-hip line, not the knee-dependent hip angle. Real sit-ups peaked at
+  // 51-87 degrees and rested at 0-16; the crunches of live test #5 reached 20-45.
+  static const double situpRestAngle = 8.0;
+  static const double situpTopAngle = 65.0;
   static const double situpShortRangePenalty = 0.3;
 
   // Jumping jack — arm abduction measured at the shoulder, seen front-on.
@@ -381,6 +392,40 @@ class AppConstants {
   static const double overheadPressLegDriveDip = 15.0;
   static const double overheadPressLegDrivePenalty = 0.25;
   static const Duration overheadPressMinRepDuration = Duration(milliseconds: 700);
+
+
+  // Jumping jack gates. Feet spread is ankle-to-ankle distance in torso lengths
+  // (shoulder midpoint to hip midpoint): 0.06-0.5 together, 0.8-1.5 apart on
+  // real sets (live tests #3 and #5 and stock clips).
+  static const double jumpingJackLeaveRatio = 0.62;
+  static const double jumpingJackApartRatio = 0.75;
+  static const double jumpingJackTogetherRatio = 0.55;
+
+  /// Anything that never opens past this is not a jack.
+  static const double jumpingJackMinPeak = 0.7;
+
+  /// A reading above this is tracker junk (a hand mistaken for an ankle).
+  static const double jumpingJackMaxSpread = 3.0;
+  static const double jumpingJackAnkleLikelihood = 0.5;
+  static const Duration jumpingJackMinCycle = Duration(milliseconds: 250);
+
+  /// An arm reading is only trusted (and only coached) when every landmark in it
+  /// is at least this confident; fast arms blur at ~7 analysed frames a second.
+  static const double jumpingJackArmTrust = 0.8;
+
+  /// Trusted arms below this while the feet are out earn a live cue; below
+  /// [jumpingJackArmSoft] at the end the jack is scored short; below
+  /// [jumpingJackArmNoRep] it is turned down.
+  static const double jumpingJackArmCueAngle = 90.0;
+  static const double jumpingJackArmSoft = 100.0;
+  static const double jumpingJackArmNoRep = 70.0;
+
+  /// Arms-only counting (ankles out of frame): leaves rest, must reach the count
+  /// angle, and is done back at rest; full credit from [jumpingJackArmFull].
+  static const double jumpingJackArmLeave = 75.0;
+  static const double jumpingJackArmCount = 105.0;
+  static const double jumpingJackArmRest = 60.0;
+  static const double jumpingJackArmFull = 125.0;
 
   // Backward compatibility aliases
   static const double squatDepthMin = 70;
